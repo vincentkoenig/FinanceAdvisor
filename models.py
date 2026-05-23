@@ -6,6 +6,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String, nullable=False)
     email = db.Column(db.String, nullable=False)
+    password = db.Column(db.String)
     age = db.Column(db.Integer)
     gender = db.Column(db.String)
     risk_profile = db.Column(db.String)
