@@ -1,10 +1,10 @@
 from flask import Flask, request, jsonify
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash # für sicheres Passwort-Hashing
 from models import db, User
 
 app = Flask(__name__)
 
-# Datenbank konfigurieren
+# Datenbank konfigurieren - Pfad zur SQLite Datei
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///finance_advisor.db'
 
 # SQLAlchemy mit der App verbinden
@@ -23,8 +23,9 @@ def register():
     data = request.json # Daten aus dem Request holen
     username = data['username']
     email = data['email']
-    password = generate_password_hash(data['password'])
+    password = generate_password_hash(data['password']) # Passwort hashen - niemals als reinen Text speichern!
 
+    # Neuen Nutzer erstellen und in der Datenbank speichern
     new_user = User(username=username, email=email, password=password)
     db.session.add(new_user)
     db.session.commit()
