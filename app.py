@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash # für sicheres Passwort-Hashing
 from models import db, User, Asset, UserAsset
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -110,7 +111,22 @@ def get_user_assets(user_id):
     return jsonify(result), 200
 
 
+@app.route('/users/<user_id>/assets', methods=['POST'])
+def add_user_asset(user_id):
+    data = request.json  # Daten aus dem Request holen
 
+    asset_id = data['asset_id']
+    quantity = data['quantity']
+    avg_buy_price = data['avg_buy_price']
+    bought_at = datetime.strptime(data['bought_at'], '%Y-%m-%d')
+    status = data['status']
+
+    # Neues Asset erstellen und in der Datenbank speichern
+    user_assets = UserAsset(user_id=user_id, asset_id=asset_id, quantity=quantity, avg_buy_price=avg_buy_price, bought_at=bought_at, status=status)
+    db.session.add(user_assets)
+    db.session.commit()
+
+    return jsonify({"message": "Asset successfully added"}), 201
 
 if __name__ == '__main__':
     app.run(debug=True)
