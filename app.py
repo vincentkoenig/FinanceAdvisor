@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash # für sicheres Passwort-Hashing
-from models import db, User, Asset, UserAsset, PriceHistory
+from models import db, User, Asset, UserAsset, PriceHistory, Watchlist
 from datetime import datetime
 
 app = Flask(__name__)
@@ -159,6 +159,49 @@ def add_prices(asset_id):
     db.session.commit()
 
     return jsonify({"message": "Price successfully added"}), 201
+
+
+@app.route('/watchlist', methods=['POST'])
+def add_to_watchlist():
+    data = request.json  # Daten aus dem Request holen
+
+    user_id = data['user_id']
+    asset_id = data['asset_id']
+
+    new_watchlist = Watchlist(user_id=user_id, asset_id=asset_id)
+    db.session.add(new_watchlist)
+    db.session.commit()
+
+    return jsonify({"message": "Watchlist successfully updated"}), 201
+
+
+@app.route('/users/<user_id>/watchlist', methods=['GET'])
+def get_watchlist(user_id):
+    assets = Watchlist.query.filter_by(user_id=user_id).all()
+
+    result = []
+
+    for asset in assets:
+        result.append({"user_id": asset.user_id,
+                       "asset_id": asset.asset_id,})
+
+    return jsonify(result), 200
+
+
+@app.route('/users/<user_id>/watchlist/<asset_id>', methods=['DELETE'])
+def delete_asset_from_watchlist(user_id, asset_id):
+    # Eintrag in der DB suchen
+    watchlist_item = Watchlist.query.filter_by(user_id=user_id, asset_id=asset_id).first()
+
+    # Wenn nicht gefunden
+    if not watchlist_item:
+        return jsonify({"error": "Item not found"}), 404
+
+    # Löschen
+    db.session.delete(watchlist_item)
+    db.session.commit()
+
+    return jsonify({"message": "Watchlist successfully updated"}), 201
 
 
 if __name__ == '__main__':
