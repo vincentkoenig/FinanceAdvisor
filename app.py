@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash # für sicheres Passwort-Hashing
-from models import db, User, Asset
+from models import db, User, Asset, UserAsset
 
 app = Flask(__name__)
 
@@ -87,6 +87,29 @@ def add_asset():
     db.session.commit()
 
     return jsonify({"message": "Asset successfully added"}), 201
+
+
+@app.route('/users/<user_id>/assets', methods=['GET'])
+def get_user_assets(user_id):
+    """
+    Alle Assets des Nutzers aus der user_asset Tabelle holen
+    filter_by sucht alle Einträge mit der passenden user_id
+    .all() gibt alle Ergebnisse als Liste zurück (nicht nur den ersten)
+    """
+    user_assets = UserAsset.query.filter_by(user_id=user_id).all()
+
+    result = [] # Leere Liste erstellen - hier werden die Assets reingepackt
+
+    for user_asset in user_assets: # Jeden Asset-Eintrag als Dictionary zur Liste hinzufügen
+        result.append({"asset_id": user_asset.asset_id,
+                       "quantity": user_asset.quantity,
+                       "avg_buy_price": user_asset.avg_buy_price,
+                       "bought_at": user_asset.bought_at,
+                       "status": user_asset.status})
+
+    return jsonify(result), 200
+
+
 
 
 if __name__ == '__main__':
