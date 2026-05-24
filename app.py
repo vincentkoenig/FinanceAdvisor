@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from werkzeug.security import generate_password_hash # für sicheres Passwort-Hashing
+from werkzeug.security import generate_password_hash, check_password_hash # für sicheres Passwort-Hashing
 from models import db, User
 
 app = Flask(__name__)
@@ -14,9 +14,11 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
+
 @app.route('/')
 def home():
     return "Hello to the FinanceAdvisor"
+
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -31,6 +33,27 @@ def register():
     db.session.commit()
 
     return jsonify({"message": "User registered successfully"}), 201
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json  # Daten aus dem Request holen
+    username = data['username']
+    password = data['password']
+
+    # Nutzer in der Datenbank suchen
+    user = User.query.filter_by(username=username).first()
+
+    # Wenn Nutzer nicht gefunden
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Passwort überprüfen
+    if not check_password_hash(user.password, password):
+        return jsonify({"error": "Wrong password"}), 401
+
+    # Wenn alles stimmt
+    return jsonify({"message": "Login successful"}), 200
 
 
 if __name__ == '__main__':
