@@ -56,5 +56,23 @@ def login():
     return jsonify({"message": "Login successful"}), 200
 
 
+@app.route('/users/<user_id>', methods=['GET'])
+def get_user(user_id):
+    # Nutzer aus der Datenbank holen
+    user = User.query.get(user_id)
+
+    # Wenn Nutzer nicht gefunden
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Nutzerdaten zurückgeben - Passwort wird nie zurückgegeben!
+    return jsonify({
+        "id": user.id,
+        "username": user.username,
+        "email": user.email
+    }), 200
+
+
+
 if __name__ == '__main__':
     app.run(debug=True)
