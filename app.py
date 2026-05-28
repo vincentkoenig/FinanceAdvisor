@@ -1,7 +1,14 @@
 from flask import Flask, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash # für sicheres Passwort-Hashing
-from models import db, User, Asset, UserAsset, PriceHistory, Watchlist
+from models import db, User, Asset, UserAsset, PriceHistory, Watchlist, ChatHistory
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+from openai import OpenAI
+
+load_dotenv()  # .env Datei laden!
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 app = Flask(__name__)
 
@@ -202,6 +209,52 @@ def delete_asset_from_watchlist(user_id, asset_id):
     db.session.commit()
 
     return jsonify({"message": "Watchlist successfully updated"}), 201
+
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    data = request.json
+    user_id = data['user_id']
+    message = data['message']
+
+    #  Bisherigen Chatverlauf aus DB holen
+    chat_history = ChatHistory.query.filter_by(user_id=user_id).all()
+
+    # In das Format bringen das OpenAI erwartet
+    messages = []
+    for entry in chat_history:
+        messages.append({
+            "role": entry.role,
+            "content": entry.message
+        })
+
+    # Neue Nachricht hinzufügen
+    messages.append({
+        "role": "user",
+        "content": message
+    })
+
+    # Nachricht ans LLM schicken
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages
+    )
+
+    # Antwort des LLM aus dem Response-Objekt holen
+    llm_reply = response.choices[0].message.content
+
+    # Nutzer-Nachricht speichern
+    new_user_message = ChatHistory(user_id=user_id, message=message, role="user")
+    db.session.add(new_user_message)
+
+    # LLM-Antwort speichern
+    new_llm_reply = ChatHistory(user_id=user_id, message=llm_reply, role="assistant")
+    db.session.add(new_llm_reply)
+
+    db.session.commit()
+
+    return jsonify({"reply": llm_reply}), 200
+
 
 
 if __name__ == '__main__':
