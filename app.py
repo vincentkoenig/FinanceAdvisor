@@ -220,8 +220,17 @@ def chat():
     #  Bisherigen Chatverlauf aus DB holen
     chat_history = ChatHistory.query.filter_by(user_id=user_id).all()
 
+    # System Prompt als erstes Element
+    messages = [
+        {
+            "role": "system",
+            "content": "You are an experienced financial advisor. "
+                       "You explain financial concepts in a simple and understandable way. "
+                       "You analyze portfolios objectively. You never give direct buy or sell recommendations."
+        }
+    ]
+
     # In das Format bringen das OpenAI erwartet
-    messages = []
     for entry in chat_history:
         messages.append({
             "role": entry.role,
@@ -237,7 +246,8 @@ def chat():
     # Nachricht ans LLM schicken
     response = client.chat.completions.create(
         model="gpt-4o-mini",
-        messages=messages
+        messages=messages,
+        temperature=0.3
     )
 
     # Antwort des LLM aus dem Response-Objekt holen
