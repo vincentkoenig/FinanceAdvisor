@@ -217,8 +217,32 @@ def chat():
     user_id = data['user_id']
     message = data['message']
 
+    # Nutzer aus DB holen
+    user = User.query.get(user_id)
+
     #  Bisherigen Chatverlauf aus DB holen
     chat_history = ChatHistory.query.filter_by(user_id=user_id).all()
+
+    # Nutzerdaten vorbereiten
+    if user.risk_profile:
+        risk_profile = user.risk_profile
+    else:
+        risk_profile = "not specified"
+
+    if user.investment_experience:
+        investment_experience = user.investment_experience
+    else:
+        investment_experience = "not specified"
+
+    if user.monthly_budget:
+        monthly_budget = user.monthly_budget
+    else:
+        monthly_budget = "not specified"
+
+    if user.investment_horizon:
+        investment_horizon = user.investment_horizon
+    else:
+        investment_horizon = "not specified"
 
     # System Prompt als erstes Element
     messages = [
@@ -227,6 +251,12 @@ def chat():
             "content": "You are an experienced financial advisor. "
                        "You explain financial concepts in a simple and understandable way. "
                        "You analyze portfolios objectively. You never give direct buy or sell recommendations."
+                       f"\n\nUser profile:"
+                       f"\n- Risk profile: {risk_profile}"
+                       f"\n- Investment experience: {investment_experience}"
+                       f"\n- Monthly budget: {monthly_budget}"
+                       f"\n- Investment horizon: {investment_horizon}"
+                       f"If certain user information is missing, mention that more accurate advice could be given with complete profile information."
         }
     ]
 
@@ -266,6 +296,30 @@ def chat():
     return jsonify({"reply": llm_reply}), 200
 
 
+@app.route('/users/<user_id>/settings', methods=['PUT'])
+def settings(user_id):
+    data = request.json
+    risk_profile = data['risk_profile']
+    investment_experience = data['investment_experience']
+    monthly_budget = data['monthly_budget']
+    investment_horizon = data['investment_horizon']
+
+    # Bestehenden Nutzer holen
+    user = User.query.get(user_id)
+
+    # Wenn Nutzer nicht gefunden
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Felder aktualisieren
+    user.risk_profile = risk_profile
+    user.investment_experience = investment_experience
+    user.monthly_budget = monthly_budget
+    user.investment_horizon = investment_horizon
+
+    db.session.commit()
+
+    return jsonify({"message": "Settings successfully updated"}), 201
 
 if __name__ == '__main__':
     app.run(debug=True)
