@@ -1,11 +1,12 @@
 from flask import Flask, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash # für sicheres Passwort-Hashing
-from models import db, User, Asset, UserAsset, PriceHistory, Watchlist, ChatHistory, PortfolioAnalysis
+from models import db, User, Asset, UserAsset, PriceHistory, Watchlist, ChatHistory, PortfolioAnalysis, PortfolioAnalysisSchema
 from datetime import datetime
 from dotenv import load_dotenv
 import os
 from openai import OpenAI
 import json
+
 
 load_dotenv()  # .env Datei laden!
 
@@ -363,17 +364,16 @@ def analyze_portfolio():
     portfolio_context = ""
     for user_asset in user_assets:
         asset = Asset.query.get(user_asset.asset_id)
-        portfolio_context += f"\n- {asset.name}: {user_asset.quantity} units"
+        portfolio_context += f"\n- {asset.name}: {user_asset.quantity} units at avg. buy price {user_asset.avg_buy_price} {asset.currency}"
 
     # System Prompt für Portfolio-Analyse
     messages = [
         {
             "role": "system",
             "content": f"You are an experienced financial advisor. "
-                       f"Analyze the user's portfolio and respond ONLY in JSON format with these exact fields: "
-                       f"total_value, currency, allocation (list with asset, value, percentage), "
-                       f"risk_assessment, diversification_score (1-10), recommendations (list), "
-                       f"summary, disclaimer. "
+                       f"Always respond in German. "
+                       f"Analyze the user's portfolio objectively. "
+                       f"Never give direct buy or sell recommendations. "
                        f"\n\nUser profile:"
                        f"\n- Risk profile: {risk_profile}"
                        f"\n- Investment experience: {investment_experience}"
@@ -388,33 +388,30 @@ def analyze_portfolio():
     ]
 
     # Nachricht ans LLM schicken
-    response = client.chat.completions.create(
+    response = client.beta.chat.completions.parse(
         model="gpt-4o-mini",
         messages=messages,
         temperature=0.3,
-        response_format={"type": "json_object"}
+        response_format=PortfolioAnalysisSchema
     )
 
     # Antwort des LLM aus dem Response-Objekt holen
-    llm_reply = response.choices[0].message.content
-
-    # JSON Antwort parsen
-    analysis = json.loads(llm_reply)
+    analysis = response.choices[0].message.parsed
 
     # In DB speichern
     new_analysis = PortfolioAnalysis(
         user_id=user_id,
-        total_value=analysis['total_value'],
-        risk_assessment=analysis['risk_assessment'],
-        diversification_score=analysis['diversification_score'],
-        summary=analysis['summary'],
-        recommendations=str(analysis['recommendations'])
+        total_value=analysis.total_value,  # Punkt statt ['']
+        risk_assessment=analysis.risk_assessment,
+        diversification_score=analysis.diversification_score,
+        summary=analysis.summary,
+        recommendations=str(analysis.recommendations)
     )
 
     db.session.add(new_analysis)
     db.session.commit()
 
-    return jsonify(analysis), 200
+    return jsonify(analysis.model_dump()), 200
 
 
 if __name__ == '__main__':
