@@ -85,3 +85,18 @@ class Watchlist(db.Model):
     asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
     added_at = db.Column(db.DateTime, default=db.func.now())
 
+
+class PortfolioAnalysis(db.Model):
+    """
+    PortfolioAnalysis Tabelle - speichert die KI-generierten Portfolio-Analysen
+    Structured Output vom LLM wird hier gespeichert
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    total_value = db.Column(db.Float)
+    risk_assessment = db.Column(db.Text)
+    diversification_score = db.Column(db.Integer)
+    summary = db.Column(db.Text)
+    recommendations = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
