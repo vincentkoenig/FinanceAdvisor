@@ -1,10 +1,11 @@
 from flask import Flask, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash # für sicheres Passwort-Hashing
-from models import db, User, Asset, UserAsset, PriceHistory, Watchlist, ChatHistory
+from models import db, User, Asset, UserAsset, PriceHistory, Watchlist, ChatHistory, PortfolioAnalysis
 from datetime import datetime
 from dotenv import load_dotenv
 import os
 from openai import OpenAI
+import json
 
 load_dotenv()  # .env Datei laden!
 
@@ -277,7 +278,8 @@ def chat():
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,
-        temperature=0.3
+        temperature=0.3,
+        response_format = {"type": "json_object"}
     )
 
     # Antwort des LLM aus dem Response-Objekt holen
@@ -320,6 +322,101 @@ def settings(user_id):
     db.session.commit()
 
     return jsonify({"message": "Settings successfully updated"}), 201
+
+
+@app.route('/portfolio/analyze', methods=['POST'])
+def analyze_portfolio():
+    data = request.json
+    user_id = data['user_id']
+
+    # Nutzer aus DB holen
+    user = User.query.get(user_id)
+
+    # Wenn Nutzer nicht gefunden
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    # Portfolio des Nutzers aus DB holen
+    user_assets = UserAsset.query.filter_by(user_id=user_id).all()
+
+    # Nutzerdaten vorbereiten
+    if user.risk_profile:
+        risk_profile = user.risk_profile
+    else:
+        risk_profile = "not specified"
+
+    if user.investment_experience:
+        investment_experience = user.investment_experience
+    else:
+        investment_experience = "not specified"
+
+    if user.monthly_budget:
+        monthly_budget = user.monthly_budget
+    else:
+        monthly_budget = "not specified"
+
+    if user.investment_horizon:
+        investment_horizon = user.investment_horizon
+    else:
+        investment_horizon = "not specified"
+
+    # Portfolio-Kontext aufbauen
+    portfolio_context = ""
+    for user_asset in user_assets:
+        asset = Asset.query.get(user_asset.asset_id)
+        portfolio_context += f"\n- {asset.name}: {user_asset.quantity} units"
+
+    # System Prompt für Portfolio-Analyse
+    messages = [
+        {
+            "role": "system",
+            "content": f"You are an experienced financial advisor. "
+                       f"Analyze the user's portfolio and respond ONLY in JSON format with these exact fields: "
+                       f"total_value, currency, allocation (list with asset, value, percentage), "
+                       f"risk_assessment, diversification_score (1-10), recommendations (list), "
+                       f"summary, disclaimer. "
+                       f"\n\nUser profile:"
+                       f"\n- Risk profile: {risk_profile}"
+                       f"\n- Investment experience: {investment_experience}"
+                       f"\n- Monthly budget: {monthly_budget}"
+                       f"\n- Investment horizon: {investment_horizon}"
+                       f"\n\nUser portfolio:{portfolio_context}"
+        },
+        {
+            "role": "user",
+            "content": "Please analyze my portfolio."
+        }
+    ]
+
+    # Nachricht ans LLM schicken
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=messages,
+        temperature=0.3,
+        response_format={"type": "json_object"}
+    )
+
+    # Antwort des LLM aus dem Response-Objekt holen
+    llm_reply = response.choices[0].message.content
+
+    # JSON Antwort parsen
+    analysis = json.loads(llm_reply)
+
+    # In DB speichern
+    new_analysis = PortfolioAnalysis(
+        user_id=user_id,
+        total_value=analysis['total_value'],
+        risk_assessment=analysis['risk_assessment'],
+        diversification_score=analysis['diversification_score'],
+        summary=analysis['summary'],
+        recommendations=str(analysis['recommendations'])
+    )
+
+    db.session.add(new_analysis)
+    db.session.commit()
+
+    return jsonify(analysis), 200
+
 
 if __name__ == '__main__':
     app.run(debug=True)
