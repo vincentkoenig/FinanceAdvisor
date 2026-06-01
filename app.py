@@ -249,15 +249,15 @@ def chat():
     messages = [
         {
             "role": "system",
-            "content": "You are an experienced financial advisor. "
-                       "You explain financial concepts in a simple and understandable way. "
-                       "You analyze portfolios objectively. You never give direct buy or sell recommendations."
+            "content": f"You are an experienced financial advisor. "
+                       f"You explain financial concepts in a simple and understandable way. "
+                       f"You analyze portfolios objectively. You never give direct buy or sell recommendations."
                        f"\n\nUser profile:"
                        f"\n- Risk profile: {risk_profile}"
                        f"\n- Investment experience: {investment_experience}"
                        f"\n- Monthly budget: {monthly_budget}"
                        f"\n- Investment horizon: {investment_horizon}"
-                       f"If certain user information is missing, mention that more accurate advice could be given with complete profile information."
+                       f"\nIf certain user information is missing, mention that more accurate advice could be given with complete profile information."
         }
     ]
 
@@ -278,8 +278,7 @@ def chat():
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,
-        temperature=0.3,
-        response_format = {"type": "json_object"}
+        temperature=0.3
     )
 
     # Antwort des LLM aus dem Response-Objekt holen
