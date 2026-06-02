@@ -105,12 +105,21 @@ class PortfolioAnalysis(db.Model):
 
 
 class AllocationItem(PydanticBaseModel):
+    """
+    Pydantic Model für ein einzelnes Asset in der Portfolio-Allocation.
+    Definiert die Struktur eines einzelnen Eintrags in der Allocation Liste
+    """
     asset: str
     value: float
     percentage: float
 
 
 class PortfolioAnalysisSchema(PydanticBaseModel):
+    """
+    Pydantic Schema für die komplette Portfolio-Analyse.
+    Definiert das exakte Format, das das LLM zurückgeben muss.
+    Wird als response_format an OpenAI übergeben
+    """
     total_value: float
     currency: str
     allocation: List[AllocationItem]
