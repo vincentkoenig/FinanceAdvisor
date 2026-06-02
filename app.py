@@ -1,5 +1,5 @@
 from flask import Flask, request, jsonify
-from werkzeug.security import generate_password_hash, check_password_hash # für sicheres Passwort-Hashing
+from werkzeug.security import generate_password_hash, check_password_hash  # für sicheres Passwort-Hashing
 from models import db, User, Asset, UserAsset, PriceHistory, Watchlist, ChatHistory, PortfolioAnalysis, PortfolioAnalysisSchema
 from datetime import datetime
 from dotenv import load_dotenv
@@ -7,75 +7,85 @@ import os
 from openai import OpenAI
 import json
 
+# .env Datei laden - muss vor os.getenv() stehen!
+load_dotenv()
 
-load_dotenv()  # .env Datei laden!
-
+# Verbindung zu OpenAI herstellen - API Key sicher aus .env holen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Flask App erstellen
 app = Flask(__name__)
 
 # Datenbank konfigurieren - Pfad zur SQLite Datei
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///finance_advisor.db'
 
-# SQLAlchemy mit der App verbinden
+# SQLAlchemy mit der Flask App verbinden
 db.init_app(app)
 
-# Tabellen erstellen
+# Tabellen erstellen wenn sie noch nicht existieren
+# app_context() sagt Flask welche App gerade aktiv ist
 with app.app_context():
     db.create_all()
 
 
 @app.route('/')
 def home():
+    # Startseite - zeigt dass die API läuft
     return "Hello to the FinanceAdvisor"
 
 
 @app.route('/register', methods=['POST'])
 def register():
-    data = request.json # Daten aus dem Request holen
+    # Daten aus dem Request Body holen (JSON Format)
+    data = request.json
     username = data['username']
     email = data['email']
-    password = generate_password_hash(data['password']) # Passwort hashen - niemals als reinen Text speichern!
+    # Passwort hashen - niemals als reinen Text speichern!
+    password = generate_password_hash(data['password'])
 
     # Neuen Nutzer erstellen und in der Datenbank speichern
     new_user = User(username=username, email=email, password=password)
-    db.session.add(new_user)
-    db.session.commit()
+    db.session.add(new_user)    # Nutzer zur Session hinzufügen
+    db.session.commit()         # Änderungen in DB speichern
 
+    # 201 = Created - Nutzer wurde erfolgreich erstellt
     return jsonify({"message": "User registered successfully"}), 201
 
 
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.json  # Daten aus dem Request holen
+    # Daten aus dem Request Body holen
+    data = request.json
     username = data['username']
     password = data['password']
 
-    # Nutzer in der Datenbank suchen
+    # Nutzer in der Datenbank anhand des Usernamens suchen
+    # .first() gibt den ersten Treffer zurück oder None
     user = User.query.filter_by(username=username).first()
 
-    # Wenn Nutzer nicht gefunden
+    # Wenn Nutzer nicht gefunden → 404 Not Found
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Passwort überprüfen
+    # Passwort überprüfen - vergleicht eingegebenes Passwort mit gespeichertem Hash
+    # Passwort wird nie entschlüsselt - nur die Hashes werden verglichen!
     if not check_password_hash(user.password, password):
-        return jsonify({"error": "Wrong password"}), 401
+        return jsonify({"error": "Wrong password"}), 401  # 401 = Unauthorized
 
-    # Wenn alles stimmt
+    # Wenn alles stimmt → 200 OK
     return jsonify({"message": "Login successful"}), 200
 
 
 @app.route('/users/<user_id>', methods=['GET'])
 def get_user(user_id):
-    # Nutzer aus der Datenbank holen
+    # Nutzer anhand der ID aus der Datenbank holen
     user = User.query.get(user_id)
 
-    # Wenn Nutzer nicht gefunden
+    # Wenn Nutzer nicht gefunden → 404 Not Found
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Nutzerdaten zurückgeben - Passwort wird nie zurückgegeben!
+    # Nutzerdaten zurückgeben - Passwort wird NIEMALS zurückgegeben!
     return jsonify({
         "id": user.id,
         "username": user.username,
@@ -85,7 +95,8 @@ def get_user(user_id):
 
 @app.route('/assets', methods=['POST'])
 def add_asset():
-    data = request.json  # Daten aus dem Request holen
+    # Daten aus dem Request Body holen
+    data = request.json
     name = data['name']
     symbol = data['symbol']
     asset_type = data['asset_type']
@@ -106,32 +117,45 @@ def get_user_assets(user_id):
     filter_by sucht alle Einträge mit der passenden user_id
     .all() gibt alle Ergebnisse als Liste zurück (nicht nur den ersten)
     """
+    # Alle Assets des Nutzers aus der DB holen
     user_assets = UserAsset.query.filter_by(user_id=user_id).all()
 
-    result = [] # Leere Liste erstellen - hier werden die Assets reingepackt
+    # Leere Liste erstellen - hier werden die Assets reingepackt
+    result = []
 
-    for user_asset in user_assets: # Jeden Asset-Eintrag als Dictionary zur Liste hinzufügen
-        result.append({"asset_id": user_asset.asset_id,
-                       "quantity": user_asset.quantity,
-                       "avg_buy_price": user_asset.avg_buy_price,
-                       "bought_at": user_asset.bought_at,
-                       "status": user_asset.status})
+    # Jeden Asset-Eintrag als Dictionary zur Liste hinzufügen
+    for user_asset in user_assets:
+        result.append({
+            "asset_id": user_asset.asset_id,
+            "quantity": user_asset.quantity,
+            "avg_buy_price": user_asset.avg_buy_price,
+            "bought_at": user_asset.bought_at,
+            "status": user_asset.status
+        })
 
     return jsonify(result), 200
 
 
 @app.route('/users/<user_id>/assets', methods=['POST'])
 def add_user_asset(user_id):
-    data = request.json  # Daten aus dem Request holen
-
+    # Daten aus dem Request Body holen
+    data = request.json
     asset_id = data['asset_id']
     quantity = data['quantity']
     avg_buy_price = data['avg_buy_price']
+    # Datum von String in Python datetime Objekt umwandeln
     bought_at = datetime.strptime(data['bought_at'], '%Y-%m-%d')
     status = data['status']
 
     # Neues UserAsset erstellen und in der Datenbank speichern
-    user_assets = UserAsset(user_id=user_id, asset_id=asset_id, quantity=quantity, avg_buy_price=avg_buy_price, bought_at=bought_at, status=status)
+    user_assets = UserAsset(
+        user_id=user_id,
+        asset_id=asset_id,
+        quantity=quantity,
+        avg_buy_price=avg_buy_price,
+        bought_at=bought_at,
+        status=status
+    )
     db.session.add(user_assets)
     db.session.commit()
 
@@ -140,29 +164,34 @@ def add_user_asset(user_id):
 
 @app.route('/assets/<asset_id>/prices', methods=['GET'])
 def get_prices(asset_id):
-
+    # Alle Preiseinträge für dieses Asset aus der DB holen
     prices = PriceHistory.query.filter_by(asset_id=asset_id).all()
 
-    result = []  # Leere Liste erstellen - hier werden die Assets reingepackt
+    # Leere Liste erstellen
+    result = []
 
-    for price in prices: # Jeden Asset-Eintrag als Dictionary zur Liste hinzufügen
-        result.append({"asset_id": price.asset_id,
-                       "date": price.date,
-                       "price": price.price,
-                       "currency": price.currency})
+    # Jeden Preis-Eintrag als Dictionary zur Liste hinzufügen
+    for price in prices:
+        result.append({
+            "asset_id": price.asset_id,
+            "date": price.date,
+            "price": price.price,
+            "currency": price.currency
+        })
 
     return jsonify(result), 200
 
 
 @app.route('/assets/<asset_id>/prices', methods=['POST'])
 def add_prices(asset_id):
-    data = request.json  # Daten aus dem Request holen
-
+    # Daten aus dem Request Body holen
+    data = request.json
+    # Datum von String in Python datetime Objekt umwandeln
     date = datetime.strptime(data['date'], '%Y-%m-%d')
     price = data['price']
     currency = data['currency']
 
-    # Neuen Preis eingeben und in der Datenbank speichern
+    # Neuen Preis in der Datenbank speichern
     new_price = PriceHistory(asset_id=asset_id, date=date, price=price, currency=currency)
     db.session.add(new_price)
     db.session.commit()
@@ -172,11 +201,13 @@ def add_prices(asset_id):
 
 @app.route('/watchlist', methods=['POST'])
 def add_to_watchlist():
-    data = request.json  # Daten aus dem Request holen
-
+    # Daten aus dem Request Body holen
+    data = request.json
     user_id = data['user_id']
     asset_id = data['asset_id']
 
+    # Neuen Watchlist-Eintrag erstellen
+    # added_at wird automatisch auf aktuelle Zeit gesetzt
     new_watchlist = Watchlist(user_id=user_id, asset_id=asset_id)
     db.session.add(new_watchlist)
     db.session.commit()
@@ -186,46 +217,52 @@ def add_to_watchlist():
 
 @app.route('/users/<user_id>/watchlist', methods=['GET'])
 def get_watchlist(user_id):
+    # Alle Watchlist-Einträge des Nutzers holen
     assets = Watchlist.query.filter_by(user_id=user_id).all()
 
     result = []
 
+    # Jeden Eintrag als Dictionary zur Liste hinzufügen
     for asset in assets:
-        result.append({"user_id": asset.user_id,
-                       "asset_id": asset.asset_id,})
+        result.append({
+            "user_id": asset.user_id,
+            "asset_id": asset.asset_id
+        })
 
     return jsonify(result), 200
 
 
 @app.route('/users/<user_id>/watchlist/<asset_id>', methods=['DELETE'])
 def delete_asset_from_watchlist(user_id, asset_id):
-    # Eintrag in der DB suchen
+    # Eintrag in der DB suchen anhand user_id und asset_id
     watchlist_item = Watchlist.query.filter_by(user_id=user_id, asset_id=asset_id).first()
 
-    # Wenn nicht gefunden
+    # Wenn nicht gefunden → 404 Not Found
     if not watchlist_item:
         return jsonify({"error": "Item not found"}), 404
 
-    # Löschen
+    # Eintrag löschen und Änderungen speichern
     db.session.delete(watchlist_item)
     db.session.commit()
 
-    return jsonify({"message": "Watchlist successfully updated"}), 201
+    return jsonify({"message": "Watchlist successfully updated"}), 200
 
 
 @app.route('/chat', methods=['POST'])
 def chat():
+    # Daten aus dem Request Body holen
     data = request.json
     user_id = data['user_id']
     message = data['message']
 
-    # Nutzer aus DB holen
+    # Nutzer aus DB holen um Profildaten zu erhalten
     user = User.query.get(user_id)
 
-    #  Bisherigen Chatverlauf aus DB holen
+    # Bisherigen Chatverlauf aus DB holen
+    # Wird ans LLM geschickt damit es den Kontext versteht
     chat_history = ChatHistory.query.filter_by(user_id=user_id).all()
 
-    # Nutzerdaten vorbereiten
+    # Nutzerdaten vorbereiten - falls Felder leer sind "not specified" setzen
     if user.risk_profile:
         risk_profile = user.risk_profile
     else:
@@ -246,7 +283,8 @@ def chat():
     else:
         investment_horizon = "not specified"
 
-    # System Prompt als erstes Element
+    # System Prompt als erstes Element der messages Liste
+    # Definiert die Rolle und das Verhalten des LLM
     messages = [
         {
             "role": "system",
@@ -262,20 +300,22 @@ def chat():
         }
     ]
 
-    # In das Format bringen das OpenAI erwartet
+    # Bisherigen Chatverlauf in OpenAI Format umwandeln und hinzufügen
+    # So versteht das LLM den Kontext des Gesprächs
     for entry in chat_history:
         messages.append({
-            "role": entry.role,
-            "content": entry.message
+            "role": entry.role,       # 'user' oder 'assistant'
+            "content": entry.message  # Text der Nachricht
         })
 
-    # Neue Nachricht hinzufügen
+    # Neue Nachricht des Nutzers hinzufügen
     messages.append({
         "role": "user",
         "content": message
     })
 
-    # Nachricht ans LLM schicken
+    # Komplette messages Liste ans LLM schicken
+    # temperature=0.3 → professionell aber nicht zu roboterhaft
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,
@@ -283,37 +323,42 @@ def chat():
     )
 
     # Antwort des LLM aus dem Response-Objekt holen
+    # choices[0] → erste (und einzige) Antwort
     llm_reply = response.choices[0].message.content
 
-    # Nutzer-Nachricht speichern
+    # Nutzer-Nachricht in DB speichern
     new_user_message = ChatHistory(user_id=user_id, message=message, role="user")
     db.session.add(new_user_message)
 
-    # LLM-Antwort speichern
+    # LLM-Antwort in DB speichern
+    # Wird beim nächsten Chat als Kontext verwendet
     new_llm_reply = ChatHistory(user_id=user_id, message=llm_reply, role="assistant")
     db.session.add(new_llm_reply)
 
     db.session.commit()
 
+    # LLM Antwort als JSON zurückgeben - 200 = OK
     return jsonify({"reply": llm_reply}), 200
 
 
 @app.route('/users/<user_id>/settings', methods=['PUT'])
 def settings(user_id):
+    # Daten aus dem Request Body holen
     data = request.json
     risk_profile = data['risk_profile']
     investment_experience = data['investment_experience']
     monthly_budget = data['monthly_budget']
     investment_horizon = data['investment_horizon']
 
-    # Bestehenden Nutzer holen
+    # Bestehenden Nutzer aus DB holen
     user = User.query.get(user_id)
 
-    # Wenn Nutzer nicht gefunden
+    # Wenn Nutzer nicht gefunden → 404 Not Found
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Felder aktualisieren
+    # Bestehende Felder aktualisieren
+    # Kein db.session.add() nötig - SQLAlchemy erkennt automatisch Änderungen!
     user.risk_profile = risk_profile
     user.investment_experience = investment_experience
     user.monthly_budget = monthly_budget
@@ -321,25 +366,26 @@ def settings(user_id):
 
     db.session.commit()
 
-    return jsonify({"message": "Settings successfully updated"}), 201
+    return jsonify({"message": "Settings successfully updated"}), 200
 
 
 @app.route('/portfolio/analyze', methods=['POST'])
 def analyze_portfolio():
+    # Daten aus dem Request Body holen
     data = request.json
     user_id = data['user_id']
 
     # Nutzer aus DB holen
     user = User.query.get(user_id)
 
-    # Wenn Nutzer nicht gefunden
+    # Wenn Nutzer nicht gefunden → 404 Not Found
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Portfolio des Nutzers aus DB holen
+    # Alle Assets des Nutzers aus der DB holen
     user_assets = UserAsset.query.filter_by(user_id=user_id).all()
 
-    # Nutzerdaten vorbereiten
+    # Nutzerdaten vorbereiten - falls Felder leer sind "not specified" setzen
     if user.risk_profile:
         risk_profile = user.risk_profile
     else:
@@ -361,12 +407,14 @@ def analyze_portfolio():
         investment_horizon = "not specified"
 
     # Portfolio-Kontext aufbauen
+    # Das LLM bekommt alle Assets mit Menge und Kaufpreis
     portfolio_context = ""
     for user_asset in user_assets:
         asset = Asset.query.get(user_asset.asset_id)
         portfolio_context += f"\n- {asset.name}: {user_asset.quantity} units at avg. buy price {user_asset.avg_buy_price} {asset.currency}"
 
     # System Prompt für Portfolio-Analyse
+    # Pydantic übernimmt das JSON Format - kein "respond in JSON" nötig!
     messages = [
         {
             "role": "system",
@@ -383,11 +431,12 @@ def analyze_portfolio():
         },
         {
             "role": "user",
-            "content": "Please analyze my portfolio."
+            "content": "Please analyze my portfolio."  # Trigger für die Analyse
         }
     ]
 
-    # Nachricht ans LLM schicken
+    # Nachricht ans LLM schicken mit Pydantic Structured Output
+    # response_format=PortfolioAnalysisSchema → LLM muss exakt dieses Format zurückgeben
     response = client.beta.chat.completions.parse(
         model="gpt-4o-mini",
         messages=messages,
@@ -395,25 +444,28 @@ def analyze_portfolio():
         response_format=PortfolioAnalysisSchema
     )
 
-    # Antwort des LLM aus dem Response-Objekt holen
+    # Pydantic Objekt aus der Antwort holen
+    # .parsed → gibt direkt ein Python Objekt zurück, kein JSON parsen nötig!
     analysis = response.choices[0].message.parsed
 
-    # In DB speichern
+    # Analyse in DB speichern
+    # .attribute statt ['key'] weil es ein Pydantic Objekt ist
     new_analysis = PortfolioAnalysis(
         user_id=user_id,
-        total_value=analysis.total_value,  # Punkt statt ['']
+        total_value=analysis.total_value,
         risk_assessment=analysis.risk_assessment,
         diversification_score=analysis.diversification_score,
         summary=analysis.summary,
-        recommendations=str(analysis.recommendations),
-        allocation = str(analysis.allocation)
+        recommendations=str(analysis.recommendations),  # Liste als Text speichern
+        allocation=str(analysis.allocation)              # Pydantic Objekte als Text speichern
     )
 
     db.session.add(new_analysis)
     db.session.commit()
 
+    # model_dump() wandelt Pydantic Objekt in Dictionary um das jsonify verarbeiten kann
     return jsonify(analysis.model_dump()), 200
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True)  # debug=True → automatischer Neustart bei Änderungen
