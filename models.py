@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from pydantic import BaseModel as PydanticBaseModel
+from typing import List
 
 # SQLAlchemy Objekt erstellen - wird später mit der Flask App verbunden
 db = SQLAlchemy()
@@ -100,11 +101,19 @@ class PortfolioAnalysis(db.Model):
     summary = db.Column(db.Text)
     recommendations = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=db.func.now())
+    allocation = db.Column(db.Text)
+
+
+class AllocationItem(PydanticBaseModel):
+    asset: str
+    value: float
+    percentage: float
 
 
 class PortfolioAnalysisSchema(PydanticBaseModel):
     total_value: float
     currency: str
+    allocation: List[AllocationItem]
     risk_assessment: str
     diversification_score: int
     summary: str
