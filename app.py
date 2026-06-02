@@ -405,7 +405,8 @@ def analyze_portfolio():
         risk_assessment=analysis.risk_assessment,
         diversification_score=analysis.diversification_score,
         summary=analysis.summary,
-        recommendations=str(analysis.recommendations)
+        recommendations=str(analysis.recommendations),
+        allocation = str(analysis.allocation)
     )
 
     db.session.add(new_analysis)
