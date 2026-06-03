@@ -8,6 +8,7 @@ from openai import OpenAI
 import json
 from api_services import get_crypto_price, get_stock_price, get_metal_price
 from tools import tools
+from scheduler import start_scheduler
 
 # .env Datei laden - muss vor os.getenv() stehen!
 load_dotenv()
@@ -514,4 +515,5 @@ def analyze_portfolio():
 
 
 if __name__ == '__main__':
+    start_scheduler(app)
     app.run(debug=True)  # debug=True → automatischer Neustart bei Änderungen
