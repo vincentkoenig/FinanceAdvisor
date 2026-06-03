@@ -7,6 +7,7 @@ import os
 from openai import OpenAI
 import json
 from api_services import get_crypto_price, get_stock_price, get_metal_price
+from tools import tools
 
 # .env Datei laden - muss vor os.getenv() stehen!
 load_dotenv()
@@ -27,62 +28,6 @@ db.init_app(app)
 # app_context() sagt Flask welche App gerade aktiv ist
 with app.app_context():
     db.create_all()
-
-
-tools = [
-    {
-        "type": "function",
-        "function": {
-            "name": "get_crypto_price",
-            "description": "Get the current price of a cryptocurrency in EUR",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "coin_id": {
-                        "type": "string",
-                        "description": "Cryptocurrency ID e.g. bitcoin, ethereum, solana"
-                    }
-                },
-                "required": ["coin_id"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_stock_price",
-            "description": "Get the current price of a stock or ETF in USD",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "symbol": {
-                        "type": "string",
-                        "description": "Stock symbol e.g. AAPL, MSFT, NVDA"
-                    }
-                },
-                "required": ["symbol"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
-            "name": "get_metal_price",
-            "description": "Get the current price of a precious metal in USD",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "symbol": {
-                        "type": "string",
-                        "description": "Metal symbol - GOLD or SILVER"
-                    }
-                },
-                "required": ["symbol"]
-            }
-        }
-    }
-]
-
 
 @app.route('/')
 def home():
