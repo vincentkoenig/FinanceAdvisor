@@ -6,19 +6,19 @@ Das LLM entscheidet selbst wann es welches Tool aufrufen soll.
 
 tools = [
     {
-        "type": "function",
+        "type": "function",     # Sagt OpenAI: "Das hier ist eine Funktion die aufgerufen werden kann"
         "function": {
-            "name": "get_crypto_price",
-            "description": "Get the current price of a cryptocurrency in EUR",
+            "name": "get_crypto_price",     # Der Name der Funktion – muss exakt gleich sein wie in api_services.py
+            "description": "Get the current price of a cryptocurrency in EUR",      # Erklärt dem LLM wann es diese Funktion benutzen soll.
             "parameters": {
-                "type": "object",
-                "properties": {
+                "type": "object",   # Sagt: "Die Funktion bekommt Parameter als Objekt übergeben" – also als Dictionary
+                "properties": {     # Definiert welche Parameter die Funktion hat
                     "coin_id": {
-                        "type": "string",
-                        "description": "Cryptocurrency ID e.g. bitcoin, ethereum, solana"
+                        "type": "string",   # coin_id muss ein Text sein
+                        "description": "Cryptocurrency ID e.g. bitcoin, ethereum, solana"   # erklärt dem LLM was es dort reinschreiben soll
                     }
                 },
-                "required": ["coin_id"]
+                "required": ["coin_id"]     # Sagt: "coin_id ist Pflicht" – das LLM muss immer einen Wert mitschicken
             }
         }
     },
