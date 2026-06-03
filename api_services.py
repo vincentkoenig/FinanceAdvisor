@@ -3,10 +3,16 @@ import os
 from dotenv import load_dotenv
 import time
 
-
+# .env Datei laden - API Keys sicher aus .env holen
 load_dotenv()
 
 def get_crypto_price(coin_id):
+    """
+    Ruft den aktuellen Preis einer Kryptowährung ab.
+    Benutzt die CoinGecko API.
+    Parameter: coin_id → z.B. "bitcoin", "ethereum", "solana"
+    Gibt den Preis in EUR zurück oder None bei Fehler.
+    """
     # CoinGecko API aufrufen
     url = "https://api.coingecko.com/api/v3/simple/price"
     params = {
@@ -22,13 +28,23 @@ def get_crypto_price(coin_id):
         # HTTP-Objekt entpacken und Daten als Dictionary speichern
         data = response.json()
 
+        # Preis aus dem Dictionary herausziehen und zurückgeben
         return data[coin_id]['eur']
+
     except Exception as e:
         print(f"Error fetching crypto price: {e}")
+
+        # None zurückgeben wenn API nicht erreichbar
         return None
 
 
 def get_stock_price(symbol):
+    """
+    Ruft den aktuellen Preis einer Aktie oder eines ETFs ab.
+    Benutzt die Alpha Vantage API.
+    Parameter: symbol → z.B. "AAPL", "MSFT", "NVDA"
+    Gibt den Preis in USD als Float zurück oder None bei Fehler.
+    """
     # Basis-URL der Alpha Vantage API
     url = "https://www.alphavantage.co/query"
     params = {
@@ -40,20 +56,33 @@ def get_stock_price(symbol):
     try:
         # GET-Anfrage an die API senden
         response = requests.get(url, params=params)
-        # 1 Sekunde warten um Rate Limit zu vermeiden
+
+        # 1 Sekunde warten um Rate Limit zu vermeiden (max. 25 Requests/Tag)
         time.sleep(1)
+
         # HTTP-Objekt entpacken und Daten als Dictionary speichern
         data = response.json()
+
         # Preis aus dem Dictionary herausziehen
         price = data['Global Quote']['05. price']
 
+        # Als Float zurückgeben damit man damit rechnen kann
         return float(price)
+
     except Exception as e:
         print(f"Error fetching stock price: {e}")
+
+        # None zurückgeben wenn API nicht erreichbar
         return None
 
 
 def get_metal_price(symbol):
+    """
+    Ruft den aktuellen Preis eines Edelmetalls ab.
+    Benutzt die Alpha Vantage Commodities API.
+    Parameter: symbol → "GOLD" oder "SILVER"
+    Gibt den Preis in USD als Float zurück oder None bei Fehler.
+    """
     url = "https://www.alphavantage.co/query"
     params = {
         "function": "GOLD_SILVER_SPOT",
@@ -64,19 +93,27 @@ def get_metal_price(symbol):
     try:
         # GET-Anfrage an die API senden
         response = requests.get(url, params=params)
+
         # 1 Sekunde warten um Rate Limit zu vermeiden
         time.sleep(1)
+
         # HTTP-Objekt entpacken und Daten als Dictionary speichern
         data = response.json()
-        # Preis aus dem Dictionary herausziehen
+
+        # Preis direkt aus dem Dictionary holen
         price = data['price']
 
+        # Als Float zurückgeben damit man damit rechnen kann
         return float(price)
+
     except Exception as e:
         print(f"Error fetching metal price: {e}")
+
+        # None zurückgeben wenn API nicht erreichbar
         return None
 
 
+# Testaufruf - wird nur ausgeführt wenn diese Datei direkt gestartet wird
 if __name__ == "__main__":
     print(get_crypto_price("bitcoin"))
     print(get_stock_price("AAPL"))
