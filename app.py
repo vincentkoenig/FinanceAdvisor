@@ -80,7 +80,7 @@ def login():
 @app.route('/users/<user_id>', methods=['GET'])
 def get_user(user_id):
     # Nutzer anhand der ID aus der Datenbank holen
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
 
     # Wenn Nutzer nicht gefunden → 404 Not Found
     if not user:
@@ -257,7 +257,7 @@ def chat():
     message = data['message']
 
     # Nutzer aus DB holen um Profildaten zu erhalten
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
 
     # Bisherigen Chatverlauf aus DB holen
     # Wird ans LLM geschickt damit es den Kontext versteht
@@ -384,7 +384,7 @@ def settings(user_id):
     investment_horizon = data['investment_horizon']
 
     # Bestehenden Nutzer aus DB holen
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
 
     # Wenn Nutzer nicht gefunden → 404 Not Found
     if not user:
@@ -409,7 +409,7 @@ def analyze_portfolio():
     user_id = data['user_id']
 
     # Nutzer aus DB holen
-    user = User.query.get(user_id)
+    user = db.session.get(User, user_id)
 
     # Wenn Nutzer nicht gefunden → 404 Not Found
     if not user:
@@ -443,8 +443,21 @@ def analyze_portfolio():
     # Das LLM bekommt alle Assets mit Menge und Kaufpreis
     portfolio_context = ""
     for user_asset in user_assets:
-        asset = Asset.query.get(user_asset.asset_id)
-        portfolio_context += f"\n- {asset.name}: {user_asset.quantity} units at avg. buy price {user_asset.avg_buy_price} {asset.currency}"
+        asset = db.session.get(Asset, user_asset.asset_id)
+
+        if asset.asset_type == "stock" or asset.asset_type == "etf":
+            current_price = get_stock_price(asset.symbol)
+        elif asset.asset_type == "crypto":
+            current_price = get_crypto_price(asset.symbol)
+        elif asset.asset_type == "metal":
+            current_price = get_metal_price(asset.symbol)
+
+        current_value = user_asset.quantity * current_price
+
+        portfolio_context += f"\n- {asset.name}: {user_asset.quantity} units" \
+                             f"\n  Avg. buy price: {user_asset.avg_buy_price} {asset.currency}" \
+                             f"\n  Current price: {current_price} {asset.currency}" \
+                             f"\n  Current value: {current_value} {asset.currency}"
 
     # System Prompt für Portfolio-Analyse
     # Pydantic übernimmt das JSON Format - kein "respond in JSON" nötig!
