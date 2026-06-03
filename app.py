@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import os
 from openai import OpenAI
 import json
+from api_services import get_crypto_price, get_stock_price, get_metal_price
 
 # .env Datei laden - muss vor os.getenv() stehen!
 load_dotenv()
@@ -26,6 +27,61 @@ db.init_app(app)
 # app_context() sagt Flask welche App gerade aktiv ist
 with app.app_context():
     db.create_all()
+
+
+tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "get_crypto_price",
+            "description": "Get the current price of a cryptocurrency in EUR",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "coin_id": {
+                        "type": "string",
+                        "description": "Cryptocurrency ID e.g. bitcoin, ethereum, solana"
+                    }
+                },
+                "required": ["coin_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_stock_price",
+            "description": "Get the current price of a stock or ETF in USD",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "Stock symbol e.g. AAPL, MSFT, NVDA"
+                    }
+                },
+                "required": ["symbol"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_metal_price",
+            "description": "Get the current price of a precious metal in USD",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "symbol": {
+                        "type": "string",
+                        "description": "Metal symbol - GOLD or SILVER"
+                    }
+                },
+                "required": ["symbol"]
+            }
+        }
+    }
+]
 
 
 @app.route('/')
@@ -319,12 +375,44 @@ def chat():
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=messages,
-        temperature=0.3
+        temperature=0.3,
+        tools=tools
     )
 
-    # Antwort des LLM aus dem Response-Objekt holen
-    # choices[0] → erste (und einzige) Antwort
-    llm_reply = response.choices[0].message.content
+    # Prüfen ob das LLM ein Tool aufrufen will
+    if response.choices[0].message.tool_calls:
+        # LLM will ein Tool aufrufen!
+        tool_call = response.choices[0].message.tool_calls[0]
+        function_name = tool_call.function.name
+        function_args = json.loads(tool_call.function.arguments)
+
+        # Richtige Funktion aufrufen basierend auf function_name
+        if function_name == "get_crypto_price":
+            result = get_crypto_price(function_args['coin_id'])
+        elif function_name == "get_stock_price":
+            result = get_stock_price(function_args['symbol'])
+        elif function_name == "get_metal_price":
+            result = get_metal_price(function_args['symbol'])
+
+        # Ergebnis zurück ans LLM schicken
+        messages.append(response.choices[0].message)
+        messages.append({
+            "role": "tool",
+            "tool_call_id": tool_call.id,
+            "content": str(result)
+        })
+
+        # Finale Antwort vom LLM holen
+        second_response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=messages,
+            temperature=0.3
+        )
+        llm_reply = second_response.choices[0].message.content
+
+    else:
+        # Kein Tool Call - normale Textantwort
+        llm_reply = response.choices[0].message.content
 
     # Nutzer-Nachricht in DB speichern
     new_user_message = ChatHistory(user_id=user_id, message=message, role="user")
