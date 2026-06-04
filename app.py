@@ -135,6 +135,13 @@ def get_user_assets(user_id):
         # Asset aus DB holen um Name und Symbol zu bekommen
         asset = db.session.get(Asset, user_asset.asset_id)
 
+        if asset.asset_type == "stock" or asset.asset_type == "etf":
+            current_price = get_stock_price(asset.symbol)
+        elif asset.asset_type == "crypto":
+            current_price = get_crypto_price(asset.symbol)
+        elif asset.asset_type == "metal":
+            current_price = get_metal_price(asset.symbol)
+
         result.append({
             "asset_id": user_asset.asset_id,
             "name": asset.name,
@@ -142,7 +149,8 @@ def get_user_assets(user_id):
             "quantity": user_asset.quantity,
             "avg_buy_price": user_asset.avg_buy_price,
             "bought_at": user_asset.bought_at,
-            "status": user_asset.status
+            "status": user_asset.status,
+            "current_price": current_price
         })
 
     return jsonify(result), 200
