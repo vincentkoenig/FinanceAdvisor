@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanceAdvisor</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <span class="navbar-brand">FinanceAdvisor</span>
+
+        <!-- Login direkt in der Navbar -->
+        <div class="navbar-login">
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Passwort">
+            <button onclick="login()">Einloggen</button>
+        </div>
+    </nav>
+
+    <!-- Dashboard (versteckt bis Login) -->
+    <div id="dashboard-section" style="display:none;">
+        <h2>Dashboard</h2>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+</html>
