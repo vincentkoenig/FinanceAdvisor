@@ -268,6 +268,22 @@ def delete_asset_from_watchlist(user_id, asset_id):
     return jsonify({"message": "Watchlist successfully updated"}), 200
 
 
+@app.route('/assets/search', methods=['GET'])
+def search_asset():
+    query = request.args.get('query')
+    asset = Asset.query.filter_by(symbol=query.upper()).first()
+
+    if not asset:
+        return jsonify({"error": "Asset not found"}), 404
+
+    return jsonify({
+        "id": asset.id,
+        "name": asset.name,
+        "symbol": asset.symbol,
+        "asset_type": asset.asset_type
+    }), 200
+
+
 @app.route('/chat', methods=['POST'])
 def chat():
     # Daten aus dem Request Body holen
