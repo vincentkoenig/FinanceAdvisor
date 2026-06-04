@@ -132,8 +132,13 @@ def get_user_assets(user_id):
 
     # Jeden Asset-Eintrag als Dictionary zur Liste hinzufügen
     for user_asset in user_assets:
+        # Asset aus DB holen um Name und Symbol zu bekommen
+        asset = db.session.get(Asset, user_asset.asset_id)
+
         result.append({
             "asset_id": user_asset.asset_id,
+            "name": asset.name,
+            "symbol": asset.symbol,
             "quantity": user_asset.quantity,
             "avg_buy_price": user_asset.avg_buy_price,
             "bought_at": user_asset.bought_at,
@@ -518,6 +523,26 @@ def analyze_portfolio():
     # model_dump() wandelt Pydantic Objekt in Dictionary um das jsonify verarbeiten kann
     return jsonify(analysis.model_dump()), 200
 
+
+@app.route('/dashboard')
+def dashboard_page():
+    return render_template('dashboard.html')
+
+@app.route('/chat-page')
+def chat_page():
+    return render_template('chat.html')
+
+@app.route('/analyse-page')
+def analyse_page():
+    return render_template('analyse.html')
+
+@app.route('/watchlist-page')
+def watchlist_page():
+    return render_template('watchlist.html')
+
+@app.route('/settings-page')
+def settings_page():
+    return render_template('settings.html')
 
 if __name__ == '__main__':
     start_scheduler(app)
