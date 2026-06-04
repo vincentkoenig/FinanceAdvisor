@@ -21,12 +21,13 @@ async function loadPortfolio() {
         const positionGesamt = asset.current_price * asset.quantity
         const plEur = positionGesamt - kaufpreisGesamt
         const plProzent = (plEur / kaufpreisGesamt * 100).toFixed(2)
+        const plColor = plEur >= 0 ? '#2ea043' : '#f85149'
         tableBody.innerHTML += `
             <tr>
                 <td><strong>${asset.name}</strong><br><small>${asset.symbol} x${asset.quantity}</small></td>
                 <td>${kaufpreisGesamt.toFixed(2)} $<br><small>${asset.avg_buy_price.toFixed(2)} $</small></td>
                 <td>${positionGesamt.toFixed(2)} $<br><small>${asset.current_price.toFixed(2)} $</small></td>
-                <td>${plEur.toFixed(2)} $<br><small>${plProzent}%</small></td>
+                <td style="color: ${plColor}">${plEur.toFixed(2)} $<br><small>${plProzent}%</small></td>
             </tr>
         `
     })
