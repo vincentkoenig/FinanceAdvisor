@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>FinanceAdvisor - Chat</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <div class="app-container">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-brand">FinanceAdvisor</div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/chat-page" class="active">Chat</a>
+                <a href="/analyse-page">Analyse</a>
+                <a href="/watchlist-page">Watchlist</a>
+                <a href="/settings-page">Einstellungen</a>
+            </nav>
+        </div>
+
+        <!-- Hauptbereich -->
+        <div class="main-content">
+            <h2>Chat</h2>
+
+            <!-- Nachrichten Bereich -->
+            <div class="chat-messages" id="chat-messages">
+            </div>
+
+            <!-- Eingabe Bereich -->
+            <div class="chat-input-container">
+                <input type="text" id="chat-input" placeholder="Schreib eine Nachricht...">
+                <button onclick="sendMessage()">Senden</button>
+            </div>
+            
+        </div>
+
+    </div>
+
+</body>
+</html>
