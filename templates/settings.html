@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>FinanceAdvisor - Einstellungen</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <div class="app-container">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-brand">FinanceAdvisor</div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/chat-page">Chat</a>
+                <a href="/analyse-page">Analyse</a>
+                <a href="/watchlist-page">Watchlist</a>
+                <a href="/settings-page" class="active">Einstellungen</a>
+            </nav>
+        </div>
+
+        <!-- Hauptbereich -->
+        <div class="main-content">
+            <h2>Einstellungen</h2>
+
+            <div class="settings-card">
+                <h3>Profil</h3>
+
+                <label>Risikoprofil</label>
+                <select id="risk_profile">
+                    <option value="conservative">Konservativ</option>
+                    <option value="balanced">Ausgewogen</option>
+                    <option value="aggressive">Aggressiv</option>
+                </select>
+
+                <label>Erfahrung</label>
+                <select id="investment_experience">
+                    <option value="beginner">Anfänger</option>
+                    <option value="intermediate">Fortgeschritten</option>
+                    <option value="expert">Experte</option>
+                </select>
+
+                <label>Monatliches Budget (€)</label>
+                <input type="number" id="monthly_budget" placeholder="z.B. 500">
+
+                <label>Anlagehorizont</label>
+                <select id="investment_horizon">
+                    <option value="short-term">Kurzfristig</option>
+                    <option value="medium-term">Mittelfristig</option>
+                    <option value="long-term">Langfristig</option>
+                </select>
+
+                <button class="btn-primary settings-button" onclick="saveSettings()">Speichern</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="/static/js/settings.js"></script>
+</body>
+</html>
