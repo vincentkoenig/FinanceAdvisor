@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>FinanceAdvisor - Analyse</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <div class="app-container">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-brand">FinanceAdvisor</div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/chat-page">Chat</a>
+                <a href="/analyse-page" class="active">Analyse</a>
+                <a href="/watchlist-page">Watchlist</a>
+                <a href="/settings-page">Einstellungen</a>
+            </nav>
+        </div>
+
+        <!-- Hauptbereich -->
+        <div class="main-content">
+            <h2>Portfolio Analyse</h2>
+
+            <button class="btn-primary analyse-button" onclick="analysePortfolio()">Analyse starten</button>
+
+            <div id="analyse-result"></div>
+        </div>
+
+    </div>
+
+    <script src="/static/js/analyse.js"></script>
+</body>
+</html>
