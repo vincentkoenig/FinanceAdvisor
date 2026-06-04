@@ -339,3 +339,44 @@ body {
     color: #e6edf3;
     align-self: flex-start;
 }
+
+/* ─── ANALYSE ─────────────────────────────────────────────── */
+
+/* Analyse Button */
+.analyse-button {
+    width: auto;
+    padding: 12px 24px;
+}
+
+.analyse-card {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.analyse-card h3 {
+    font-size: 24px;
+    color: #58a6ff;
+}
+
+.analyse-card h4 {
+    color: #8b949e;
+    margin-top: 10px;
+}
+
+.analyse-card ul {
+    padding-left: 20px;
+}
+
+.analyse-card ul li {
+    margin-bottom: 8px;
+}
+
+.analyse-card small {
+    color: #8b949e;
+}
