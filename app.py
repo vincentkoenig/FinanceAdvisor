@@ -393,6 +393,21 @@ def chat():
     return jsonify({"reply": llm_reply}), 200
 
 
+@app.route('/chat/history/<user_id>', methods=['GET'])
+def get_chat_history(user_id):
+    # Chatverlauf aus DB holen
+    chat_history = ChatHistory.query.filter_by(user_id=user_id).all()
+
+    result = []
+    for entry in chat_history:
+        result.append({
+            "role": entry.role,
+            "message": entry.message
+        })
+
+    return jsonify(result), 200
+
+
 @app.route('/users/<user_id>/settings', methods=['PUT'])
 def settings(user_id):
     # Daten aus dem Request Body holen
