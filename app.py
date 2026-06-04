@@ -117,6 +117,33 @@ def add_asset():
     return jsonify({"message": "Asset successfully added"}), 201
 
 
+@app.route('/assets/<asset_id>', methods=['GET'])
+def get_asset(asset_id):
+    # Asset aus DB holen
+    asset = db.session.get(Asset, asset_id)
+
+    if not asset:
+        return jsonify({"error": "Asset not found"}), 404
+
+    # Aktuellen Preis holen
+    if asset.asset_type == "stock" or asset.asset_type == "etf":
+        current_price = get_stock_price(asset.symbol)
+    elif asset.asset_type == "crypto":
+        current_price = get_crypto_price(asset.symbol)
+    elif asset.asset_type == "metal":
+        current_price = get_metal_price(asset.symbol)
+
+    return jsonify({
+        "id": asset.id,
+        "name": asset.name,
+        "symbol": asset.symbol,
+        "asset_type": asset.asset_type,
+        "current_price": current_price
+    }), 200
+
+
+
+
 @app.route('/users/<user_id>/assets', methods=['GET'])
 def get_user_assets(user_id):
     """
