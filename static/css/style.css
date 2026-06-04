@@ -417,3 +417,32 @@ body {
     padding: 12px 24px !important;
     align-self: flex-start;
 }
+
+/* ─── WATCHLIST ───────────────────────────────────────────── */
+
+.watchlist-add {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    margin-top: 20px;
+}
+
+.watchlist-add input {
+    flex: 1;
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+}
+
+.watchlist-add input:focus {
+    border-color: #58a6ff;
+}
+
+.watchlist-add button {
+    width: auto;
+    padding: 12px 24px;
+}
