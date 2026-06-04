@@ -9,6 +9,7 @@ import json
 from api_services import get_crypto_price, get_stock_price, get_metal_price
 from tools import tools
 from scheduler import start_scheduler
+import re
 
 # .env Datei laden - muss vor os.getenv() stehen!
 load_dotenv()
@@ -40,10 +41,14 @@ def home():
 def register():
     # Daten aus dem Request Body holen (JSON Format)
     data = request.json
-    username = data['username']
     email = data['email']
+    username = email.split('@')[0]  # Username automatisch aus Email ableiten
     # Passwort hashen - niemals als reinen Text speichern!
     password = generate_password_hash(data['password'])
+
+    # Email Validierung
+    if not re.match(r'^[^@]+@[^@]+\.[^@]+$', email):
+        return jsonify({"error": "Bitte eine gültige Email eingeben"}), 400
 
     # Neuen Nutzer erstellen und in der Datenbank speichern
     new_user = User(username=username, email=email, password=password)
@@ -51,19 +56,19 @@ def register():
     db.session.commit()         # Änderungen in DB speichern
 
     # 201 = Created - Nutzer wurde erfolgreich erstellt
-    return jsonify({"message": "User registered successfully"}), 201
+    return jsonify({"message": "User registered successfully", "user_id": new_user.id}), 201
 
 
 @app.route('/login', methods=['POST'])
 def login():
     # Daten aus dem Request Body holen
     data = request.json
-    username = data['username']
+    email = data['email']
     password = data['password']
 
     # Nutzer in der Datenbank anhand des Usernamens suchen
     # .first() gibt den ersten Treffer zurück oder None
-    user = User.query.filter_by(username=username).first()
+    user = User.query.filter_by(email=email).first()
 
     # Wenn Nutzer nicht gefunden → 404 Not Found
     if not user:
