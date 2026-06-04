@@ -316,3 +316,26 @@ body {
 .chat-input-container button:hover {
     background-color: #2ea043;
 }
+
+/* Chat Nachrichten */
+.message {
+    padding: 12px 18px;
+    border-radius: 10px;
+    max-width: 70%;
+    line-height: 1.5;
+}
+
+/* Nutzer Nachricht - rechts */
+.user-message {
+    background-color: #238636;
+    color: white;
+    align-self: flex-end;
+}
+
+/* LLM Antwort - links */
+.assistant-message {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    align-self: flex-start;
+}
