@@ -1,7 +1,3 @@
-// Aktuelle User ID nach dem Login speichern - null = kein Nutzer eingeloggt
-let currentUserId = null;
-
-
 async function register() {
     // Werte aus den Input Feldern holen
     const email = document.getElementById('email').value;
@@ -19,10 +15,9 @@ async function register() {
 
     // Wenn Login erfolgreich (200 OK)
     if (response.ok) {
-        currentUserId = data.user_id  // User ID speichern!
-        alert('Registrierung erfolgreich!');
-        // Dashboard einblenden
-        document.getElementById('dashboard-section').style.display = 'block';
+        // user_id im Browser speichern und weiterleiten
+        localStorage.setItem('user_id', data.user_id)
+        window.location.href = '/dashboard';
     } else {
         // Fehlermeldung anzeigen z.B. "User not found"
         alert(data.error);
@@ -47,10 +42,9 @@ async function login() {
 
     // Wenn Login erfolgreich (200 OK)
     if (response.ok) {
-        currentUserId = data.user_id  // User ID speichern!
-        alert('Login erfolgreich!');
-        // Dashboard einblenden
-        document.getElementById('dashboard-section').style.display = 'block';
+        // user_id im Browser speichern und weiterleiten
+        localStorage.setItem('user_id', data.user_id)  // user_id speichern
+        window.location.href = '/dashboard'
     } else {
         // Fehlermeldung anzeigen z.B. "User not found"
         alert(data.error);
