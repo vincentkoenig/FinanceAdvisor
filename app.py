@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from werkzeug.security import generate_password_hash, check_password_hash  # für sicheres Passwort-Hashing
 from models import db, User, Asset, UserAsset, PriceHistory, Watchlist, ChatHistory, PortfolioAnalysis, PortfolioAnalysisSchema
 from datetime import datetime
@@ -33,7 +33,7 @@ with app.app_context():
 @app.route('/')
 def home():
     # Startseite - zeigt dass die API läuft
-    return "Hello to the FinanceAdvisor"
+    return render_template('index.html')
 
 
 @app.route('/register', methods=['POST'])
@@ -75,7 +75,7 @@ def login():
         return jsonify({"error": "Wrong password"}), 401  # 401 = Unauthorized
 
     # Wenn alles stimmt → 200 OK
-    return jsonify({"message": "Login successful"}), 200
+    return jsonify({"message": "Login successful", "user_id": user.id}), 200
 
 
 @app.route('/users/<user_id>', methods=['GET'])
