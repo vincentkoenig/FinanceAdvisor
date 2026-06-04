@@ -36,3 +36,30 @@ async function sendMessage() {
     // Nach unten scrollen
     chatMessages.scrollTop = chatMessages.scrollHeight
 }
+
+// Chatverlauf beim Laden der Seite holen
+async function loadChatHistory() {
+    const userId = localStorage.getItem('user_id')
+
+    const response = await fetch(`/chat/history/${userId}`, {
+        method: 'GET'
+    })
+
+    const data = await response.json()
+    const chatMessages = document.getElementById('chat-messages')
+
+    data.forEach(entry => {
+        if (entry.role === 'user') {
+            chatMessages.innerHTML += `
+                <div class="message user-message">${entry.message}</div>
+            `
+        } else {
+            chatMessages.innerHTML += `
+                <div class="message assistant-message">${marked.parse(entry.message)}</div>
+            `
+        }
+    })
+}
+
+// Beim Laden der Seite aufrufen
+loadChatHistory()
