@@ -1,4 +1,3 @@
-/* Grundlegende Einstellungen */
 * {
     margin: 0;
     padding: 0;
@@ -6,61 +5,204 @@
 }
 
 body {
-    background-color: black;
-    color: white;
+    background-color: #0d1117;
+    color: #e6edf3;
     font-family: 'Segoe UI', sans-serif;
+    height: 100vh;
 }
 
-/* Navbar */
-.navbar {
-    background-color: #161b22;
-    padding: 15px 30px;
-    border-bottom: 1px solid #30363d;
+/* Login Seite */
+.login-container {
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
+    height: 100vh;
+    gap: 30px;
 }
 
-.navbar-brand {
-    font-size: 20px;
+.login-container h1 {
+    font-size: 32px;
+    color: white;
+}
+
+.login-card {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 380px;
+}
+
+.login-card input {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    color: #e6edf3;
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 16px;
+    outline: none;
+    width: 100%;
+}
+
+.login-card input:focus {
+    border-color: #58a6ff;
+}
+
+.btn-primary {
+    background-color: #238636;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.btn-primary:hover {
+    background-color: #2ea043;
+}
+
+.btn-secondary {
+    background-color: #161b22;
+    color: #e6edf3;
+    border: 1px solid #30363d;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.btn-secondary:hover {
+    border-color: #2ea043;
+    color: #2ea043;
+}
+
+/* Dashboard Layout */
+#dashboard-section {
+    display: flex;
+    height: 100vh;
+}
+
+/* Sidebar */
+.sidebar {
+    width: 220px;
+    background-color: #161b22;
+    border-right: 1px solid #30363d;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    height: 100vh;
+}
+
+.sidebar-brand {
+    font-size: 18px;
     font-weight: bold;
     color: white;
 }
 
-/* Navbar Login */
-.navbar-login {
+.sidebar-nav {
     display: flex;
-    gap: 10px;
-    align-items: center;
+    flex-direction: column;
+    gap: 8px;
 }
 
-.navbar-login input {
-    background-color: #0d1117;
-    border: 1px solid #30363d;
+.sidebar-nav a {
+    color: #8b949e;
+    text-decoration: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+.sidebar-nav a:hover {
+    background-color: #21262d;
     color: #e6edf3;
-    padding: 8px 12px;
-    border-radius: 6px;
-    outline: none;
 }
 
-.navbar-login button {
-    background-color: #238636;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 6px;
-    cursor: pointer;
+/* Hauptbereich */
+.main-content {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;
 }
 
-.navbar-login button:hover {
-    background-color: #2ea043;
+.app-container {
+    display: flex;
+    height: 100vh;
 }
 
-/* Cards */
-.card {
+/* Tabelle */
+.portfolio-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.portfolio-table th {
+    text-align: left;
+    padding: 12px 15px;
+    color: #8b949e;
+    border-bottom: 1px solid #30363d;
+    font-weight: normal;
+}
+
+.portfolio-table td {
+    padding: 15px;
+    border-bottom: 1px solid #21262d;
+}
+
+/* Portfolio Übersicht */
+.portfolio-overview {
+    margin-bottom: 30px;
+    padding: 20px;
     background-color: #161b22;
     border: 1px solid #30363d;
     border-radius: 10px;
-    padding: 25px;
 }
 
+#total-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: #e6edf3;
+}
+
+#total-pl {
+    font-size: 16px;
+    margin-top: 5px;
+}
+
+/* Dashboard oberer Bereich */
+.dashboard-top {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.chart-container {
+    flex: 2;
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.donut-container {
+    flex: 1;
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.donut-container canvas {
+    max-width: 250px;
+    max-height: 250px;
+}
