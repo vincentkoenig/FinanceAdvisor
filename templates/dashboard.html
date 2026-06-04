@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>FinanceAdvisor - Dashboard</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <div class="app-container">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-brand">FinanceAdvisor</div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard" class="active">Dashboard</a>
+                <a href="/chat-page">Chat</a>
+                <a href="/analyse-page">Analyse</a>
+                <a href="/watchlist-page">Watchlist</a>
+                <a href="/settings-page">Einstellungen</a>
+            </nav>
+        </div>
+
+        <!-- Positionen -->
+        <div class="main-content">
+
+            <!-- Oberer Bereich: Chart + Donut -->
+            <div class="dashboard-top">
+
+                <!-- Links: Gesamtwert + Liniendiagramm -->
+                <div class="chart-container">
+                    <h3 id="total-value">Lädt...</h3>
+                    <p id="total-pl">Lädt...</p>
+                    <canvas id="lineChart"></canvas>
+                </div>
+
+                <!-- Rechts: Donut Diagramm -->
+                <div class="donut-container">
+                    <canvas id="donutChart"></canvas>
+                </div>
+
+            </div>
+
+            <!-- Unterer Bereich: Positionen -->
+            <h2>Meine Positionen</h2>
+            <table class="portfolio-table">
+                <thead>
+                    <tr>
+                        <th>Titel</th>
+                        <th>Kaufpreis</th>
+                        <th>Position</th>
+                        <th>P/L</th>
+                    </tr>
+                </thead>
+                <tbody id="portfolio-body"></tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
