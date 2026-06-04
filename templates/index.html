@@ -8,22 +8,14 @@
 </head>
 <body>
 
-    <!-- Navbar -->
-    <nav class="navbar">
-        <span class="navbar-brand">FinanceAdvisor</span>
-
-        <!-- Login/Registrierung direkt in der Navbar -->
-        <div class="navbar-login">
+    <div class="login-container">
+        <h1>FinanceAdvisor</h1>
+        <div class="login-card">
             <input type="email" id="email" placeholder="Email">
             <input type="password" id="password" placeholder="Passwort">
-            <button onclick="login()">Einloggen</button>
-            <button onclick="register()">Registrieren</button>
+            <button class="btn-primary" onclick="login()">Einloggen</button>
+            <button class="btn-secondary" onclick="register()">Registrieren</button>
         </div>
-    </nav>
-
-    <!-- Dashboard (versteckt bis Login) -->
-    <div id="dashboard-section" style="display:none;">
-        <h2>Dashboard</h2>
     </div>
 
     <script src="/static/js/main.js"></script>
