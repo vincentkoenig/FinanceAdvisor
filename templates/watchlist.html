@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>FinanceAdvisor - Watchlist</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <div class="app-container">
+
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-brand">FinanceAdvisor</div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/chat-page">Chat</a>
+                <a href="/analyse-page">Analyse</a>
+                <a href="/watchlist-page" class="active">Watchlist</a>
+                <a href="/settings-page">Einstellungen</a>
+            </nav>
+        </div>
+
+        <!-- Hauptbereich -->
+        <div class="main-content">
+            <h2>Watchlist</h2>
+
+            <!-- Asset hinzufügen -->
+            <div class="watchlist-add">
+                <input type="text" id="asset-search" placeholder="Asset suchen z.B. AAPL, bitcoin...">
+                <button class="btn-primary" onclick="addToWatchlist()">Hinzufügen</button>
+            </div>
+
+            <!-- Watchlist Tabelle -->
+            <table class="portfolio-table">
+                <thead>
+                    <tr>
+                        <th>Titel</th>
+                        <th>Symbol</th>
+                        <th>Aktueller Preis</th>
+                        <th>Aktion</th>
+                    </tr>
+                </thead>
+                <tbody id="watchlist-body">
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <script src="/static/js/watchlist.js"></script>
+</body>
+</html>
