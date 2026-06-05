@@ -125,13 +125,15 @@ def get_asset(asset_id):
     if not asset:
         return jsonify({"error": "Asset not found"}), 404
 
-    # Aktuellen Preis holen
-    if asset.asset_type == "stock" or asset.asset_type == "etf":
-        current_price = get_stock_price(asset.symbol)
-    elif asset.asset_type == "crypto":
-        current_price = get_crypto_price(asset.symbol)
-    elif asset.asset_type == "metal":
-        current_price = get_metal_price(asset.symbol)
+    # Letzten Preis aus price_history holen statt API Call
+    last_price = PriceHistory.query.filter_by(asset_id=asset_id) \
+        .order_by(PriceHistory.date.desc()) \
+        .first()
+
+    if last_price:
+        current_price = last_price.price
+    else:
+        current_price = None  # Fallback auf None
 
     return jsonify({
         "id": asset.id,
@@ -162,12 +164,15 @@ def get_user_assets(user_id):
         # Asset aus DB holen um Name und Symbol zu bekommen
         asset = db.session.get(Asset, user_asset.asset_id)
 
-        if asset.asset_type == "stock" or asset.asset_type == "etf":
-            current_price = get_stock_price(asset.symbol)
-        elif asset.asset_type == "crypto":
-            current_price = get_crypto_price(asset.symbol)
-        elif asset.asset_type == "metal":
-            current_price = get_metal_price(asset.symbol)
+        # Letzten Preis aus price_history holen statt API Call
+        last_price = PriceHistory.query.filter_by(asset_id=user_asset.asset_id) \
+            .order_by(PriceHistory.date.desc()) \
+            .first()
+
+        if last_price:
+            current_price = last_price.price
+        else:
+            current_price = user_asset.avg_buy_price  # Fallback auf Kaufpreis
 
         result.append({
             "asset_id": user_asset.asset_id,
@@ -522,12 +527,15 @@ def analyze_portfolio():
     for user_asset in user_assets:
         asset = db.session.get(Asset, user_asset.asset_id)
 
-        if asset.asset_type == "stock" or asset.asset_type == "etf":
-            current_price = get_stock_price(asset.symbol)
-        elif asset.asset_type == "crypto":
-            current_price = get_crypto_price(asset.symbol)
-        elif asset.asset_type == "metal":
-            current_price = get_metal_price(asset.symbol)
+        # Letzten Preis aus price_history holen statt API Call
+        last_price = PriceHistory.query.filter_by(asset_id=user_asset.asset_id) \
+            .order_by(PriceHistory.date.desc()) \
+            .first()
+
+        if last_price:
+            current_price = last_price.price
+        else:
+            current_price = user_asset.avg_buy_price  # Fallback auf Kaufpreis
 
         current_value = user_asset.quantity * current_price
 
