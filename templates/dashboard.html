@@ -48,7 +48,10 @@
 
             <!-- Unterer Bereich: Positionen -->
             <div class="positions-container">
-                <h2>Positionen</h2>
+                <div class="section-header">
+                    <h2>Positionen</h2>
+                    <button class="btn-primary add-button" onclick="showAddPosition()">+ Position hinzufügen</button>
+                </div>
                 <table class="portfolio-table">
                     <thead>
                         <tr>
@@ -65,5 +68,21 @@
     </div>
 
     <script src="/static/js/dashboard.js"></script>
+
+
+   <!-- Modal: Position hinzufügen -->
+    <div id="add-position-modal" style="display:none;">
+        <div class="modal-overlay" onclick="hideAddPosition()"></div>
+        <div class="modal">
+            <h3>Position hinzufügen</h3>
+            <input type="text" id="position-symbol" placeholder="Symbol z.B. AAPL, bitcoin">
+            <input type="number" id="position-quantity" placeholder="Menge z.B. 10">
+            <input type="number" id="position-price" placeholder="Kaufpreis z.B. 150">
+            <input type="date" id="position-date">
+            <button class="btn-primary" onclick="addPosition()">Hinzufügen</button>
+            <button class="btn-secondary" onclick="hideAddPosition()">Abbrechen</button>
+        </div>
+    </div>
+
 </body>
 </html>
