@@ -58,5 +58,24 @@ async function loadWatchlist() {
     }
 }
 
+
+async function removeFromWatchlist(assetId) {
+    const userId = localStorage.getItem('user_id')
+
+    const response = await fetch(`/users/${userId}/watchlist/${assetId}`, {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'}
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+        alert('Asset entfernt!')
+        loadWatchlist()  // Watchlist neu laden
+    } else {
+        alert(data.error)
+    }
+}
+
 // Beim Laden der Seite aufrufen
 loadWatchlist()
