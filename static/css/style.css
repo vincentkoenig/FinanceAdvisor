@@ -239,6 +239,10 @@ body {
     padding: 20px;
 }
 
+#lineChart {
+    max-height: 170px;
+}
+
 /* Rechter Bereich - Donut Diagramm */
 .donut-container {
     flex: 1;  /* nimmt 1/3 des Platzes ein */
