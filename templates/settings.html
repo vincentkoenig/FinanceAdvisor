@@ -59,7 +59,26 @@
 
     </div>
 
+    <!-- FAB Button -->
+    <div class="fab" onclick="toggleChat()">
+        🤖 KI-Agent
+    </div>
+
+    <!-- Chat Widget -->
+    <div class="chat-widget" id="chat-widget" style="display:none;">
+        <div class="chat-widget-header">
+            <span>KI-Agent</span>
+            <button onclick="toggleChat()">✕</button>
+        </div>
+        <div class="chat-widget-messages" id="widget-messages"></div>
+        <div class="chat-widget-input">
+            <input type="text" id="widget-input" placeholder="Schreib eine Nachricht...">
+            <button onclick="sendWidgetMessage()">Senden</button>
+        </div>
+    </div>
+
     <script src="/static/js/settings.js"></script>
     <script src="/static/js/logout.js"></script>
+    <script src="/static/js/widget.js"></script>
 </body>
 </html>
