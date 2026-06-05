@@ -77,6 +77,9 @@ async function loadPortfolio() {
     document.getElementById('total-value').innerHTML = `${formatCurrency(totalValue)} €`
     document.getElementById('total-pl').innerHTML = `<span style="color: ${plColor}">${formatCurrency(totalPL)} € (${totalPLProzent}%)</span>`
 
+    // Donut Mitte aktualisieren
+    document.getElementById('donut-value').innerHTML = `${formatCurrency(totalValue)} €`
+
     // Donut Diagramm erstellen
     const labels = data.map(asset => asset.name)
     const values = data.map(asset => asset.current_price * asset.quantity)
@@ -91,12 +94,9 @@ async function loadPortfolio() {
             }]
         },
         options: {
+            cutout: '75%',
             plugins: {
-                legend: {
-                    labels: {
-                        color: '#e6edf3'  // Weiße Schrift für Dark Mode
-                    }
-                }
+                legend: { display: false }
             }
         }
     })
