@@ -633,6 +633,13 @@ def get_portfolio_history(user_id):
     return jsonify(result), 200
 
 
+@app.route('/update-prices', methods=['POST'])
+def manual_update_prices():
+    from scheduler import update_prices
+    update_prices(app)
+    return jsonify({"message": "Prices updated successfully"}), 200
+
+
 @app.route('/dashboard')
 def dashboard_page():
     return render_template('dashboard.html')
