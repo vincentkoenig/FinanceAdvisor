@@ -269,6 +269,26 @@ body {
     align-items: center;
     justify-content: center;
     width: 100%;
+    position: relative;
+}
+
+.donut-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.donut-center p {
+    color: #8b949e;
+    font-size: 13px;
+}
+
+.donut-center h3 {
+    color: #e6edf3;
+    font-size: 18px;
+    font-weight: bold;
 }
 
 /* ─── POSITIONEN ──────────────────────────────────────────── */
