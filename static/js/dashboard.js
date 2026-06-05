@@ -46,7 +46,7 @@ async function loadPortfolio() {
 
         tableBody.innerHTML += `
             <tr>
-                <td><strong>${asset.name}</strong><br><small>${asset.symbol} x${asset.quantity}</small></td>
+                <td><strong>${asset.name}</strong><br><small>${asset.quantity}x</small></td>
                 <td>${formatCurrency(kaufpreisGesamt)} €<br><small>${formatCurrency(asset.avg_buy_price)} €</small></td>
                 <td>${formatCurrency(positionGesamt)} €<br><small>${formatCurrency(asset.current_price)} €</small></td>
                 <td style="color: ${rowPlColor}">${formatCurrency(plEur)} €<br><small>${plProzent}%</small></td>
