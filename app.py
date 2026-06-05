@@ -608,6 +608,31 @@ def analyze_portfolio():
     return jsonify(analysis.model_dump()), 200
 
 
+@app.route('/users/<user_id>/portfolio/history', methods=['GET'])
+def get_portfolio_history(user_id):
+    # Alle Assets des Nutzers holen
+    user_assets = UserAsset.query.filter_by(user_id=user_id).all()
+
+    result = {}
+
+    for user_asset in user_assets:
+        asset = db.session.get(Asset, user_asset.asset_id)
+
+        # Preishistorie für dieses Asset holen
+        prices = PriceHistory.query.filter_by(asset_id=user_asset.asset_id) \
+            .order_by(PriceHistory.date.asc()).all()
+
+        result[asset.name] = [
+            {
+                "date": price.date.strftime('%Y-%m-%d'),
+                "price": price.price * user_asset.quantity
+            }
+            for price in prices
+        ]
+
+    return jsonify(result), 200
+
+
 @app.route('/dashboard')
 def dashboard_page():
     return render_template('dashboard.html')
