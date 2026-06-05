@@ -19,6 +19,7 @@
                 <a href="/analyse-page">Analyse</a>
                 <a href="/watchlist-page">Watchlist</a>
                 <a href="/settings-page">Einstellungen</a>
+                <a href="#" onclick="logout()">Logout</a>
             </nav>
         </div>
 
@@ -41,6 +42,10 @@
                     <h3>Allokation</h3>
                     <div class="donut-chart-wrapper">
                         <canvas id="donutChart"></canvas>
+                        <div class="donut-center">
+                            <p>Gesamtvermögen</p>
+                            <h3 id="donut-value">Lädt...</h3>
+                        </div>
                     </div>
                 </div>
 
@@ -67,9 +72,6 @@
 
     </div>
 
-    <script src="/static/js/dashboard.js"></script>
-
-
    <!-- Modal: Position hinzufügen -->
     <div id="add-position-modal" style="display:none;">
         <div class="modal-overlay" onclick="hideAddPosition()"></div>
@@ -84,5 +86,7 @@
         </div>
     </div>
 
+    <script src="/static/js/dashboard.js"></script>
+    <script src="/static/js/logout.js"></script>
 </body>
 </html>
