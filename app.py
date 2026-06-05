@@ -303,10 +303,20 @@ def delete_asset_from_watchlist(user_id, asset_id):
 @app.route('/assets/search', methods=['GET'])
 def search_asset():
     query = request.args.get('query')
+
+    # Asset in DB suchen
     asset = Asset.query.filter_by(symbol=query.upper()).first()
 
+    # Wenn nicht gefunden → automatisch erstellen
     if not asset:
-        return jsonify({"error": "Asset not found"}), 404
+        asset = Asset(
+            name=query.upper(),  # Name = Symbol als Fallback
+            symbol=query.upper(),
+            asset_type='stock',  # Standard: stock
+            currency='EUR'
+        )
+        db.session.add(asset)
+        db.session.commit()
 
     return jsonify({
         "id": asset.id,
