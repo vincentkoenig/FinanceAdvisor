@@ -66,8 +66,11 @@ def get_stock_price(symbol):
         # Preis aus dem Dictionary herausziehen
         price = data['Global Quote']['05. price']
 
+        # USD zu EUR umrechnen
+        rate = get_exchange_rate("USD", "EUR")
+
         # Als Float zurückgeben damit man damit rechnen kann
-        return float(price)
+        return round(float(price) * rate, 2)
 
     except Exception as e:
         print(f"Error fetching stock price: {e}")
@@ -103,8 +106,11 @@ def get_metal_price(symbol):
         # Preis direkt aus dem Dictionary holen
         price = data['price']
 
+        # USD zu EUR umrechnen
+        rate = get_exchange_rate("USD", "EUR")
+
         # Als Float zurückgeben damit man damit rechnen kann
-        return float(price)
+        return round(float(price) * rate, 2)
 
     except Exception as e:
         print(f"Error fetching metal price: {e}")
@@ -113,8 +119,32 @@ def get_metal_price(symbol):
         return None
 
 
+def get_exchange_rate(from_currency, to_currency):
+    """
+    Ruft den aktuellen Wechselkurs ab.
+    z.B. get_exchange_rate("USD", "EUR")
+    """
+    url = "https://www.alphavantage.co/query"
+    params = {
+        "function": "CURRENCY_EXCHANGE_RATE",
+        "from_currency": from_currency,
+        "to_currency": to_currency,
+        "apikey": os.getenv("ALPHAVANTAGE_API_KEY")
+    }
+
+    try:
+        response = requests.get(url, params=params)
+        data = response.json()
+        rate = data['Realtime Currency Exchange Rate']['5. Exchange Rate']
+        return float(rate)
+    except Exception as e:
+        print(f"Error fetching exchange rate: {e}")
+        return None
+
+
 # Testaufruf - wird nur ausgeführt wenn diese Datei direkt gestartet wird
 if __name__ == "__main__":
     print(get_crypto_price("bitcoin"))
     print(get_stock_price("AAPL"))
     print(get_metal_price("GOLD"))
+    print(get_exchange_rate("USD", "EUR"))
