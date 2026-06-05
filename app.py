@@ -10,6 +10,7 @@ from api_services import get_crypto_price, get_stock_price, get_metal_price
 from tools import tools
 from scheduler import start_scheduler
 import re
+import yfinance as yf
 
 # .env Datei laden - muss vor os.getenv() stehen!
 load_dotenv()
@@ -125,15 +126,14 @@ def get_asset(asset_id):
     if not asset:
         return jsonify({"error": "Asset not found"}), 404
 
-    # Letzten Preis aus price_history holen statt API Call
-    last_price = PriceHistory.query.filter_by(asset_id=asset_id) \
-        .order_by(PriceHistory.date.desc()) \
-        .first()
-
-    if last_price:
-        current_price = last_price.price
+    if asset.asset_type == "stock" or asset.asset_type == "etf":
+        current_price = get_stock_price(asset.symbol)
+    elif asset.asset_type == "crypto":
+        current_price = get_crypto_price(asset.symbol)
+    elif asset.asset_type == "metal":
+        current_price = get_metal_price(asset.symbol)
     else:
-        current_price = None  # Fallback auf None
+        current_price = user_asset.avg_buy_price
 
     return jsonify({
         "id": asset.id,
@@ -164,15 +164,14 @@ def get_user_assets(user_id):
         # Asset aus DB holen um Name und Symbol zu bekommen
         asset = db.session.get(Asset, user_asset.asset_id)
 
-        # Letzten Preis aus price_history holen statt API Call
-        last_price = PriceHistory.query.filter_by(asset_id=user_asset.asset_id) \
-            .order_by(PriceHistory.date.desc()) \
-            .first()
-
-        if last_price:
-            current_price = last_price.price
+        if asset.asset_type == "stock" or asset.asset_type == "etf":
+            current_price = get_stock_price(asset.symbol)
+        elif asset.asset_type == "crypto":
+            current_price = get_crypto_price(asset.symbol)
+        elif asset.asset_type == "metal":
+            current_price = get_metal_price(asset.symbol)
         else:
-            current_price = user_asset.avg_buy_price  # Fallback auf Kaufpreis
+            current_price = user_asset.avg_buy_price
 
         result.append({
             "asset_id": user_asset.asset_id,
@@ -307,12 +306,20 @@ def search_asset():
     # Asset in DB suchen
     asset = Asset.query.filter_by(symbol=query.upper()).first()
 
-    # Wenn nicht gefunden → automatisch erstellen
+    # Wenn nicht gefunden → mit yfinance validieren und erstellen
     if not asset:
+        # Symbol mit yfinance validieren
+        ticker = yf.Ticker(query.upper())
+        try:
+            price = ticker.fast_info['lastPrice']
+        except Exception:
+            return jsonify({"error": f"Symbol {query.upper()} nicht gefunden!"}), 404
+
+        # Asset automatisch erstellen
         asset = Asset(
-            name=query.upper(),  # Name = Symbol als Fallback
+            name=ticker.info.get('longName', query.upper()),  # echter Name von yfinance
             symbol=query.upper(),
-            asset_type='stock',  # Standard: stock
+            asset_type='stock',
             currency='EUR'
         )
         db.session.add(asset)
@@ -537,15 +544,14 @@ def analyze_portfolio():
     for user_asset in user_assets:
         asset = db.session.get(Asset, user_asset.asset_id)
 
-        # Letzten Preis aus price_history holen statt API Call
-        last_price = PriceHistory.query.filter_by(asset_id=user_asset.asset_id) \
-            .order_by(PriceHistory.date.desc()) \
-            .first()
-
-        if last_price:
-            current_price = last_price.price
+        if asset.asset_type == "stock" or asset.asset_type == "etf":
+            current_price = get_stock_price(asset.symbol)
+        elif asset.asset_type == "crypto":
+            current_price = get_crypto_price(asset.symbol)
+        elif asset.asset_type == "metal":
+            current_price = get_metal_price(asset.symbol)
         else:
-            current_price = user_asset.avg_buy_price  # Fallback auf Kaufpreis
+            current_price = user_asset.avg_buy_price
 
         current_value = user_asset.quantity * current_price
 
