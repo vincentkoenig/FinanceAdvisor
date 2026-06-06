@@ -86,6 +86,34 @@
         </div>
     </div>
 
+<!-- Modal: Asset Details -->
+<div id="asset-detail-modal" style="display:none;">
+    <div class="modal-overlay" onclick="hideAssetDetail()"></div>
+    <div class="modal">
+        <h3 id="modal-asset-name">Asset</h3>
+        <div class="modal-buttons">
+            <button class="btn-primary" onclick="showBuy()">Kauf hinzufügen</button>
+            <button class="btn-secondary" onclick="showSell()">Verkauf hinzufügen</button>
+        </div>
+
+        <!-- Kauf Felder -->
+        <div id="buy-fields" style="display:none;">
+            <input type="number" id="buy-quantity" placeholder="Menge">
+            <input type="number" id="buy-price" placeholder="Kaufpreis">
+            <button class="btn-primary" onclick="addBuy()">Bestätigen</button>
+        </div>
+
+        <!-- Verkauf Felder -->
+        <div id="sell-fields" style="display:none;">
+            <input type="number" id="sell-quantity" placeholder="Menge">
+            <input type="number" id="sell-price" placeholder="Verkaufspreis">
+            <button class="btn-primary" onclick="addSell()">Bestätigen</button>
+        </div>
+
+        <button class="btn-secondary" onclick="hideAssetDetail()">Schließen</button>
+    </div>
+</div>
+
     <!-- FAB Button -->
     <div class="fab" onclick="toggleChat()">
         🤖 KI-Agent
