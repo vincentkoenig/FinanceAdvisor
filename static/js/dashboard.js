@@ -45,7 +45,7 @@ async function loadPortfolio() {
         const rowPlColor = plEur >= 0 ? '#2ea043' : '#f85149'             // Grün wenn positiv, rot wenn negativ
 
         tableBody.innerHTML += `
-            <tr>
+            <tr onclick="showAssetDetail(${asset.asset_id}, '${asset.name}')" style="cursor: pointer;">
                 <td><strong>${asset.name}</strong><br><small>${asset.quantity}x</small></td>
                 <td>${formatCurrency(kaufpreisGesamt)} €<br><small>${formatCurrency(asset.avg_buy_price)} €</small></td>
                 <td>${formatCurrency(positionGesamt)} €<br><small>${formatCurrency(asset.current_price)} €</small></td>
@@ -239,6 +239,81 @@ async function addPosition() {
         // Modal schließen
         hideAddPosition()
         // Dashboard neu laden
+        loadPortfolio()
+    } else {
+        alert(data.error)
+    }
+}
+
+
+// Aktuell ausgewähltes Asset
+let selectedAssetId = null
+
+// Asset Detail Modal anzeigen
+function showAssetDetail(assetId, assetName) {
+    selectedAssetId = assetId
+    document.getElementById('modal-asset-name').innerHTML = assetName
+    document.getElementById('buy-fields').style.display = 'none'
+    document.getElementById('sell-fields').style.display = 'none'
+    document.getElementById('asset-detail-modal').style.display = 'block'
+}
+
+// Asset Detail Modal verstecken
+function hideAssetDetail() {
+    document.getElementById('asset-detail-modal').style.display = 'none'
+}
+
+// Kauf Felder anzeigen
+function showBuy() {
+    document.getElementById('buy-fields').style.display = 'block'
+    document.getElementById('sell-fields').style.display = 'none'
+}
+
+// Verkauf Felder anzeigen
+function showSell() {
+    document.getElementById('sell-fields').style.display = 'block'
+    document.getElementById('buy-fields').style.display = 'none'
+}
+
+
+async function addBuy() {
+    const userId = localStorage.getItem('user_id')
+    const quantity = document.getElementById('buy-quantity').value
+    const price = document.getElementById('buy-price').value
+
+    const response = await fetch(`/users/${userId}/assets/${selectedAssetId}/buy`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({quantity: quantity, price: price})
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+        alert('Kauf hinzugefügt!')
+        hideAssetDetail()
+        loadPortfolio()
+    } else {
+        alert(data.error)
+    }
+}
+
+
+async function addSell() {
+    const userId = localStorage.getItem('user_id')
+    const quantity = document.getElementById('sell-quantity').value
+
+    const response = await fetch(`/users/${userId}/assets/${selectedAssetId}/sell`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({quantity: quantity})
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+        alert('Verkauf hinzugefügt!')
+        hideAssetDetail()
         loadPortfolio()
     } else {
         alert(data.error)
