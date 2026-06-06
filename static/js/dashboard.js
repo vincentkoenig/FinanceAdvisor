@@ -118,15 +118,30 @@ async function loadChart() {
     })
     const sortedDates = [...allDates].sort()
 
-    // Gesamtwert pro Tag berechnen
-    const totalValues = sortedDates.map(date => {
+    // Gesamtwert pro Tag berechnen - nur Tage wo alle Assets Preise haben
+    const chartData = []
+
+    sortedDates.forEach(date => {
         let total = 0
+        let hasAnyPrice = false
+
         Object.values(data).forEach(prices => {
             const price = prices.find(p => p.date === date)
-            if (price) total += price.price
+            if (price) {
+                total += price.price
+                hasAnyPrice = true
+            }
         })
-        return total
+
+        if (hasAnyPrice) {
+            chartData.push({ date: date, value: total })
+        }
     })
+
+    const filteredDates = chartData.map(d => d.date)
+    const totalValues = chartData.map(d => d.value)
+    console.log('filteredDates:', filteredDates)
+    console.log('totalValues:', totalValues)
 
     // Farbe basierend auf Performance - grün wenn gestiegen, rot wenn gefallen
     const firstValue = totalValues[0]
@@ -137,7 +152,7 @@ async function loadChart() {
     new Chart(document.getElementById('lineChart'), {
         type: 'line',
         data: {
-            labels: sortedDates,
+            labels: filteredDates,
             datasets: [{
                 data: totalValues,
                 borderColor: chartColor,
@@ -161,7 +176,7 @@ async function loadChart() {
             onHover: (event, elements) => {
                 if (elements.length > 0) {
                     const index = elements[0].index
-                    const date = sortedDates[index]
+                    const date = filteredDates[index]
                     const value = totalValues[index]
 
                     // Gesamtwert und Datum links oben aktualisieren
