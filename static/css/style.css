@@ -532,6 +532,47 @@ body {
     border-color: #58a6ff;
 }
 
+/* Modal Buttons kaufen/verkaufen */
+.modal-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.modal-buttons button {
+    background-color: lightgray;
+    color: black;
+    border: 1px solid #30363d;
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    width: 100%;
+}
+
+.modal-buttons button:hover {
+    background-color: white;
+    color: black;
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: lightgray;
+    border: 1px solid lightgray;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.btn-secondary:hover {
+    background-color: transparent;
+    color: white;
+    border: 1px solid white;
+}
+
 /* ─── FLOATING ACTION BUTTON ──────────────────────────────── */
 
 .fab {
