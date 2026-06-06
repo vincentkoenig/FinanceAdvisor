@@ -660,6 +660,61 @@ def manual_update_prices():
     return jsonify({"message": "Prices updated successfully"}), 200
 
 
+@app.route('/users/<user_id>/assets/<asset_id>/buy', methods=['PUT'])
+def add_buy(user_id, asset_id):
+    # Daten aus dem Request Body holen
+    data = request.json
+    quantity = data['quantity']
+    price = data['price']
+
+    # UserAsset aus DB holen
+    user_asset = UserAsset.query.filter_by(user_id=user_id, asset_id=asset_id).first()
+
+    if not user_asset:
+        return jsonify({"error": "Asset not found"}), 404
+
+    # Neuen Durchschnittspreis berechnen
+    old_value = user_asset.quantity * user_asset.avg_buy_price
+    new_value = float(quantity) * float(price)
+    new_quantity = user_asset.quantity + float(quantity)
+    new_avg_price = (old_value + new_value) / new_quantity
+
+    # Werte aktualisieren
+    user_asset.quantity = new_quantity
+    user_asset.avg_buy_price = round(new_avg_price, 2)
+
+    db.session.commit()
+
+    return jsonify({"message": "Buy successfully added"}), 200
+
+
+@app.route('/users/<user_id>/assets/<asset_id>/sell', methods=['PUT'])
+def add_sell(user_id, asset_id):
+    data = request.json
+    quantity = data['quantity']
+
+    # UserAsset aus DB holen
+    user_asset = UserAsset.query.filter_by(user_id=user_id, asset_id=asset_id).first()
+
+    if not user_asset:
+        return jsonify({"error": "Asset not found"}), 404
+
+    # Prüfen ob genug Anteile vorhanden
+    if float(quantity) > user_asset.quantity:
+        return jsonify({"error": "Nicht genug Anteile!"}), 400
+
+    # Menge reduzieren
+    user_asset.quantity -= float(quantity)
+
+    # Wenn alles verkauft → Status auf sold setzen
+    if user_asset.quantity == 0:
+        user_asset.status = "sold"
+
+    db.session.commit()
+
+    return jsonify({"message": "Sell successfully added"}), 200
+
+
 @app.route('/dashboard')
 def dashboard_page():
     return render_template('dashboard.html')
@@ -679,6 +734,7 @@ def watchlist_page():
 @app.route('/settings-page')
 def settings_page():
     return render_template('settings.html')
+
 
 if __name__ == '__main__':
     start_scheduler(app)
