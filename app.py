@@ -154,7 +154,7 @@ def get_user_assets(user_id):
     .all() gibt alle Ergebnisse als Liste zurück (nicht nur den ersten)
     """
     # Alle Assets des Nutzers aus der DB holen
-    user_assets = UserAsset.query.filter_by(user_id=user_id).all()
+    user_assets = UserAsset.query.filter_by(user_id=user_id).filter(UserAsset.quantity > 0).all()
 
     # Leere Liste erstellen - hier werden die Assets reingepackt
     result = []
@@ -630,8 +630,8 @@ def analyze_portfolio():
 
 @app.route('/users/<user_id>/portfolio/history', methods=['GET'])
 def get_portfolio_history(user_id):
-    # Alle Assets des Nutzers holen
-    user_assets = UserAsset.query.filter_by(user_id=user_id).all()
+    # Nur Assets mit quantity > 0 holen
+    user_assets = UserAsset.query.filter_by(user_id=user_id).filter(UserAsset.quantity > 0).all()
 
     result = {}
 
