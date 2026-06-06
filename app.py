@@ -308,22 +308,36 @@ def search_asset():
 
     # Wenn nicht gefunden → mit yfinance validieren und erstellen
     if not asset:
-        # Symbol mit yfinance validieren
-        ticker = yf.Ticker(query.upper())
         try:
-            price = ticker.fast_info['lastPrice']
-        except Exception:
-            return jsonify({"error": f"Symbol {query.upper()} nicht gefunden!"}), 404
+            # Mit yfinance nach Name suchen
+            search = yf.Search(query)
+            quotes = search.quotes
 
-        # Asset automatisch erstellen
-        asset = Asset(
-            name=ticker.info.get('longName', query.upper()),  # echter Name von yfinance
-            symbol=query.upper(),
-            asset_type='stock',
-            currency='EUR'
-        )
-        db.session.add(asset)
-        db.session.commit()
+            if not quotes:
+                return jsonify({"error": f"Asset '{query}' nicht gefunden!"}), 404
+
+            # Erstes Ergebnis nehmen
+            first_result = quotes[0]
+            symbol = first_result['symbol']
+            name = first_result.get('longname', first_result.get('shortname', symbol))
+
+            # Preis validieren
+            ticker = yf.Ticker(symbol)
+            price = ticker.fast_info['lastPrice']
+
+            # Asset erstellen
+            asset = Asset(
+                name=name,
+                symbol=symbol,
+                asset_type='stock',
+                currency='EUR'
+            )
+            db.session.add(asset)
+            db.session.commit()
+
+        except Exception as e:
+            print(f"Error searching asset: {e}")
+            return jsonify({"error": f"Asset '{query}' nicht gefunden!"}), 404
 
     return jsonify({
         "id": asset.id,
