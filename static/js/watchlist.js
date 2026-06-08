@@ -13,11 +13,11 @@ async function addToWatchlist() {
         return
     }
 
-    // Schritt 2: asset_id aus der Antwort holen und zur Watchlist hinzufügen
-    const response = await fetch('/watchlist', {
+    // Schritt 2: Asset dem Nutzer zur Watchlist hinzufügen
+    const response = await fetch(`/users/${userId}/watchlist`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({user_id: userId, asset_id: asset.id})
+        body: JSON.stringify({asset_id: asset.id})  // user_id nicht mehr nötig!
     })
 
     // Auf die JSON Antwort warten und in data speichern
@@ -51,7 +51,7 @@ async function loadWatchlist() {
             <tr>
                 <td><strong>${asset.name}</strong></td>
                 <td>${asset.symbol}</td>
-                <td>${asset.current_price} $</td>
+                <td>${asset.current_price} €</td>
                 <td><button onclick="removeFromWatchlist(${item.asset_id})">Entfernen</button></td>
             </tr>
         `
