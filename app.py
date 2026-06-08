@@ -2,8 +2,8 @@
 
 # Standard Library
 import json
-import os
-import re
+import os       # Operating System: Gibt Zugriff auf Funktionen des Betriebssystems
+import re       # Regular Expressions (kurz: Regex) sind Muster um Text zu durchsuchen und zu validieren
 from datetime import datetime
 
 # Third Party
@@ -191,22 +191,6 @@ def settings(user_id):
 
 # ─── ASSET ENDPOINTS ──────────────────────────────────────────────────────────
 
-@app.route('/assets', methods=['POST'])
-def add_asset():
-    """Neues Asset erstellen z.B. Apple, Bitcoin, Gold"""
-    data = request.json
-    name = data['name']
-    symbol = data['symbol']
-    asset_type = data['asset_type']
-    currency = data['currency']
-
-    new_asset = Asset(name=name, symbol=symbol, asset_type=asset_type, currency=currency)
-    db.session.add(new_asset)
-    db.session.commit()
-
-    return jsonify({"message": "Asset successfully added"}), 201
-
-
 @app.route('/assets/<asset_id>', methods=['GET'])
 def get_asset(asset_id):
     """
@@ -288,23 +272,6 @@ def search_asset():
         "symbol": asset.symbol,
         "asset_type": asset.asset_type
     }), 200
-
-
-@app.route('/assets/<asset_id>/prices', methods=['GET'])
-def get_prices(asset_id):
-    """Preishistorie eines Assets abrufen"""
-    prices = PriceHistory.query.filter_by(asset_id=asset_id).all()
-
-    result = []
-    for price in prices:
-        result.append({
-            "asset_id": price.asset_id,
-            "date": price.date,
-            "price": price.price,
-            "currency": price.currency
-        })
-
-    return jsonify(result), 200
 
 
 @app.route('/assets/<asset_id>/prices', methods=['POST'])
