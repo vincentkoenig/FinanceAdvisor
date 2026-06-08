@@ -557,11 +557,10 @@ def analyze_portfolio():
 
 # ─── WATCHLIST ENDPOINTS ──────────────────────────────────────────────────────
 
-@app.route('/watchlist', methods=['POST'])
-def add_to_watchlist():
+@app.route('/users/<user_id>/watchlist', methods=['POST'])
+def add_to_watchlist(user_id):
     """Asset zur Watchlist hinzufügen"""
     data = request.json
-    user_id = data['user_id']
     asset_id = data['asset_id']
 
     # added_at wird automatisch auf aktuelle Zeit gesetzt
