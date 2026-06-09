@@ -129,7 +129,7 @@ def get_historical_prices(symbol, period="1y"):
         return [
             {
                 "date": date.strftime('%Y-%m-%d'),
-                "price": round(float(close) * rate, 2)
+                "price": round(float(close), 2)
             }
             for date, close in zip(history.index, history['Close'])
         ]
