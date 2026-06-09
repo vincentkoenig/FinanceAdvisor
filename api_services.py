@@ -110,6 +110,35 @@ def get_exchange_rate(from_currency, to_currency):
         return 0.89  # Fallback Wechselkurs wenn API nicht erreichbar
 
 
+def get_historical_prices(symbol, period="1y"):
+    """
+    Ruft historische Preise für ein Asset ab.
+    Benutzt yfinance - kostenlos und kein Rate Limit!
+    Parameter: symbol → z.B. "AAPL"
+               period → z.B. "1y", "6mo", "3mo", "1mo"
+    Gibt eine Liste von Dictionaries mit date und price zurück.
+    """
+    try:
+        ticker = yf.Ticker(symbol)
+        history = ticker.history(period=period)
+
+        # Wechselkurs für USD zu EUR
+        rate = get_exchange_rate("USD", "EUR")
+
+        # Schlusskurs und Datum zurückgeben
+        return [
+            {
+                "date": date.strftime('%Y-%m-%d'),
+                "price": round(float(close) * rate, 2)
+            }
+            for date, close in zip(history.index, history['Close'])
+        ]
+
+    except Exception as e:
+        print(f"Error fetching historical prices: {e}")
+        return None
+
+
 # Testaufruf - wird nur ausgeführt wenn diese Datei direkt gestartet wird
 if __name__ == "__main__":
     print(get_stock_price("AAPL"))
