@@ -60,13 +60,21 @@
                 <table class="portfolio-table">
                     <thead>
                         <tr>
-                            <th>Titel</th>
-                            <th>Kaufpreis</th>
-                            <th>Position</th>
-                            <th>P/L</th>
+                            <th onclick="sortTable('name')" style="cursor: pointer;">Titel ↕</th>
+                            <th onclick="sortTable('kaufpreis')" style="cursor: pointer;">Kaufpreis ↕</th>
+                            <th onclick="sortTable('position')" style="cursor: pointer;">Position ↕</th>
+                            <th onclick="sortTable('pl')" style="cursor: pointer;">P/L ↕</th>
                         </tr>
                     </thead>
                     <tbody id="portfolio-body"></tbody>
+                    <tfoot>
+                        <tr>
+                            <td><strong>Gesamt</strong></td>
+                            <td id="total-kaufpreis"></td>
+                            <td id="total-position"></td>
+                            <td id="total-pl-table"></td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
 
