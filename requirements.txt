@@ -6,3 +6,4 @@ openai
 pydantic
 apscheduler
 yfinance
+langchain-tavily
