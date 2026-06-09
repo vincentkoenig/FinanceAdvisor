@@ -4,6 +4,10 @@ let currentTotalPL = 0
 let currentTotalPLProzent = 0
 let currentPlColor = '#2ea043'
 
+// Globale Variable für Asset Daten - wird für Sortierung benötigt
+let portfolioData = []
+let sortDirection = 1  // 1 = aufsteigend, -1 = absteigend
+
 // User ID aus localStorage holen
 const userId = localStorage.getItem('user_id')
 
@@ -33,26 +37,11 @@ async function loadPortfolio() {
     // Daten holen
     const data = await response.json()
 
-    // Tabellen Body holen
-    const tableBody = document.getElementById('portfolio-body')
+    // Daten global speichern für Sortierung
+    portfolioData = data
 
-    // Für jeden Asset eine Zeile erstellen
-    data.forEach(asset => {
-        const kaufpreisGesamt = asset.avg_buy_price * asset.quantity      // Gesamtkaufpreis
-        const positionGesamt = asset.current_price * asset.quantity        // Aktueller Gesamtwert
-        const plEur = positionGesamt - kaufpreisGesamt                     // Gewinn/Verlust in EUR
-        const plProzent = (plEur / kaufpreisGesamt * 100).toFixed(2)      // Gewinn/Verlust in %
-        const rowPlColor = plEur >= 0 ? '#2ea043' : '#f85149'             // Grün wenn positiv, rot wenn negativ
-
-        tableBody.innerHTML += `
-            <tr onclick="showAssetDetail(${asset.asset_id}, '${asset.name}')" style="cursor: pointer;">
-                <td><strong>${asset.name}</strong><br><small>${asset.quantity}x</small></td>
-                <td>${formatCurrency(kaufpreisGesamt)} €<br><small>${formatCurrency(asset.avg_buy_price)} €</small></td>
-                <td>${formatCurrency(positionGesamt)} €<br><small>${formatCurrency(asset.current_price)} €</small></td>
-                <td style="color: ${rowPlColor}">${formatCurrency(plEur)} €<br><small>${plProzent}%</small></td>
-            </tr>
-        `
-    })
+    // Tabelle rendern
+    renderTable(portfolioData)
 
     // Gesamtwert berechnen
     let totalValue = 0
@@ -104,6 +93,71 @@ async function loadPortfolio() {
 
 // Funktion aufrufen wenn Seite geladen wird
 loadPortfolio()
+
+
+function renderTable(assets) {
+    const tableBody = document.getElementById('portfolio-body')
+    tableBody.innerHTML = ''
+
+    let totalKaufpreisGesamt = 0
+    let totalPositionGesamt = 0
+    let totalPLGesamt = 0
+
+    assets.forEach(asset => {
+        const kaufpreisGesamt = asset.avg_buy_price * asset.quantity
+        const positionGesamt = asset.current_price * asset.quantity
+        const plEur = positionGesamt - kaufpreisGesamt
+        const plProzent = (plEur / kaufpreisGesamt * 100).toFixed(2)
+        const rowPlColor = plEur >= 0 ? '#2ea043' : '#f85149'
+
+        totalKaufpreisGesamt += kaufpreisGesamt
+        totalPositionGesamt += positionGesamt
+        totalPLGesamt += plEur
+
+        tableBody.innerHTML += `
+            <tr onclick="showAssetDetail(${asset.asset_id}, '${asset.name}')" style="cursor: pointer;">
+                <td><strong>${asset.name}</strong><br><small>${asset.quantity}x</small></td>
+                <td>${formatCurrency(kaufpreisGesamt)} €<br><small>${formatCurrency(asset.avg_buy_price)} €</small></td>
+                <td>${formatCurrency(positionGesamt)} €<br><small>${formatCurrency(asset.current_price)} €</small></td>
+                <td style="color: ${rowPlColor}">${formatCurrency(plEur)} €<br><small>${plProzent}%</small></td>
+            </tr>
+        `
+    })
+
+    // Gesamtsummen anzeigen
+    const totalPLColor = totalPLGesamt >= 0 ? '#2ea043' : '#f85149'
+    document.getElementById('total-kaufpreis').innerHTML = `<strong>${formatCurrency(totalKaufpreisGesamt)} €</strong>`
+    document.getElementById('total-position').innerHTML = `<strong>${formatCurrency(totalPositionGesamt)} €</strong>`
+    document.getElementById('total-pl-table').innerHTML = `<strong style="color: ${totalPLColor}">${formatCurrency(totalPLGesamt)} €</strong>`
+}
+
+
+function sortTable(column) {
+    portfolioData.sort((a, b) => {
+        let valueA, valueB
+
+        if (column === 'name') {
+            valueA = a.name
+            valueB = b.name
+            return sortDirection * valueA.localeCompare(valueB)
+        } else if (column === 'kaufpreis') {
+            valueA = a.avg_buy_price * a.quantity
+            valueB = b.avg_buy_price * b.quantity
+        } else if (column === 'position') {
+            valueA = a.current_price * a.quantity
+            valueB = b.current_price * b.quantity
+        } else if (column === 'pl') {
+            valueA = (a.current_price - a.avg_buy_price) * a.quantity
+            valueB = (b.current_price - b.avg_buy_price) * b.quantity
+        }
+
+        return sortDirection * (valueA - valueB)
+    })
+
+    // Richtung umkehren für nächsten Klick
+    sortDirection *= -1
+    renderTable(portfolioData)
+}
 
 
 async function loadChart() {
