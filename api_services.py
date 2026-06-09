@@ -15,6 +15,7 @@ import os
 # Third Party
 import yfinance as yf
 from dotenv import load_dotenv
+from langchain_tavily import TavilySearch
 
 # .env Datei laden - API Keys sicher aus .env holen
 load_dotenv()
@@ -138,6 +139,25 @@ def get_historical_prices(symbol, period="1y"):
         print(f"Error fetching historical prices: {e}")
         return None
 
+
+def search_web(query):
+    """
+    Sucht aktuelle Informationen im Web.
+    Benutzt Tavily - speziell für LLMs optimiert.
+    Parameter: query → Suchanfrage z.B. "Bitcoin Kurs aktuell"
+    Gibt Suchergebnisse als Text zurück oder None bei Fehler.
+    """
+    try:
+        tavily = TavilySearch(
+            max_results=3,
+            api_key=os.getenv("TAVILY_API_KEY")
+        )
+        results = tavily.invoke(query)
+        return results
+    except Exception as e:
+        print(f"Error searching web: {e}")
+        return None
+    
 
 # Testaufruf - wird nur ausgeführt wenn diese Datei direkt gestartet wird
 if __name__ == "__main__":
