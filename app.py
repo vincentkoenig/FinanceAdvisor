@@ -14,7 +14,7 @@ from openai import OpenAI
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Lokale Imports
-from api_services import get_crypto_price, get_stock_price, get_metal_price
+from api_services import get_crypto_price, get_stock_price, get_metal_price, get_historical_prices
 from models import (db, User, Asset, UserAsset, PriceHistory,
                     Watchlist, ChatHistory, PortfolioAnalysis, PortfolioAnalysisSchema)
 from scheduler import start_scheduler
@@ -261,6 +261,21 @@ def search_asset():
             )
             db.session.add(asset)
             db.session.commit()
+
+            # Historische Preise automatisch laden und speichern
+            historical_prices = get_historical_prices(symbol)
+
+            if historical_prices:
+                for price_data in historical_prices:
+                    new_price = PriceHistory(
+                        asset_id=asset.id,
+                        date=datetime.strptime(price_data['date'], '%Y-%m-%d'),
+                        price=price_data['price'],
+                        currency='EUR'
+                    )
+                    db.session.add(new_price)
+                db.session.commit()
+                print(f"Historische Preise für {symbol} gespeichert!")
 
         except Exception as e:
             print(f"Error searching asset: {e}")
