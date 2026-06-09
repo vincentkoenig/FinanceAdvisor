@@ -1,40 +1,44 @@
 async function sendMessage() {
-    // Werte aus den Input Feldern holen
     const userId = localStorage.getItem('user_id')
-    const message = document.getElementById('chat-input').value;
+    const input = document.getElementById('chat-input')
+    const message = input.value
+    if (!message) return
 
-    // POST Request an /chat schicken - wie Postman aber in JavaScript
-    const response = await fetch('/chat', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'}, // sagt Flask: ich schicke JSON
-        body: JSON.stringify({user_id: userId, message: message})      // message als JSON
-    });
+    const messages = document.getElementById('chat-messages')
 
-    // Auf die JSON Antwort warten und in data speichern
-    const data = await response.json();
-
-    // Chat Bereich holen
-    const chatMessages = document.getElementById('chat-messages')
-
-    // Nutzer Nachricht anzeigen
-    chatMessages.innerHTML += `
-        <div class="message user-message">
-            ${message}
-        </div>
-    `
-
-    // LLM Antwort anzeigen
-    chatMessages.innerHTML += `
-        <div class="message assistant-message">
-            ${marked.parse(data.reply)}
-        </div>
+    // Nutzer Nachricht sofort anzeigen
+    messages.innerHTML += `
+        <div class="message user-message">${message}</div>
     `
 
     // Eingabefeld leeren
-    document.getElementById('chat-input').value = ''
+    input.value = ''
+
+    // "Antwort wird erstellt..." anzeigen
+    const loadingId = 'loading-' + Date.now()
+    messages.innerHTML += `
+        <div class="message assistant-message" id="${loadingId}">
+            <em>Antwort wird erstellt...</em>
+        </div>
+    `
 
     // Nach unten scrollen
-    chatMessages.scrollTop = chatMessages.scrollHeight
+    messages.scrollTop = messages.scrollHeight
+
+    // Ans Backend schicken
+    const response = await fetch('/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({user_id: userId, message: message})
+    })
+
+    const data = await response.json()
+
+    // Loading ersetzen mit echter Antwort
+    document.getElementById(loadingId).innerHTML = marked.parse(data.reply)
+
+    // Nach unten scrollen
+    messages.scrollTop = messages.scrollHeight
 }
 
 // Chatverlauf beim Laden der Seite holen
@@ -63,3 +67,10 @@ async function loadChatHistory() {
 
 // Beim Laden der Seite aufrufen
 loadChatHistory()
+
+// Enter Taste zum Senden
+document.getElementById('chat-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        sendMessage()
+    }
+})
