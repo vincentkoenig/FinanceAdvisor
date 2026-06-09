@@ -14,7 +14,7 @@ from openai import OpenAI
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Lokale Imports
-from api_services import get_crypto_price, get_stock_price, get_metal_price, get_historical_prices
+from api_services import get_crypto_price, get_stock_price, get_metal_price, get_historical_prices, search_web
 from models import (db, User, Asset, UserAsset, PriceHistory,
                     Watchlist, ChatHistory, PortfolioAnalysis, PortfolioAnalysisSchema)
 from scheduler import start_scheduler
@@ -698,6 +698,8 @@ def chat():
             result = get_stock_price(function_args['symbol'])
         elif function_name == "get_metal_price":
             result = get_metal_price(function_args['symbol'])
+        elif function_name == "search_web":
+            result = search_web(function_args['query'])
 
         # Ergebnis zurück ans LLM schicken für finale Antwort
         messages.append(response.choices[0].message)
