@@ -123,17 +123,18 @@ async function loadChart() {
 
     sortedDates.forEach(date => {
         let total = 0
-        let hasAnyPrice = false
+        let allAssetsHavePrice = true
 
         Object.values(data).forEach(prices => {
             const price = prices.find(p => p.date === date)
-            if (price) {
+            if (!price) {
+                allAssetsHavePrice = false
+            } else {
                 total += price.price
-                hasAnyPrice = true
             }
         })
 
-        if (hasAnyPrice) {
+        if (allAssetsHavePrice) {
             chartData.push({ date: date, value: total })
         }
     })
