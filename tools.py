@@ -1,24 +1,31 @@
 """
 tools.py - OpenAI Function Calling Tool Definitionen
-Definiert die Tools die das LLM benutzen kann um aktuelle Marktdaten abzurufen.
+Definiert die Tools die das LLM benutzen kann:
+- get_crypto_price  → aktuellen Krypto-Preis abrufen
+- get_stock_price   → aktuellen Aktien-Preis abrufen
+- get_metal_price   → aktuellen Edelmetall-Preis abrufen
+- search_web        → aktuelle Informationen aus dem Web suchen
 Das LLM entscheidet selbst wann es welches Tool aufrufen soll.
 """
 
 tools = [
     {
-        "type": "function",     # Sagt OpenAI: "Das hier ist eine Funktion die aufgerufen werden kann"
+        "type": "function",
         "function": {
-            "name": "get_crypto_price",     # Der Name der Funktion – muss exakt gleich sein wie in api_services.py
-            "description": "Get the current price of a cryptocurrency in EUR",      # Erklärt dem LLM wann es diese Funktion benutzen soll.
+            "name": "get_crypto_price",
+            "description": (
+                "Get the current price of a cryptocurrency in EUR. "
+                "Use this when the user asks about the current price of a cryptocurrency."
+            ),
             "parameters": {
-                "type": "object",   # Sagt: "Die Funktion bekommt Parameter als Objekt übergeben" – also als Dictionary
-                "properties": {     # Definiert welche Parameter die Funktion hat
+                "type": "object",
+                "properties": {
                     "coin_id": {
-                        "type": "string",   # coin_id muss ein Text sein
-                        "description": "Cryptocurrency ID e.g. bitcoin, ethereum, solana"   # erklärt dem LLM was es dort reinschreiben soll
+                        "type": "string",
+                        "description": "Cryptocurrency ID e.g. bitcoin, ethereum, solana"
                     }
                 },
-                "required": ["coin_id"]     # Sagt: "coin_id ist Pflicht" – das LLM muss immer einen Wert mitschicken
+                "required": ["coin_id"]
             }
         }
     },
@@ -26,7 +33,10 @@ tools = [
         "type": "function",
         "function": {
             "name": "get_stock_price",
-            "description": "Get the current price of a stock or ETF in USD",
+            "description": (
+                "Get the current price of a stock or ETF in EUR. "
+                "Use this when the user asks about the current price of a stock or ETF."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -43,7 +53,10 @@ tools = [
         "type": "function",
         "function": {
             "name": "get_metal_price",
-            "description": "Get the current price of a precious metal in USD",
+            "description": (
+                "Get the current price of a precious metal in EUR. "
+                "Use this when the user asks about the current price of gold or silver."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -53,6 +66,28 @@ tools = [
                     }
                 },
                 "required": ["symbol"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_web",
+            "description": (
+                "ALWAYS use this tool when the user asks about: "
+                "current news, recent events, why something is happening NOW, "
+                "current market conditions, or any question about recent developments. "
+                "Search the web for current financial news and information."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "Search query e.g. 'Bitcoin price drop reason 2026'"
+                    }
+                },
+                "required": ["query"]
             }
         }
     }
