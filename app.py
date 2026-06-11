@@ -570,6 +570,27 @@ def analyze_portfolio():
     return jsonify(analysis.model_dump()), 200
 
 
+@app.route('/users/<user_id>/portfolio/analyses', methods=['GET'])
+def get_portfolio_analyses(user_id):
+    """Alle Portfolio-Analysen eines Nutzers abrufen"""
+    analyses = PortfolioAnalysis.query.filter_by(user_id=user_id)\
+        .order_by(PortfolioAnalysis.created_at.desc()).all()
+
+    result = []
+    for analysis in analyses:
+        result.append({
+            "id": analysis.id,
+            "total_value": analysis.total_value,
+            "risk_assessment": analysis.risk_assessment,
+            "diversification_score": analysis.diversification_score,
+            "summary": analysis.summary,
+            "recommendations": analysis.recommendations,
+            "created_at": analysis.created_at.strftime('%d.%m.%Y %H:%M')
+        })
+
+    return jsonify(result), 200
+
+
 # ─── WATCHLIST ENDPOINTS ──────────────────────────────────────────────────────
 
 @app.route('/users/<user_id>/watchlist', methods=['POST'])
