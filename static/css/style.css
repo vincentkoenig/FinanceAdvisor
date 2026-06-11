@@ -405,8 +405,19 @@ body {
 
 /* Analyse Button */
 .analyse-button {
-    width: auto;
+    width: 100%;
     padding: 12px 24px;
+    background-color: transparent;
+    color: #e6edf3;
+    border: 1px solid #e6edf3;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.analyse-button:hover {
+    background-color: white !important;
+    color: black !important;
 }
 
 .analyse-card {
@@ -422,7 +433,7 @@ body {
 
 .analyse-card h3 {
     font-size: 24px;
-    color: #58a6ff;
+    color: white;
 }
 
 .analyse-card h4 {
@@ -440,6 +451,56 @@ body {
 
 .analyse-card small {
     color: #8b949e;
+}
+
+.analyse-content {
+    padding: 50px 15%;
+}
+
+.analyse-content h2 {
+    text-align: left;
+    margin-bottom: 30px;  /* mehr Abstand nach unten */
+}
+
+.analyse-button {
+    display: block;
+    margin-top: 20px;
+}
+
+/* Vorherige Analysen */
+#previous-analyses {
+    margin-top: 40px;
+}
+
+#previous-analyses h3 {
+    margin-bottom: 15px;
+    color: #8b949e;
+}
+
+.analysis-item {
+    background-color: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 10px;
+    padding: 15px 20px;
+    margin-bottom: 10px;
+    cursor: pointer;
+}
+
+.analysis-item:hover {
+    border-color: #58a6ff;
+}
+
+.analysis-item-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: #8b949e;
+    font-size: 14px;
+}
+
+.analysis-item p {
+    color: #e6edf3;
+    font-size: 14px;
 }
 
 /* ─── EINSTELLUNGEN ───────────────────────────────────────── */
