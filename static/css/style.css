@@ -327,30 +327,30 @@ body {
 .chat-input-container input {
     flex: 1;
     background-color: #161b22;
-    border: 1px solid #30363d;
+    border: 1px solid white;
     color: #e6edf3;
     padding: 12px 18px;
-    border-radius: 10px;
+    border-radius: 25px;
     font-size: 15px;
     outline: none;
 }
 
 .chat-input-container input:focus {
-    border-color: #58a6ff;
+    border-color: white;
 }
 
 .chat-input-container button {
-    background-color: #238636;
-    color: white;
+    background-color: lightgray;
+    color: black;
     border: none;
     padding: 12px 20px;
-    border-radius: 10px;
+    border-radius: 25px;
     cursor: pointer;
     font-size: 15px;
 }
 
 .chat-input-container button:hover {
-    background-color: #2ea043;
+    background-color: white;
 }
 
 /* Chat Nachrichten */
@@ -362,11 +362,12 @@ body {
 
 /* Nutzer Nachricht - rechts, klein */
 .user-message {
-    background-color: #21262d;
+    background-color: transparent;
     color: #e6edf3;
     align-self: flex-end;
     max-width: 60%;
-    border-radius: 10px;
+    border: 1px solid white;
+    border-radius: 25px;
     padding: 12px 18px;
 }
 
