@@ -63,6 +63,8 @@ async function loadChatHistory() {
             `
         }
     })
+    // Nach dem Laden ganz nach unten scrollen
+    chatMessages.scrollTop = chatMessages.scrollHeight
 }
 
 // Beim Laden der Seite aufrufen
