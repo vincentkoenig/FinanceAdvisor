@@ -25,18 +25,23 @@
         <!-- Hauptbereich -->
         <div class="main-content">
             <h2>Portfolio Analyse</h2>
+            <div class="analyse-content">
+                <button class="analyse-button" onclick="analysePortfolio()">Analyse starten</button>
+                <div id="analyse-result"></div>
 
-            <button class="btn-primary analyse-button" onclick="analysePortfolio()">Analyse starten</button>
-
-            <div id="analyse-result"></div>
+                <!-- Vorherige Analysen -->
+                <div id="previous-analyses">
+                    <h3>Vorherige Analysen</h3>
+                    <div id="analyses-list"></div>
+                </div>
+                
+            </div>
         </div>
 
-    </div>
-
-    <!-- FAB Button -->
-    <div class="fab" onclick="toggleChat()">
-        🤖 KI-Agent
-    </div>
+        <!-- FAB Button -->
+        <div class="fab" onclick="toggleChat()">
+            🤖 KI-Agent
+        </div>
 
     <!-- Chat Widget -->
     <div class="chat-widget" id="chat-widget" style="display:none;">
