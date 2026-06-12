@@ -32,30 +32,42 @@ async function addToWatchlist() {
 }
 
 
-async function loadWatchlist() {
-    const userId = localStorage.getItem('user_id')
-
-    // Watchlist aus DB holen
-    const response = await fetch(`/users/${userId}/watchlist`)
-    const data = await response.json()
-
+function renderWatchlist(data) {
     const tableBody = document.getElementById('watchlist-body')
+    tableBody.innerHTML = ''
 
-    // Für jeden Eintrag eine Zeile erstellen
     for (const item of data) {
-        // Asset Details holen
-        const assetResponse = await fetch(`/assets/${item.asset_id}`)
-        const asset = await assetResponse.json()
-
         tableBody.innerHTML += `
             <tr>
-                <td><strong>${asset.name}</strong></td>
-                <td>${asset.symbol}</td>
-                <td>${asset.current_price} €</td>
+                <td><strong>${item.name}</strong></td>
+                <td>${item.symbol}</td>
+                <td>${item.current_price} €</td>
                 <td><button onclick="removeFromWatchlist(${item.asset_id})">Entfernen</button></td>
             </tr>
         `
     }
+}
+
+async function loadWatchlist() {
+    const userId = localStorage.getItem('user_id')
+    const response = await fetch(`/users/${userId}/watchlist`)
+    const data = await response.json()
+
+    watchlistData = []
+
+    for (const item of data) {
+        const assetResponse = await fetch(`/assets/${item.asset_id}`)
+        const asset = await assetResponse.json()
+
+        watchlistData.push({
+            asset_id: item.asset_id,
+            name: asset.name,
+            symbol: asset.symbol,
+            current_price: asset.current_price
+        })
+    }
+
+    renderWatchlist(watchlistData)
 }
 
 
@@ -79,3 +91,27 @@ async function removeFromWatchlist(assetId) {
 
 // Beim Laden der Seite aufrufen
 loadWatchlist()
+
+
+// Globale Variable für Watchlist Daten
+let watchlistData = []
+let watchlistSortDirection = 1
+
+function sortWatchlist(column) {
+    watchlistData.sort((a, b) => {
+        let valueA, valueB
+
+        if (column === 'name') {
+            valueA = a.name
+            valueB = b.name
+            return watchlistSortDirection * valueA.localeCompare(valueB)
+        } else if (column === 'symbol') {
+            valueA = a.symbol
+            valueB = b.symbol
+            return watchlistSortDirection * valueA.localeCompare(valueB)
+        }
+    })
+
+    watchlistSortDirection *= -1
+    renderWatchlist(watchlistData)
+}
