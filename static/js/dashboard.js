@@ -160,32 +160,55 @@ function sortTable(column) {
 }
 
 
-async function loadChart() {
+async function loadChart(period = '1T') {
     // Portfolio Historie holen
     const response = await fetch(`/users/${userId}/portfolio/history`)
     const data = await response.json()
 
-    // Alle Daten zusammenführen für den Gesamtwert
+    // Alle Daten zusammenführen
     const allDates = new Set()
     Object.values(data).forEach(prices => {
         prices.forEach(p => allDates.add(p.date))
     })
     const sortedDates = [...allDates].sort()
 
-    // Gesamtwert pro Tag berechnen - nur Tage wo alle Assets Preise haben
-    const chartData = []
+    // Datum filtern je nach Zeitraum
+    const today = new Date()
+    const filteredByPeriod = sortedDates.filter(date => {
+        const d = new Date(date)
+        if (period === '1T') {
+            const yesterday = new Date(today)
+            yesterday.setDate(today.getDate() - 1)
+            return d >= yesterday
+        } else if (period === '1W') {
+            const oneWeekAgo = new Date(today)
+            oneWeekAgo.setDate(today.getDate() - 7)
+            return d >= oneWeekAgo
+        } else if (period === '1M') {
+            const oneMonthAgo = new Date(today)
+            oneMonthAgo.setMonth(today.getMonth() - 1)
+            return d >= oneMonthAgo
+        } else if (period === 'YTD') {
+            const startOfYear = new Date(today.getFullYear(), 0, 1)
+            return d >= startOfYear
+        } else if (period === '1J') {
+            const oneYearAgo = new Date(today)
+            oneYearAgo.setFullYear(today.getFullYear() - 1)
+            return d >= oneYearAgo
+        }
+        return true
+    })
 
-    sortedDates.forEach(date => {
+    // Gesamtwert pro Tag berechnen
+    const chartData = []
+    filteredByPeriod.forEach(date => {
         let total = 0
         let allAssetsHavePrice = true
 
         Object.values(data).forEach(prices => {
             const price = prices.find(p => p.date === date)
-            if (!price) {
-                allAssetsHavePrice = false
-            } else {
-                total += price.price
-            }
+            if (!price) allAssetsHavePrice = false
+            else total += price.price
         })
 
         if (allAssetsHavePrice) {
@@ -195,16 +218,19 @@ async function loadChart() {
 
     const filteredDates = chartData.map(d => d.date)
     const totalValues = chartData.map(d => d.value)
-    console.log('filteredDates:', filteredDates)
-    console.log('totalValues:', totalValues)
 
-    // Farbe basierend auf Performance - grün wenn gestiegen, rot wenn gefallen
+    // Farbe basierend auf Performance
     const firstValue = totalValues[0]
     const lastValue = totalValues[totalValues.length - 1]
     const chartColor = lastValue >= firstValue ? '#2ea043' : '#f85149'
 
+    // Alten Chart zerstören falls vorhanden
+    if (chartInstance) {
+        chartInstance.destroy()
+    }
+
     // Liniendiagramm erstellen
-    new Chart(document.getElementById('lineChart'), {
+    chartInstance = new Chart(document.getElementById('lineChart'), {
         type: 'line',
         data: {
             labels: filteredDates,
@@ -214,15 +240,15 @@ async function loadChart() {
                 backgroundColor: 'transparent',
                 fill: false,
                 tension: 0.1,
-                pointRadius: 0,                          // kein Punkt standardmäßig
-                pointHoverRadius: 5,                     // Punkt beim Hover
-                pointHoverBackgroundColor: chartColor    // Punkt in Chart Farbe
+                pointRadius: 0,
+                pointHoverRadius: 5,
+                pointHoverBackgroundColor: chartColor
             }]
         },
         options: {
             plugins: {
                 legend: { display: false },
-                tooltip: { enabled: false }              // kein Tooltip
+                tooltip: { enabled: false }
             },
             hover: {
                 mode: 'index',
@@ -234,19 +260,18 @@ async function loadChart() {
                     const date = filteredDates[index]
                     const value = totalValues[index]
 
-                    // Gesamtwert und Datum links oben aktualisieren
                     document.getElementById('total-value').innerHTML = `${formatCurrency(value)} €`
                     document.getElementById('total-pl').innerHTML = `<span style="color: #8b949e">${formatDate(date)}</span>`
                 }
             },
             scales: {
-                x: { display: false },  // keine X Achse
-                y: { display: false }   // keine Y Achse
+                x: { display: false },
+                y: { display: false }
             }
         }
     })
 
-    // Wenn Maus den Chart verlässt - zurück zum aktuellen Wert
+    // Wenn Maus den Chart verlässt
     document.getElementById('lineChart').addEventListener('mouseleave', () => {
         if (valuesVisible) {
             document.getElementById('total-value').innerHTML = `${formatCurrency(currentTotalValue)} €`
@@ -256,7 +281,7 @@ async function loadChart() {
 }
 
 // Beim Laden aufrufen
-loadChart()
+loadChart('1T')
 
 
 // Modal anzeigen
@@ -425,4 +450,22 @@ function toggleVisibility() {
         document.getElementById('total-position').innerHTML = '****** €'
         document.getElementById('total-pl-table').innerHTML = '****** €'
     }
+}
+
+
+// Aktueller Zeitraum
+let currentPeriod = '1T'
+let chartInstance = null
+
+function changeChartPeriod(period) {
+    currentPeriod = period
+
+    // Aktiven Button aktualisieren
+    document.querySelectorAll('.period-btn').forEach(btn => {
+        btn.classList.remove('active')
+    })
+    document.getElementById(`btn-${period}`).classList.add('active')
+
+    // Chart neu laden
+    loadChart(period)
 }
