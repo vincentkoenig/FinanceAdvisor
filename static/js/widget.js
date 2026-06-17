@@ -22,7 +22,7 @@ async function loadWidgetHistory() {
     data.forEach(entry => {
         messages.innerHTML += `
             <div class="message ${entry.role === 'user' ? 'user-message' : 'assistant-message'}">
-                ${entry.message}
+                ${entry.role === 'user' ? entry.message : marked.parse(entry.message)}
             </div>
         `
     })
@@ -56,7 +56,7 @@ async function sendWidgetMessage() {
 
     // Antwort anzeigen
     messages.innerHTML += `
-        <div class="message assistant-message">${data.reply}</div>
+        <div class="message assistant-message">${marked.parse(data.reply)}</div>
     `
 
     // Nach unten scrollen
