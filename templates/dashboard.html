@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>FinanceAdvisor - Dashboard</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -32,7 +33,12 @@
                 <!-- Links: Gesamtwert + Liniendiagramm -->
                 <div class="chart-container">
                     <h3>Portfolio</h3>
-                    <h3 id="total-value">Lädt...</h3>
+                    <div class="total-value-row">
+                        <h3 id="total-value">Lädt...</h3>
+                        <button class="eye-button" onclick="toggleVisibility()">
+                            <i id="eye-icon" class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
                     <p id="total-pl">Lädt...</p>
                     <canvas id="lineChart"></canvas>
                 </div>
