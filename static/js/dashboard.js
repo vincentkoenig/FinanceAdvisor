@@ -229,7 +229,7 @@ async function loadChart() {
                 intersect: false
             },
             onHover: (event, elements) => {
-                if (elements.length > 0) {
+                if (elements.length > 0 && valuesVisible) {
                     const index = elements[0].index
                     const date = filteredDates[index]
                     const value = totalValues[index]
@@ -248,8 +248,10 @@ async function loadChart() {
 
     // Wenn Maus den Chart verlässt - zurück zum aktuellen Wert
     document.getElementById('lineChart').addEventListener('mouseleave', () => {
-        document.getElementById('total-value').innerHTML = `${formatCurrency(currentTotalValue)} €`
-        document.getElementById('total-pl').innerHTML = `<span style="color: ${currentPlColor}">${formatCurrency(currentTotalPL)} € (${currentTotalPLProzent}%)</span>`
+        if (valuesVisible) {
+            document.getElementById('total-value').innerHTML = `${formatCurrency(currentTotalValue)} €`
+            document.getElementById('total-pl').innerHTML = `<span style="color: ${currentPlColor}">${formatCurrency(currentTotalPL)} € (${currentTotalPLProzent}%)</span>`
+        }
     })
 }
 
@@ -387,5 +389,40 @@ async function addSell() {
         loadPortfolio()
     } else {
         alert(data.error)
+    }
+}
+
+
+// Sichtbarkeit der Zahlen umschalten
+let valuesVisible = true
+
+function toggleVisibility() {
+    valuesVisible = !valuesVisible
+
+    if (valuesVisible) {
+        // Zahlen anzeigen
+        document.getElementById('total-value').innerHTML = `${formatCurrency(currentTotalValue)} €`
+        document.getElementById('total-pl').innerHTML = `<span style="color: ${currentPlColor}">${formatCurrency(currentTotalPL)} € (${currentTotalPLProzent}%)</span>`
+        document.getElementById('donut-value').innerHTML = `${formatCurrency(currentTotalValue)} €`
+        document.getElementById('eye-icon').className = 'fa-solid fa-eye'
+        renderTable(portfolioData)
+    } else {
+        // Zahlen verstecken
+        document.getElementById('total-value').innerHTML = '****** €'
+        document.getElementById('total-pl').innerHTML = '<span>****** €</span>'
+        document.getElementById('donut-value').innerHTML = '****** €'
+        document.getElementById('eye-icon').className = 'fa-solid fa-eye-slash'
+        const rows = document.querySelectorAll('#portfolio-body tr')
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td')
+            cells[1].innerHTML = '****** €'
+            cells[2].innerHTML = '****** €'
+            cells[3].innerHTML = '****** €'
+        })
+
+        // Gesamtwerte verstecken
+        document.getElementById('total-kaufpreis').innerHTML = '****** €'
+        document.getElementById('total-position').innerHTML = '****** €'
+        document.getElementById('total-pl-table').innerHTML = '****** €'
     }
 }
