@@ -198,6 +198,8 @@ async function loadChart(period = '1J') {
             const oneYearAgo = new Date(today)
             oneYearAgo.setFullYear(today.getFullYear() - 1)
             return d >= oneYearAgo
+        } else if (period === 'Max') {
+            return true  // alle Daten anzeigen
         }
         return true
     })
