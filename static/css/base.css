@@ -1,0 +1,444 @@
+/* ─── CSS VARIABLEN ───────────────────────────────────────── */
+
+:root {
+    --bg-primary: #0d1117;
+    --bg-secondary: #161b22;
+    --bg-hover: #21262d;
+    --border-color: #30363d;
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent-blue: #58a6ff;
+    --accent-green: #238636;
+    --accent-green-hover: #2ea043;
+}
+
+[data-theme="light"] {
+    --bg-primary: #ffffff;
+    --bg-secondary: #f6f8fa;
+    --bg-hover: #eaeef2;
+    --border-color: #d0d7de;
+    --text-primary: #1f2328;
+    --text-secondary: #656d76;
+    --accent-blue: #0969da;
+    --accent-green: #1a7f37;
+    --accent-green-hover: #2da44e;
+}
+
+/* ─── RESET ───────────────────────────────────────────────── */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Segoe UI', sans-serif;
+    height: 100vh;
+}
+
+/* ─── LOGIN SEITE ─────────────────────────────────────────── */
+
+.login-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    gap: 30px;
+}
+
+.login-container h1 {
+    font-size: 32px;
+    color: var(--text-primary);
+}
+
+.login-card {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    width: 380px;
+}
+
+.login-card input {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 14px 18px;
+    border-radius: 10px;
+    font-size: 16px;
+    outline: none;
+    width: 100%;
+}
+
+.login-card input:focus {
+    border-color: var(--accent-blue);
+}
+
+/* ─── BUTTONS ─────────────────────────────────────────────── */
+
+.btn-primary {
+    background-color: var(--accent-green);
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-green-hover);
+}
+
+.btn-secondary {
+    background-color: transparent;
+    color: var(--text-secondary);
+    border: 1px solid var(--text-secondary);
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    width: 100%;
+}
+
+.btn-secondary:hover {
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+}
+
+/* ─── LAYOUT ──────────────────────────────────────────────── */
+
+.app-container {
+    display: flex;
+    height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    padding: 30px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ─── SIDEBAR ─────────────────────────────────────────────── */
+
+.sidebar {
+    width: 220px;
+    background-color: var(--bg-secondary);
+    border-right: 1px solid var(--border-color);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+    align-items: flex-start;
+    justify-content: flex-start;
+    height: 100vh;
+}
+
+.sidebar-brand {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sidebar-nav a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 10px 15px;
+    border-radius: 8px;
+    font-size: 15px;
+}
+
+.sidebar-nav a:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.sidebar-nav a.active {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* ─── TABELLE ─────────────────────────────────────────────── */
+
+.portfolio-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.portfolio-table th {
+    text-align: left;
+    padding: 12px 15px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+    font-weight: normal;
+}
+
+.portfolio-table td {
+    padding: 15px;
+    border-bottom: 1px solid var(--bg-hover);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.add-button {
+    width: auto !important;
+    padding: 10px 20px !important;
+}
+
+/* ─── MODAL ───────────────────────────────────────────────── */
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 100;
+}
+
+.modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 30px;
+    z-index: 101;
+    width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.modal h3 {
+    font-size: 20px;
+    margin-bottom: 5px;
+}
+
+.modal input {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 12px 18px;
+    border-radius: 8px;
+    font-size: 15px;
+    outline: none;
+    width: 100%;
+}
+
+.modal input:focus {
+    border-color: var(--accent-blue);
+}
+
+.modal-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.modal-buttons button {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 15px;
+    width: 100%;
+}
+
+.modal-buttons button:hover {
+    background-color: var(--text-primary);
+    color: var(--bg-primary);
+}
+
+/* ─── FLOATING ACTION BUTTON ──────────────────────────────── */
+
+.chat-fab {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+    padding: 12px 24px;
+    border-radius: 25px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-size: 15px;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+.chat-fab:hover {
+    background-color: var(--border-color);
+}
+
+/* ─── CHAT WIDGET ─────────────────────────────────────────── */
+
+.chat-widget {
+    position: fixed;
+    bottom: 90px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 450px;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 200;
+}
+
+.chat-widget-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid var(--border-color);
+    font-weight: bold;
+}
+
+.chat-widget-header button {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.chat-widget-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.chat-widget-input {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    border-top: 1px solid var(--border-color);
+}
+
+.chat-widget-input input {
+    flex: 1;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 14px;
+    outline: none;
+}
+
+.chat-widget-input button {
+    background-color: var(--accent-green);
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.chat-widget-messages .assistant-message {
+    max-width: 100%;
+}
+
+.chat-widget-messages .user-message {
+    max-width: 60%;
+}
+
+/* ─── NACHRICHTEN ─────────────────────────────────────────── */
+
+.message {
+    padding: 12px 18px;
+    border-radius: 10px;
+    line-height: 1.6;
+}
+
+.user-message {
+    background-color: transparent;
+    color: var(--text-primary);
+    align-self: flex-end;
+    max-width: 60%;
+    border: 1px solid var(--border-color);
+    border-radius: 25px;
+    padding: 12px 18px;
+}
+
+.assistant-message {
+    background-color: transparent;
+    border: none;
+    color: var(--text-primary);
+    align-self: flex-start;
+    max-width: 70%;
+    padding-left: 0;
+}
+
+.assistant-message ul {
+    padding-left: 15px;
+    list-style: none;
+    margin: 8px 0;
+}
+
+.assistant-message li {
+    margin-bottom: 6px;
+    padding-left: 5px;
+}
+
+.assistant-message p {
+    margin-bottom: 8px;
+}
+
+.assistant-message strong {
+    color: var(--text-primary);
+}
+
+/* ─── DARK/LIGHT MODE TOGGLE ──────────────────────────────── */
+
+.theme-toggle {
+    margin-top: auto;
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    width: 100%;
+}
+
+.theme-toggle:hover {
+    color: var(--text-primary);
+    border-color: var(--text-primary);
+}

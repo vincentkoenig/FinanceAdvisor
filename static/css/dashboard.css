@@ -1,0 +1,130 @@
+/* ─── DASHBOARD ───────────────────────────────────────────── */
+
+.total-value-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.eye-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    margin-left: 10px;
+}
+
+.eye-button i {
+    color: var(--text-secondary);
+}
+
+.eye-button:hover i {
+    color: var(--text-primary);
+}
+
+#total-value {
+    font-size: 32px;
+    font-weight: bold;
+    color: var(--text-primary);
+}
+
+#total-pl {
+    font-size: 16px;
+    margin-top: 5px;
+}
+
+.dashboard-top {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.chart-container {
+    flex: 2;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+}
+
+#lineChart {
+    max-height: 170px;
+}
+
+.donut-container {
+    flex: 1;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-start;
+}
+
+.donut-container canvas {
+    max-width: 250px;
+    max-height: 250px;
+}
+
+.donut-chart-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    position: relative;
+}
+
+.donut-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.donut-center p {
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.donut-center h3 {
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.chart-period-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.period-btn {
+    background-color: transparent;
+    color: var(--text-secondary);
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.period-btn:hover {
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
+}
+
+.period-btn.active {
+    color: var(--text-primary);
+    background-color: var(--bg-hover);
+}
+
+.positions-container {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+}

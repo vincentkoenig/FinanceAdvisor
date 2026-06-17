@@ -1,0 +1,28 @@
+/* ─── WATCHLIST ───────────────────────────────────────────── */
+
+.watchlist-add {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    margin-top: 20px;
+}
+
+.watchlist-add input {
+    flex: 1;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 15px;
+    outline: none;
+}
+
+.watchlist-add input:focus {
+    border-color: var(--accent-blue);
+}
+
+.watchlist-add button {
+    width: auto;
+    padding: 12px 24px;
+}

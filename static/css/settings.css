@@ -1,0 +1,36 @@
+/* ─── EINSTELLUNGEN ───────────────────────────────────────── */
+
+.settings-card {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 500px;
+}
+
+.settings-card label {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+.settings-card select,
+.settings-card input {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 15px;
+    outline: none;
+    width: 100%;
+}
+
+.settings-button {
+    width: auto !important;
+    padding: 12px 24px !important;
+    align-self: flex-start;
+}
