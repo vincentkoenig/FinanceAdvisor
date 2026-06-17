@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>FinanceAdvisor - Dashboard</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
 
@@ -22,6 +24,7 @@
                 <a href="/settings-page">Einstellungen</a>
                 <a href="#" onclick="logout()">Logout</a>
             </nav>
+            <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark / ☀️ Light</button>
         </div>
 
         <!-- Positionen -->
@@ -158,6 +161,6 @@
     <script src="/static/js/dashboard.js"></script>
     <script src="/static/js/logout.js"></script>
     <script src="/static/js/widget.js"></script>
-
+    <script src="/static/js/theme.js"></script>
 </body>
 </html>

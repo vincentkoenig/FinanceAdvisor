@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>FinanceAdvisor - Chat</title>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="/static/css/base.css">
+    <link rel="stylesheet" href="/static/css/chat.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
@@ -21,6 +22,7 @@
                 <a href="/settings-page">Einstellungen</a>
                 <a href="#" onclick="logout()">Logout</a>
             </nav>
+            <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark / ☀️ Light</button>
         </div>
 
         <!-- Hauptbereich -->
@@ -43,5 +45,6 @@
 
     <script src="/static/js/chat.js"></script>
     <script src="/static/js/logout.js"></script>
+    <script src="/static/js/theme.js"></script>
 </body>
 </html>
