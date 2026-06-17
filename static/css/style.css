@@ -313,6 +313,34 @@ body {
     font-weight: bold;
 }
 
+/* ─── CHART PERIOD BUTTONS ────────────────────────────────── */
+
+.chart-period-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.period-btn {
+    background-color: transparent;
+    color: #8b949e;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.period-btn:hover {
+    color: #e6edf3;
+    background-color: #21262d;
+}
+
+.period-btn.active {
+    color: #e6edf3;
+    background-color: #21262d;
+}
+
 /* ─── POSITIONEN ──────────────────────────────────────────── */
 
 /* Container für die Positionen Tabelle */
