@@ -3,6 +3,9 @@ let currentTotalValue = 0
 let currentTotalPL = 0
 let currentTotalPLProzent = 0
 let currentPlColor = '#2ea043'
+// Aktueller Zeitraum
+let currentPeriod = '1J'
+let chartInstance = null
 
 // Globale Variable für Asset Daten - wird für Sortierung benötigt
 let portfolioData = []
@@ -160,7 +163,7 @@ function sortTable(column) {
 }
 
 
-async function loadChart(period = '1T') {
+async function loadChart(period = '1J') {
     // Portfolio Historie holen
     const response = await fetch(`/users/${userId}/portfolio/history`)
     const data = await response.json()
@@ -281,7 +284,7 @@ async function loadChart(period = '1T') {
 }
 
 // Beim Laden aufrufen
-loadChart('1T')
+loadChart('1J')
 
 
 // Modal anzeigen
@@ -452,10 +455,6 @@ function toggleVisibility() {
     }
 }
 
-
-// Aktueller Zeitraum
-let currentPeriod = '1T'
-let chartInstance = null
 
 function changeChartPeriod(period) {
     currentPeriod = period
