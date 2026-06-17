@@ -683,7 +683,7 @@ body {
 
 /* ─── FLOATING ACTION BUTTON ──────────────────────────────── */
 
-.fab {
+.chat-fab {
     position: fixed;
     bottom: 30px;
     left: 50%;
@@ -698,9 +698,10 @@ body {
     cursor: pointer;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     font-size: 15px;
+    font-family: 'Segoe UI', sans-serif;
 }
 
-.fab:hover {
+.chat-fab:hover {
     background-color: white;
 }
 
