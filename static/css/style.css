@@ -101,6 +101,28 @@ body {
     height: 100vh;
 }
 
+.total-value-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.eye-button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    margin-left: 10px;
+}
+
+.eye-button i {
+    color: #8b949e;  /* hellgrau */
+}
+
+.eye-button:hover i {
+    color: #e6edf3;  /* weiß beim hover */
+}
+
 /* ─── SIDEBAR ─────────────────────────────────────────────── */
 
 /* Linke Navigationsleiste */
