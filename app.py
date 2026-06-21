@@ -683,6 +683,7 @@ def chat():
                 f"Do not always end with a follow-up question or example - only when it adds real value. "
                 f"NEVER end your response with '💡 Beispiel' or '❓ Interessiert Sie auch'. "
                 f"Only add examples or follow-up questions when they are naturally part of the explanation. "
+                f"NEVER use numbered lists (1. 2. 3.). Use natural paragraphs or bullet points with '-' instead. "
                 f"\n\nUser profile:"
                 f"\n- Risk profile: {risk_profile}"
                 f"\n- Investment experience: {investment_experience}"
