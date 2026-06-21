@@ -424,6 +424,31 @@ body {
     color: var(--text-primary);
 }
 
+/* Markdown Tabellen im Chat Widget */
+.assistant-message table {
+    border-collapse: collapse !important;
+    width: 100%;
+    margin: 10px 0;
+}
+
+.assistant-message th {
+    background-color: var(--bg-hover) !important;
+    color: var(--text-primary) !important;
+    padding: 10px 15px !important;
+    text-align: left !important;
+    border: 1px solid var(--border-color) !important;
+}
+
+.assistant-message td {
+    padding: 8px 15px !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+}
+
+.assistant-message tr:nth-child(even) {
+    background-color: var(--bg-secondary) !important;
+}
+
 /* ─── DARK/LIGHT MODE TOGGLE ──────────────────────────────── */
 
 .theme-toggle {
