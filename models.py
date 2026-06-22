@@ -99,6 +99,7 @@ class Watchlist(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
     added_at = db.Column(db.DateTime, default=db.func.now())
+    price_added = db.Column(db.Float)
 
 
 class PortfolioAnalysis(db.Model):
