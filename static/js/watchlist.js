@@ -53,6 +53,7 @@ function renderWatchlist(data) {
                     ${changeSign}${change.toFixed(2)} €<br>
                     <small>${changeSign}${changePercent}%</small>
                 </td>
+                <td>${item.added_at}</td>
             </tr>
         `
     }
@@ -74,13 +75,17 @@ async function loadWatchlist() {
             asset_id: item.asset_id,
             name: asset.name,
             symbol: asset.symbol,
-            current_price: asset.current_price
+            current_price: asset.current_price,
+            price_added: item.price_added,
+            added_at: item.added_at
         })
     }
 
     renderWatchlist(watchlistData)
 }
 
+// Beim Laden der Seite aufrufen
+loadWatchlist()
 
 let selectedWatchlistAssetId = null
 
@@ -153,8 +158,7 @@ async function removeFromWatchlist(assetId) {
     }
 }
 
-// Beim Laden der Seite aufrufen
-loadWatchlist()
+
 
 
 // Globale Variable für Watchlist Daten
