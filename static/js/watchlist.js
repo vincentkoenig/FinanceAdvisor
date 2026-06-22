@@ -37,16 +37,27 @@ function renderWatchlist(data) {
     tableBody.innerHTML = ''
 
     for (const item of data) {
+        // Veränderung berechnen
+        const change = item.current_price - item.price_added
+        const changePercent = ((change / item.price_added) * 100).toFixed(2)
+        const changeColor = change >= 0 ? '#2ea043' : '#f85149'
+        const changeSign = change >= 0 ? '+' : ''
+
         tableBody.innerHTML += `
-            <tr>
+            <tr onclick="showWatchlistDetail(${item.asset_id}, '${item.name}')" style="cursor: pointer;">
                 <td><strong>${item.name}</strong></td>
                 <td>${item.symbol}</td>
                 <td>${item.current_price} €</td>
-                <td><button onclick="removeFromWatchlist(${item.asset_id})">Entfernen</button></td>
+                <td>${item.price_added ? item.price_added + ' €' : '-'}</td>
+                <td style="color: ${changeColor}">
+                    ${changeSign}${change.toFixed(2)} €<br>
+                    <small>${changeSign}${changePercent}%</small>
+                </td>
             </tr>
         `
     }
 }
+
 
 async function loadWatchlist() {
     const userId = localStorage.getItem('user_id')
@@ -68,6 +79,59 @@ async function loadWatchlist() {
     }
 
     renderWatchlist(watchlistData)
+}
+
+
+let selectedWatchlistAssetId = null
+
+function showWatchlistDetail(assetId, assetName) {
+    selectedWatchlistAssetId = assetId
+    document.getElementById('watchlist-modal-asset-name').innerHTML = assetName
+    document.getElementById('watchlist-detail-modal').style.display = 'block'
+}
+
+function hideWatchlistDetail() {
+    document.getElementById('watchlist-detail-modal').style.display = 'none'
+}
+
+async function removeFromWatchlistModal() {
+    await removeFromWatchlist(selectedWatchlistAssetId)
+    hideWatchlistDetail()
+}
+
+
+function showWatchlistBuy() {
+    document.getElementById('watchlist-buy-fields').style.display = 'block'
+}
+
+
+async function buyFromWatchlist() {
+    const userId = localStorage.getItem('user_id')
+    const quantity = document.getElementById('watchlist-buy-quantity').value
+    const price = document.getElementById('watchlist-buy-price').value
+    const today = new Date().toISOString().split('T')[0]
+
+    // Schritt 1: Asset dem Portfolio hinzufügen
+    const response = await fetch(`/users/${userId}/assets`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            asset_id: selectedWatchlistAssetId,
+            quantity: quantity,
+            avg_buy_price: price,
+            bought_at: today,
+            status: 'owned'
+        })
+    })
+
+    if (response.ok) {
+        // Schritt 2: Asset von der Watchlist entfernen
+        await removeFromWatchlist(selectedWatchlistAssetId)
+        hideWatchlistDetail()
+        alert('Asset gekauft und zur Watchlist entfernt!')
+    } else {
+        alert('Fehler beim Kaufen!')
+    }
 }
 
 
