@@ -630,7 +630,8 @@ def get_watchlist(user_id):
         result.append({
             "user_id": asset.user_id,
             "asset_id": asset.asset_id,
-            "price_added": asset.price_added
+            "price_added": asset.price_added,
+            "added_at": asset.added_at.strftime('%d.%m.%Y') if asset.added_at else '-'
         })
 
     return jsonify(result), 200
