@@ -595,12 +595,25 @@ def get_portfolio_analyses(user_id):
 
 @app.route('/users/<user_id>/watchlist', methods=['POST'])
 def add_to_watchlist(user_id):
-    """Asset zur Watchlist hinzufügen"""
+    """Asset zur Watchlist hinzufügen mit aktuellem Preis"""
     data = request.json
     asset_id = data['asset_id']
 
+    # Asset aus DB holen um den aktuellen Preis zu speichern
+    asset = db.session.get(Asset, asset_id)
+
+    # Aktuellen Preis holen je nach Asset-Typ
+    if asset.asset_type in ("stock", "etf"):
+        price_added = get_stock_price(asset.symbol)
+    elif asset.asset_type == "crypto":
+        price_added = get_crypto_price(asset.symbol)
+    elif asset.asset_type == "metal":
+        price_added = get_metal_price(asset.symbol)
+    else:
+        price_added = None
+
     # added_at wird automatisch auf aktuelle Zeit gesetzt
-    new_watchlist = Watchlist(user_id=user_id, asset_id=asset_id)
+    new_watchlist = Watchlist(user_id=user_id, asset_id=asset_id, price_added=price_added)
     db.session.add(new_watchlist)
     db.session.commit()
 
@@ -616,7 +629,8 @@ def get_watchlist(user_id):
     for asset in assets:
         result.append({
             "user_id": asset.user_id,
-            "asset_id": asset.asset_id
+            "asset_id": asset.asset_id,
+            "price_added": asset.price_added
         })
 
     return jsonify(result), 200
