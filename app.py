@@ -29,6 +29,9 @@ load_dotenv()
 # Verbindung zu OpenAI herstellen - API Key sicher aus .env holen
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Wie viele Chat-Nachrichten maximal als Kontext ans LLM geschickt werden (Sliding Window)
+MAX_CHAT_HISTORY = 20
+
 # Flask App erstellen
 app = Flask(__name__)
 
@@ -669,7 +672,13 @@ def chat():
 
     # Bisherigen Chatverlauf aus DB holen
     # Wird ans LLM geschickt damit es den Kontext versteht
-    chat_history = ChatHistory.query.filter_by(user_id=user_id).all()
+    chat_history = ChatHistory.query.filter_by(user_id=user_id) \
+        .order_by(ChatHistory.id.desc()) \
+        .limit(MAX_CHAT_HISTORY) \
+        .all()
+
+    # LLM braucht Nachrichten chronologisch zuerst
+    chat_history.reverse()
 
     # Nutzerdaten vorbereiten - falls Felder leer sind "not specified" setzen
     risk_profile = user.risk_profile if user.risk_profile else "not specified"
