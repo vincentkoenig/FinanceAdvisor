@@ -11,8 +11,10 @@ im Dashboard (Live Preise) verwendet.
 
 # Standard Library
 import os
+from datetime import datetime
 
 # Third Party
+import requests
 import yfinance as yf
 from dotenv import load_dotenv
 from langchain_tavily import TavilySearch
@@ -138,6 +140,67 @@ def get_historical_prices(symbol, period="1y"):
     except Exception as e:
         print(f"Error fetching historical prices: {e}")
         return None
+
+
+def get_stock_historical_range(symbol, start_date, end_date):
+    """
+    Ruft historische Preise für ein Asset in einem bestimmten Zeitraum ab.
+    Benutzt yfinance - für Aktien, ETFs und Edelmetalle (mit Futures-Symbol).
+    Parameter: symbol → yfinance Ticker Symbol
+               start_date/end_date → date Objekte
+    Gibt eine Liste von Dictionaries mit date und price zurück.
+    """
+    try:
+        ticker = yf.Ticker(symbol)
+        history = ticker.history(
+            start=start_date.strftime('%Y-%m-%d'),
+            end=end_date.strftime('%Y-%m-%d')
+        )
+        return [
+            {
+                "date": date.strftime('%Y-%m-%d'),
+                "price": round(float(close), 2)
+            }
+            for date, close in zip(history.index, history['Close'])
+        ]
+    except Exception as e:
+        print(f"Error fetching stock historical range: {e}")
+        return []
+
+
+def get_crypto_historical_range(coin_id, from_timestamp, to_timestamp):
+    """
+    Ruft historische Preise für eine Kryptowährung in einem Zeitraum ab.
+    Benutzt CoinGecko's market_chart/range Endpoint.
+    Parameter: coin_id → z.B. "bitcoin"
+               from_timestamp/to_timestamp → Unix Timestamps (int)
+    Gibt eine Liste von Dictionaries mit date und price (EUR) zurück.
+    """
+    url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/market_chart/range"
+    params = {
+        "vs_currency": "eur",
+        "from": from_timestamp,
+        "to": to_timestamp,
+        "x_cg_demo_api_key": os.getenv("COINGECKO_API_KEY")
+    }
+
+    try:
+        response = requests.get(url, params=params)
+        data = response.json()
+
+        # CoinGecko liefert mehrere Preise pro Tag - nur einen pro Tag behalten
+        result = []
+        seen_dates = set()
+        for timestamp_ms, price in data['prices']:
+            date_str = datetime.fromtimestamp(timestamp_ms / 1000).strftime('%Y-%m-%d')
+            if date_str not in seen_dates:
+                seen_dates.add(date_str)
+                result.append({"date": date_str, "price": round(price, 2)})
+
+        return result
+    except Exception as e:
+        print(f"Error fetching crypto historical range: {e}")
+        return []
 
 
 def search_web(query):
