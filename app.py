@@ -464,6 +464,7 @@ def get_portfolio_history(user_id):
                 "price": price.price * user_asset.quantity
             }
             for price in prices
+            if price.price is not None
         ]
 
     return jsonify(result), 200
