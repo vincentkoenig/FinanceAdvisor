@@ -25,8 +25,10 @@ async function addToWatchlist() {
 
     if (response.ok) {
         showToast('Asset hinzugefügt!')
+        document.getElementById('asset-search').value = ''
+        loadWatchlist()
     } else {
-        showToast(data.error)
+        showToast(data.error, 'error')
     }
 
 }
