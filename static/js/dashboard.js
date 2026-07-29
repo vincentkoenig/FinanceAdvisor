@@ -319,7 +319,7 @@ async function addPosition() {
     const asset = await searchResponse.json()
 
     if (!searchResponse.ok) {
-        alert('Asset nicht gefunden!')
+        showToast('Asset nicht gefunden!', 'error')
         return
     }
 
@@ -339,13 +339,13 @@ async function addPosition() {
     const data = await response.json()
 
     if (response.ok) {
-        alert('Position hinzugefügt!')
+        showToast('Position hinzugefügt!')
         // Modal schließen
         hideAddPosition()
         // Dashboard neu laden
         loadPortfolio()
     } else {
-        alert(data.error)
+        showToast(data.error)
     }
 }
 
@@ -394,11 +394,11 @@ async function addBuy() {
     const data = await response.json()
 
     if (response.ok) {
-        alert('Kauf hinzugefügt!')
+        showToast('Kauf hinzugefügt!')
         hideAssetDetail()
         loadPortfolio()
     } else {
-        alert(data.error)
+        showToast(data.error)
     }
 }
 
@@ -416,11 +416,11 @@ async function addSell() {
     const data = await response.json()
 
     if (response.ok) {
-        alert('Verkauf hinzugefügt!')
+        showToast('Verkauf hinzugefügt!')
         hideAssetDetail()
         loadPortfolio()
     } else {
-        alert(data.error)
+        showToast(data.error)
     }
 }
 
