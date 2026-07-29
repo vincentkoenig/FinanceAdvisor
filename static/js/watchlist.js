@@ -116,6 +116,16 @@ async function buyFromWatchlist() {
     const price = document.getElementById('watchlist-buy-price').value
     const today = new Date().toISOString().split('T')[0]
 
+    // Menge und Preis müssen gültige, positive Zahlen sein
+    if (quantity === '' || isNaN(quantity) || parseFloat(quantity) <= 0) {
+        showToast('Bitte eine gültige Menge größer 0 angeben!', 'error')
+        return
+    }
+    if (price === '' || isNaN(price) || parseFloat(price) <= 0) {
+        showToast('Bitte einen gültigen Preis größer 0 angeben!', 'error')
+        return
+    }
+
     // Schritt 1: Asset dem Portfolio hinzufügen
     const response = await fetch(`/users/${userId}/assets`, {
         method: 'POST',
@@ -133,9 +143,9 @@ async function buyFromWatchlist() {
         // Schritt 2: Asset von der Watchlist entfernen
         await removeFromWatchlist(selectedWatchlistAssetId)
         hideWatchlistDetail()
-        showToast('Asset gekauft und zum Portfolio hinzugefügt!')
+        showToast('Asset gekauft und zur Watchlist entfernt!')
     } else {
-        showToast('Fehler beim Kaufen!')
+        showToast('Fehler beim Kaufen!', 'error')
     }
 }
 
