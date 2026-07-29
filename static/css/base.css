@@ -467,3 +467,20 @@ body {
     color: var(--text-primary);
     border-color: var(--text-primary);
 }
+
+
+/* ─── LOADING SPINNER ──────────────────────────────────────── */
+
+.spinner {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--accent-blue);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
