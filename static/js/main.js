@@ -20,7 +20,7 @@ async function register() {
         window.location.href = '/dashboard';
     } else {
         // Fehlermeldung anzeigen z.B. "User not found"
-        alert(data.error);
+        showToast(data.error);
     }
 }
 
@@ -47,6 +47,6 @@ async function login() {
         window.location.href = '/dashboard'
     } else {
         // Fehlermeldung anzeigen z.B. "User not found"
-        alert(data.error);
+        showToast(data.error);
     }
 }
