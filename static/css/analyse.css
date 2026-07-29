@@ -89,3 +89,9 @@
     color: var(--text-primary);
     font-size: 14px;
 }
+
+
+.analyse-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
