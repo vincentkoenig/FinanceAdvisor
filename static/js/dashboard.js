@@ -409,6 +409,16 @@ async function addBuy() {
     const quantity = document.getElementById('buy-quantity').value
     const price = document.getElementById('buy-price').value
 
+    // Menge und Preis müssen gültige, positive Zahlen sein
+    if (quantity === '' || isNaN(quantity) || parseFloat(quantity) <= 0) {
+        showToast('Bitte eine gültige Menge größer 0 angeben!', 'error')
+        return
+    }
+    if (price === '' || isNaN(price) || parseFloat(price) <= 0) {
+        showToast('Bitte einen gültigen Preis größer 0 angeben!', 'error')
+        return
+    }
+
     const response = await fetch(`/users/${userId}/assets/${selectedAssetId}/buy`, {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
@@ -430,6 +440,19 @@ async function addBuy() {
 async function addSell() {
     const userId = localStorage.getItem('user_id')
     const quantity = document.getElementById('sell-quantity').value
+
+    // Menge muss eine gültige, positive Zahl sein
+    if (quantity === '' || isNaN(quantity) || parseFloat(quantity) <= 0) {
+        showToast('Bitte eine gültige Menge größer 0 angeben!', 'error')
+        return
+    }
+
+    // Prüfen ob nicht mehr verkauft wird als aktuell gehalten wird
+    const asset = portfolioData.find(a => a.asset_id === selectedAssetId)
+    if (asset && parseFloat(quantity) > asset.quantity) {
+        showToast(`Du besitzt nur ${asset.quantity} Stück!`, 'error')
+        return
+    }
 
     const response = await fetch(`/users/${userId}/assets/${selectedAssetId}/sell`, {
         method: 'PUT',
