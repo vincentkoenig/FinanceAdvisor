@@ -484,3 +484,56 @@ body {
 @keyframes spin {
     to { transform: rotate(360deg); }
 }
+
+
+/* ─── TOAST NOTIFICATIONS ──────────────────────────────────── */
+
+#toast-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 300;
+}
+
+.toast {
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--accent-green);
+    color: var(--text-primary);
+    padding: 14px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    font-size: 14px;
+    min-width: 250px;
+    max-width: 350px;
+    animation: toast-slide-in 0.3s ease-out;
+}
+
+.toast-error {
+    border-left-color: #f85149;
+}
+
+@keyframes toast-slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+.toast-fade-out {
+    animation: toast-fade-out 0.3s ease-in forwards;
+}
+
+@keyframes toast-fade-out {
+    to {
+        opacity: 0;
+        transform: translateX(20px);
+    }
+}
