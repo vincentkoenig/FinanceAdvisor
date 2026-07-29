@@ -206,19 +206,33 @@ async function loadChart(period = '1J') {
         return true
     })
 
-    // Gesamtwert pro Tag berechnen
+    // Gesamtwert pro Tag berechnen - pro Asset wird der letzte bekannte
+    // Preis bis zu diesem Datum verwendet (Forward-Fill), damit
+    // Wochenenden/Feiertage bei Aktien nicht zu Sprüngen führen und
+    // neu hinzugefügte Assets erst ab ihrem ersten Datenpunkt mitzählen
     const chartData = []
     filteredByPeriod.forEach(date => {
         let total = 0
-        let allAssetsHavePrice = true
+        let hasAnyPrice = false
 
         Object.values(data).forEach(prices => {
-            const price = prices.find(p => p.date === date)
-            if (!price) allAssetsHavePrice = false
-            else total += price.price
+            // Letzten Preis suchen, dessen Datum <= aktuelles Datum ist
+            let lastKnown = null
+            for (const p of prices) {
+                if (p.date <= date) {
+                    lastKnown = p
+                } else {
+                    break
+                }
+            }
+
+            if (lastKnown) {
+                total += lastKnown.price
+                hasAnyPrice = true
+            }
         })
 
-        if (allAssetsHavePrice) {
+        if (hasAnyPrice) {
             chartData.push({ date: date, value: total })
         }
     })
