@@ -175,13 +175,15 @@ def settings(user_id):
     monthly_budget = data['monthly_budget']
     investment_horizon = data['investment_horizon']
 
+    # Leeren String zu None umwandeln, da monthly_budget ein Float-Feld ist
+    if monthly_budget == '':
+        monthly_budget = None
+
     user = db.session.get(User, user_id)
 
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Bestehende Felder aktualisieren
-    # Kein db.session.add() nötig - SQLAlchemy erkennt automatisch Änderungen!
     user.risk_profile = risk_profile
     user.investment_experience = investment_experience
     user.monthly_budget = monthly_budget
