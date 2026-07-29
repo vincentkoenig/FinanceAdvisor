@@ -17,9 +17,9 @@ async function saveSettings() {
     const data = await response.json();
 
     if (response.ok) {
-        alert('Einstellungen gespeichert!')
+        showToast('Einstellungen gespeichert!')
     } else {
-        alert(data.error)
+        showToast(data.error)
     }
 
 }
