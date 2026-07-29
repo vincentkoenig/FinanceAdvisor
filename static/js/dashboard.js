@@ -29,8 +29,10 @@ function formatDate(dateString) {
 }
 
 async function loadPortfolio() {
-    // Tabelle leeren bevor neu geladen wird
-    document.getElementById('portfolio-body').innerHTML = ''
+    // Spinner anzeigen während Daten geladen werden
+    document.getElementById('portfolio-body').innerHTML = `
+        <tr><td colspan="4" style="text-align:center; padding: 30px;"><span class="spinner"></span></td></tr>
+    `
 
     // GET Request an /users/<user_id>/assets schicken
     const response = await fetch(`/users/${userId}/assets`, {
