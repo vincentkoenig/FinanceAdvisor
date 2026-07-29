@@ -28,6 +28,20 @@ function formatDate(dateString) {
     return `${day}.${month}.${year}`
 }
 
+
+// Generiert für eine gegebene Anzahl Assets gleichmäßig verteilte,
+// klar unterscheidbare Farben über das HSL-Farbrad - funktioniert
+// für beliebig viele Assets, ohne dass sich Farben wiederholen
+function generateColors(count) {
+    const colors = []
+    for (let i = 0; i < count; i++) {
+        const hue = Math.round((360 / count) * i)
+        colors.push(`hsl(${hue}, 65%, 55%)`)
+    }
+    return colors
+}
+
+
 async function loadPortfolio() {
     // Spinner anzeigen während Daten geladen werden
     document.getElementById('portfolio-body').innerHTML = `
@@ -84,7 +98,7 @@ async function loadPortfolio() {
             labels: labels,
             datasets: [{
                 data: values,
-                backgroundColor: ['#58a6ff', '#2ea043', '#f85149', '#d29922', '#8b949e']
+                backgroundColor: generateColors(values.length)
             }]
         },
         options: {
