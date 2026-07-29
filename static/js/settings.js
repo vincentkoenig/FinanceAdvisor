@@ -6,6 +6,13 @@ async function saveSettings() {
     const monthly_budget = document.getElementById('monthly_budget').value
     const investment_horizon = document.getElementById('investment_horizon').value
 
+    // Budget ist optional, aber falls ausgefüllt muss es eine gültige,
+    // positive Zahl sein
+    if (monthly_budget !== '' && (isNaN(monthly_budget) || parseFloat(monthly_budget) <= 0)) {
+        showToast('Bitte ein gültiges Budget größer 0 angeben!', 'error')
+        return
+    }
+
     // POST Request an /chat schicken - wie Postman aber in JavaScript
     const response = await fetch(`/users/${userId}/settings`, {
         method: 'PUT',
