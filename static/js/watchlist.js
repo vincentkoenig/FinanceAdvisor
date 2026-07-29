@@ -9,7 +9,7 @@ async function addToWatchlist() {
     const asset = await searchResponse.json()
 
     if (!searchResponse.ok) {
-        alert('Asset nicht gefunden!')
+        showToast('Asset nicht gefunden!')
         return
     }
 
@@ -24,9 +24,9 @@ async function addToWatchlist() {
     const data = await response.json();
 
     if (response.ok) {
-        alert('Asset hinzugefügt!')
+        showToast('Asset hinzugefügt!')
     } else {
-        alert(data.error)
+        showToast(data.error)
     }
 
 }
@@ -133,9 +133,9 @@ async function buyFromWatchlist() {
         // Schritt 2: Asset von der Watchlist entfernen
         await removeFromWatchlist(selectedWatchlistAssetId)
         hideWatchlistDetail()
-        alert('Asset gekauft und zur Watchlist entfernt!')
+        showToast('Asset gekauft und zum Portfolio hinzugefügt!')
     } else {
-        alert('Fehler beim Kaufen!')
+        showToast('Fehler beim Kaufen!')
     }
 }
 
@@ -151,10 +151,10 @@ async function removeFromWatchlist(assetId) {
     const data = await response.json()
 
     if (response.ok) {
-        alert('Asset entfernt!')
+        showToast('Asset entfernt!')
         loadWatchlist()  // Watchlist neu laden
     } else {
-        alert(data.error)
+        showToast(data.error)
     }
 }
 
