@@ -338,6 +338,12 @@ async function addPosition() {
     const today = new Date().toISOString().split('T')[0]
     const boughtAt = document.getElementById('position-date').value || today
 
+    // Kaufdatum darf nicht in der Zukunft liegen
+    if (boughtAt > today) {
+        showToast('Das Kaufdatum darf nicht in der Zukunft liegen!', 'error')
+        return
+    }
+
     // Schritt 1: Asset suchen oder automatisch erstellen
     const searchResponse = await fetch(`/assets/search?query=${symbol}`)
     const asset = await searchResponse.json()
