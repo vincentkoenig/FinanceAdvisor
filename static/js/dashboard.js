@@ -310,6 +310,16 @@ async function addPosition() {
     const quantity = document.getElementById('position-quantity').value
     const avgBuyPrice = document.getElementById('position-price').value
 
+    // Menge und Kaufpreis müssen gültige, positive Zahlen sein
+    if (quantity === '' || isNaN(quantity) || parseFloat(quantity) <= 0) {
+        showToast('Bitte eine gültige Menge größer 0 angeben!', 'error')
+        return
+    }
+    if (avgBuyPrice === '' || isNaN(avgBuyPrice) || parseFloat(avgBuyPrice) <= 0) {
+        showToast('Bitte einen gültigen Kaufpreis größer 0 angeben!', 'error')
+        return
+    }
+
     // Datum holen - wenn leer heutiges Datum nehmen
     const today = new Date().toISOString().split('T')[0]
     const boughtAt = document.getElementById('position-date').value || today
