@@ -477,6 +477,9 @@ def analyze_portfolio():
     """
     KI-gestützte Portfolio-Analyse mit Pydantic Structured Output.
     Das LLM analysiert das Portfolio und gibt strukturierte Daten zurück.
+    Der Gesamtwert wird nicht vom LLM übernommen, sondern im Backend
+    berechnet und überschrieben, da LLMs bei der Aufsummierung von
+    Zahlen unzuverlässig sind.
     Ergebnis wird in der DB gespeichert.
     """
     data = request.json
@@ -499,6 +502,8 @@ def analyze_portfolio():
     # Portfolio-Kontext aufbauen
     # Das LLM bekommt alle Assets mit Menge, Kaufpreis und aktuellem Preis
     portfolio_context = ""
+    total_value = 0  # Gesamtwert selbst berechnen statt dem LLM zu überlassen
+
     for user_asset in user_assets:
         asset = db.session.get(Asset, user_asset.asset_id)
 
@@ -513,6 +518,7 @@ def analyze_portfolio():
             current_price = user_asset.avg_buy_price
 
         current_value = user_asset.quantity * current_price
+        total_value += current_value
 
         portfolio_context += (
             f"\n- {asset.name}: {user_asset.quantity} units"
@@ -557,6 +563,9 @@ def analyze_portfolio():
     # Pydantic Objekt aus der Antwort holen
     # .parsed → gibt direkt ein Python Objekt zurück, kein JSON parsen nötig!
     analysis = response.choices[0].message.parsed
+
+    # Vom LLM berechneten Gesamtwert durch den exakten Backend-Wert ersetzen
+    analysis.total_value = round(total_value, 2)
 
     # Analyse in DB speichern
     new_analysis = PortfolioAnalysis(
