@@ -8,6 +8,10 @@ let currentMonthDate = new Date()
 // verschachtelte Dropdown-Auswahl (Typ -> Hauptkategorie -> Unterkategorie) genutzt
 let allCategories = []
 
+// Donut Chart Instanz - global damit sie beim Monatswechsel zerstört
+// und neu erstellt werden kann, statt sich zu überlagern
+let expenseDonutChart = null
+
 // Zahl im deutschen Format formatieren z.B. 1.234,50
 function formatCurrency(value) {
     return value.toLocaleString('de-DE', {
@@ -32,6 +36,11 @@ function getMonthLabel(date) {
 function changeMonth(direction) {
     currentMonthDate.setMonth(currentMonthDate.getMonth() + direction)
     loadBudget()
+}
+
+async function loadCategories() {
+    const response = await fetch(`/users/${userId}/categories`)
+    allCategories = await response.json()
 }
 
 async function loadBudget() {
@@ -86,6 +95,9 @@ async function loadBudget() {
     renderBreakdown('breakdown-income', 'income', mainCategoryTotals, totalIncome)
     renderBreakdown('breakdown-fixed', 'fixed_expense', mainCategoryTotals, totalFixed)
     renderBreakdown('breakdown-variable', 'variable_expense', mainCategoryTotals, totalVariable)
+
+    // Donut Chart über alle Ausgaben aktualisieren
+    renderExpenseDonut(mainCategoryTotals)
 }
 
 // Rendert die Liste der Hauptkategorien mit Betrag und Prozentanteil
@@ -117,13 +129,49 @@ function renderBreakdown(containerId, type, mainCategoryTotals, blockTotal) {
     container.innerHTML = html || '<div class="breakdown-empty">Keine Buchungen</div>'
 }
 
-// Beim Laden der Seite aufrufen
-loadBudget()
+// Erstellt den Donut Chart über alle Ausgaben (Fixkosten + Variable)
+// nach Hauptkategorie, unabhängig vom Typ
+function renderExpenseDonut(mainCategoryTotals) {
+    // Nur Hauptkategorien vom Typ fixed_expense oder variable_expense berücksichtigen
+    const expenseCategories = allCategories.filter(
+        c => c.parent_id === null && (c.type === 'fixed_expense' || c.type === 'variable_expense')
+    )
 
+    const labels = []
+    const values = []
 
-async function loadCategories() {
-    const response = await fetch(`/users/${userId}/categories`)
-    allCategories = await response.json()
+    expenseCategories.forEach(category => {
+        const amount = mainCategoryTotals[category.id]
+        if (amount) {
+            labels.push(category.name)
+            values.push(amount)
+        }
+    })
+
+    const totalExpenses = values.reduce((sum, v) => sum + v, 0)
+    document.getElementById('donut-expense-value').innerHTML = `${formatCurrency(totalExpenses)} €`
+
+    // Alten Chart zerstören falls vorhanden, bevor ein neuer erstellt wird
+    if (expenseDonutChart) {
+        expenseDonutChart.destroy()
+    }
+
+    expenseDonutChart = new Chart(document.getElementById('expenseDonutChart'), {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: generateColors(values.length)
+            }]
+        },
+        options: {
+            cutout: '75%',
+            plugins: {
+                legend: { display: false }
+            }
+        }
+    })
 }
 
 // Modal anzeigen
@@ -205,7 +253,6 @@ async function addTransaction() {
     }
 }
 
-
 // Enddatum-Feld ein-/ausblenden je nachdem ob "Wiederkehrend" angehakt ist,
 // und das Datum-Label entsprechend anpassen
 function toggleEndDateField() {
@@ -217,6 +264,6 @@ function toggleEndDateField() {
     dateLabel.innerHTML = isRecurring ? 'Startdatum' : 'Datum'
 }
 
-
-// Kategorien beim Laden der Seite direkt mit abrufen
-loadCategories()
+// Kategorien und Budget beim Laden der Seite abrufen - Kategorien zuerst,
+// damit loadBudget() beim ersten Aufruf sofort darauf zugreifen kann
+loadCategories().then(() => loadBudget())
