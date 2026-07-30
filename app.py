@@ -782,6 +782,78 @@ def delete_category(category_id):
     return jsonify({"message": "Category successfully deleted"}), 200
 
 
+# ─── HAUSHALTSBUCH: TRANSAKTIONEN ENDPOINTS ───────────────────────────────────
+
+@app.route('/users/<user_id>/transactions', methods=['GET'])
+def get_transactions(user_id):
+    """
+    Alle Buchungen eines Nutzers abrufen, mit Kategoriename und -typ.
+    Optionaler Query-Parameter 'month' filtert auf einen Monat,
+    z.B. /users/1/transactions?month=2026-07
+    """
+    month = request.args.get('month')
+
+    query = Transaction.query.filter_by(user_id=user_id)
+
+    if month:
+        # Buchungen filtern deren Datum mit dem gewünschten Monat beginnt
+        query = query.filter(db.func.strftime('%Y-%m', Transaction.date) == month)
+
+    transactions = query.order_by(Transaction.date.desc()).all()
+
+    result = []
+    for transaction in transactions:
+        category = db.session.get(Category, transaction.category_id)
+
+        result.append({
+            "id": transaction.id,
+            "amount": transaction.amount,
+            "description": transaction.description,
+            "date": transaction.date.strftime('%Y-%m-%d'),
+            "category_id": transaction.category_id,
+            "category_name": category.name if category else None,
+            "category_type": category.type if category else None
+        })
+
+    return jsonify(result), 200
+
+
+@app.route('/users/<user_id>/transactions', methods=['POST'])
+def add_transaction(user_id):
+    """Neue Buchung (Einnahme oder Ausgabe) anlegen"""
+    data = request.json
+    category_id = data['category_id']
+    amount = data['amount']
+    description = data.get('description')  # optional
+    date = datetime.strptime(data['date'], '%Y-%m-%d')
+
+    new_transaction = Transaction(
+        user_id=user_id,
+        category_id=category_id,
+        amount=amount,
+        description=description,
+        date=date
+    )
+    db.session.add(new_transaction)
+    db.session.commit()
+
+    return jsonify({"message": "Transaction successfully added"}), 201
+
+
+@app.route('/transactions/<transaction_id>', methods=['DELETE'])
+def delete_transaction(transaction_id):
+    """Buchung löschen"""
+    transaction = db.session.get(Transaction, transaction_id)
+
+    if not transaction:
+        return jsonify({"error": "Transaction not found"}), 404
+
+    db.session.delete(transaction)
+    db.session.commit()
+
+    return jsonify({"message": "Transaction successfully deleted"}), 200
+
+
 # ─── CHAT ENDPOINTS ───────────────────────────────────────────────────────────
 
 @app.route('/chat', methods=['POST'])
