@@ -796,16 +796,35 @@ def get_transactions(user_id):
     Alle Buchungen eines Nutzers abrufen, mit Kategoriename und -typ.
     Optionaler Query-Parameter 'month' filtert auf einen Monat,
     z.B. /users/1/transactions?month=2026-07
+    Wiederkehrende Buchungen werden automatisch für jeden Monat
+    mitgezählt, der zwischen ihrem Start- und optionalem Enddatum liegt,
+    auch wenn dafür kein eigener Eintrag in der DB existiert.
     """
     month = request.args.get('month')
 
-    query = Transaction.query.filter_by(user_id=user_id)
-
     if month:
-        # Buchungen filtern deren Datum mit dem gewünschten Monat beginnt
-        query = query.filter(db.func.strftime('%Y-%m', Transaction.date) == month)
+        # Anfang und Ende des abgefragten Monats bestimmen
+        year, month_num = map(int, month.split('-'))
+        month_start = datetime(year, month_num, 1)
+        if month_num == 12:
+            month_end = datetime(year + 1, 1, 1)
+        else:
+            month_end = datetime(year, month_num + 1, 1)
 
-    transactions = query.order_by(Transaction.date.desc()).all()
+        # Einmalige Buchungen die genau in diesem Monat liegen
+        one_time = Transaction.query.filter_by(user_id=user_id, is_recurring=False) \
+            .filter(Transaction.date >= month_start, Transaction.date < month_end).all()
+
+        # Wiederkehrende Buchungen deren Zeitraum diesen Monat abdeckt:
+        # Startdatum liegt vor Monatsende UND (kein Enddatum ODER Enddatum liegt nach Monatsanfang)
+        recurring = Transaction.query.filter_by(user_id=user_id, is_recurring=True) \
+            .filter(Transaction.date < month_end) \
+            .filter(db.or_(Transaction.end_date.is_(None), Transaction.end_date >= month_start)) \
+            .all()
+
+        transactions = one_time + recurring
+    else:
+        transactions = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.desc()).all()
 
     result = []
     for transaction in transactions:
@@ -816,6 +835,8 @@ def get_transactions(user_id):
             "amount": transaction.amount,
             "description": transaction.description,
             "date": transaction.date.strftime('%Y-%m-%d'),
+            "end_date": transaction.end_date.strftime('%Y-%m-%d') if transaction.end_date else None,
+            "is_recurring": transaction.is_recurring,
             "category_id": transaction.category_id,
             "category_name": category.name if category else None,
             "category_type": category.type if category else None
@@ -826,19 +847,31 @@ def get_transactions(user_id):
 
 @app.route('/users/<user_id>/transactions', methods=['POST'])
 def add_transaction(user_id):
-    """Neue Buchung (Einnahme oder Ausgabe) anlegen"""
+    """
+    Neue Buchung (Einnahme oder Ausgabe) anlegen.
+    Wenn is_recurring True ist, wird date als Startdatum behandelt und
+    die Buchung für jeden Monat ab dann automatisch mitgezählt, bis
+    end_date erreicht ist (oder unbegrenzt, falls end_date leer bleibt).
+    """
     data = request.json
     category_id = data['category_id']
     amount = data['amount']
     description = data.get('description')  # optional
     date = datetime.strptime(data['date'], '%Y-%m-%d')
+    is_recurring = data.get('is_recurring', False)
+
+    end_date = None
+    if data.get('end_date'):
+        end_date = datetime.strptime(data['end_date'], '%Y-%m-%d')
 
     new_transaction = Transaction(
         user_id=user_id,
         category_id=category_id,
         amount=amount,
         description=description,
-        date=date
+        date=date,
+        is_recurring=is_recurring,
+        end_date=end_date
     )
     db.session.add(new_transaction)
     db.session.commit()
