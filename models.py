@@ -139,6 +139,10 @@ class Transaction(db.Model):
     Transaction Tabelle - einzelne Einnahmen und Ausgaben des Nutzers.
     Der Typ (Einkommen/Fixkosten/variable Ausgabe) ergibt sich über die
     verknüpfte Category, wird hier nicht separat gespeichert.
+    Wiederkehrende Buchungen (is_recurring = True) werden nur einmal
+    gespeichert - date ist dann das Startdatum, end_date optional das Ende.
+    Sie werden für jeden Monat dazwischen automatisch mitgezählt,
+    ohne dass für jeden Monat ein eigener Eintrag existiert.
     """
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
@@ -146,6 +150,8 @@ class Transaction(db.Model):
     amount = db.Column(db.Float, nullable=False)
     description = db.Column(db.String)
     date = db.Column(db.DateTime, default=db.func.now())
+    is_recurring = db.Column(db.Boolean, default=False)
+    end_date = db.Column(db.DateTime)
 
 
 # ─── PYDANTIC SCHEMAS ─────────────────────────────────────────────────────────
