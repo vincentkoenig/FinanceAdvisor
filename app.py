@@ -55,10 +55,16 @@ def home():
     return render_template('index.html')
 
 
-@app.route('/dashboard')
-def dashboard_page():
-    """Dashboard Seite - Portfolio Übersicht"""
-    return render_template('dashboard.html')
+@app.route('/home-page')
+def home_page():
+    """Home Seite - Gesamtübersicht über Vermögen (Portfolio + Cash)"""
+    return render_template('home.html')
+
+
+@app.route('/portfolio-page')
+def portfolio_page():
+    """Portfolio Seite - Aktien, Krypto, Edelmetalle Übersicht"""
+    return render_template('portfolio.html')
 
 
 @app.route('/chat-page')

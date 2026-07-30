@@ -2,9 +2,11 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>FinanceAdvisor - Analyse</title>
+    <title>FinanceAdvisor - Home</title>
     <link rel="stylesheet" href="/static/css/base.css">
-    <link rel="stylesheet" href="/static/css/analyse.css">
+    <link rel="stylesheet" href="/static/css/home.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
@@ -15,9 +17,9 @@
         <div class="sidebar">
             <div class="sidebar-brand">FinanceAdvisor</div>
             <nav class="sidebar-nav">
-                <a href="/home-page">Home</a>
+                <a href="/home-page" class="active">Home</a>
                 <a href="/portfolio-page">Portfolio</a>
-                <a href="/chat-page" class="active">Chat</a>
+                <a href="/chat-page">Chat</a>
                 <a href="/analyse-page">Analyse</a>
                 <a href="/watchlist-page">Watchlist</a>
                 <a href="/settings-page">Einstellungen</a>
@@ -28,24 +30,16 @@
 
         <!-- Hauptbereich -->
         <div class="main-content">
-            <h2>Portfolio Analyse</h2>
-            <div class="analyse-content">
-                <button class="analyse-button" onclick="analysePortfolio()">Analyse starten</button>
-                <div id="analyse-result"></div>
-
-                <!-- Vorherige Analysen -->
-                <div id="previous-analyses">
-                    <h3>Vorherige Analysen</h3>
-                    <div id="analyses-list"></div>
-                </div>
-                
-            </div>
+            <h2>Home</h2>
+            <p>Gesamtübersicht über dein Vermögen - kommt bald!</p>
         </div>
 
-        <!-- FAB Button -->
-        <div class="chat-fab" onclick="toggleChat()">
-            🤖 KI-Agent
-        </div>
+    </div>
+
+    <!-- FAB Button -->
+    <div class="chat-fab" onclick="toggleChat()">
+        🤖 KI-Agent
+    </div>
 
     <!-- Chat Widget -->
     <div class="chat-widget" id="chat-widget" style="display:none;">
@@ -61,7 +55,6 @@
     </div>
 
     <script src="/static/js/toast.js"></script>
-    <script src="/static/js/analyse.js"></script>
     <script src="/static/js/logout.js"></script>
     <script src="/static/js/widget.js"></script>
     <script src="/static/js/theme.js"></script>

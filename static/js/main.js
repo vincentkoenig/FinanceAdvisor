@@ -17,7 +17,7 @@ async function register() {
     if (response.ok) {
         // user_id im Browser speichern und weiterleiten
         localStorage.setItem('user_id', data.user_id)
-        window.location.href = '/dashboard';
+        window.location.href = '/home-page';
     } else {
         // Fehlermeldung anzeigen z.B. "User not found"
         showToast(data.error);
@@ -44,7 +44,7 @@ async function login() {
     if (response.ok) {
         // user_id im Browser speichern und weiterleiten
         localStorage.setItem('user_id', data.user_id)  // user_id speichern
-        window.location.href = '/dashboard'
+        window.location.href = '/home-page'
     } else {
         // Fehlermeldung anzeigen z.B. "User not found"
         showToast(data.error);
