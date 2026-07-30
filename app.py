@@ -16,7 +16,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # Lokale Imports
 from api_services import get_crypto_price, get_stock_price, get_metal_price, get_historical_prices, search_web
 from models import (db, User, Asset, UserAsset, PriceHistory,
-                    Watchlist, ChatHistory, PortfolioAnalysis, PortfolioAnalysisSchema)
+                    Watchlist, ChatHistory, PortfolioAnalysis, PortfolioAnalysisSchema,
+                    Category, Transaction)
 from scheduler import start_scheduler
 from tools import tools
 
@@ -93,6 +94,52 @@ def settings_page():
 
 # ─── AUTH ENDPOINTS ───────────────────────────────────────────────────────────
 
+def create_default_categories(user_id):
+    """
+    Legt für einen neuen Nutzer die Standardkategorien fürs Haushaltsbuch an.
+    Struktur: Einkommen, Fixkosten, Variable Ausgaben - jeweils mit
+    Hauptkategorien und passenden Unterkategorien.
+    Der Nutzer kann diese später beliebig anpassen oder löschen.
+    """
+    categories = {
+        "income": {
+            "Einkommen": ["Gehalt", "Kindergeld", "Arbeitslosengeld", "Sonstige Einnahmen"]
+        },
+        "fixed_expense": {
+            "Wohnen": ["Miete", "Strom", "Nebenkosten"],
+            "Versicherungen": ["Haftpflicht", "KFZ", "Sonstige Versicherungen"],
+            "Investments": ["Sparplan", "Sonstige Investments"],
+            "Mobilität": ["Auto/Leasing", "ÖPNV-Abo"],
+            "Sonstige Verträge": ["Handy/Internet", "Streaming/Abos"]
+        },
+        "variable_expense": {
+            "Lebenshaltung": ["Lebensmittel", "Kleidung", "Drogerie"],
+            "Mobilität": ["Sprit", "Taxi/Fahrdienst"],
+            "Entertainment & Interessen": ["Kino", "Hobbys"],
+            "Sonstiges": ["Geschenke", "Spenden"]
+        }
+    }
+
+    for category_type, main_categories in categories.items():
+        for main_name, sub_names in main_categories.items():
+            # Hauptkategorie anlegen
+            main_category = Category(user_id=user_id, name=main_name, type=category_type)
+            db.session.add(main_category)
+            db.session.flush()  # damit main_category.id sofort verfügbar ist
+
+            # Unterkategorien anlegen, verweisen auf die Hauptkategorie
+            for sub_name in sub_names:
+                sub_category = Category(
+                    user_id=user_id,
+                    name=sub_name,
+                    type=category_type,
+                    parent_id=main_category.id
+                )
+                db.session.add(sub_category)
+
+    db.session.commit()
+
+
 @app.route('/register', methods=['POST'])
 def register():
     """
@@ -118,6 +165,9 @@ def register():
     new_user = User(username=username, email=email, password=hashed_password)
     db.session.add(new_user)
     db.session.commit()
+
+    # Standardkategorien fürs Haushaltsbuch anlegen
+    create_default_categories(new_user.id)
 
     # 201 = Created - Nutzer wurde erfolgreich erstellt
     return jsonify({"message": "User registered successfully", "user_id": new_user.id}), 201
