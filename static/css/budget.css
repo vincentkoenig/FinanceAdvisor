@@ -66,10 +66,16 @@
     width: auto;
 }
 
-.budget-breakdown {
+.budget-bottom {
     display: flex;
     gap: 20px;
     margin-top: 10px;
+}
+
+.budget-breakdown {
+    flex: 2;
+    display: flex;
+    gap: 20px;
 }
 
 .budget-breakdown-column {
