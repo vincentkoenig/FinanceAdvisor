@@ -118,6 +118,36 @@ class PortfolioAnalysis(db.Model):
     created_at = db.Column(db.DateTime, default=db.func.now())
 
 
+# ─── HAUSHALTSBUCH MODELLE ────────────────────────────────────────────────────
+
+class Category(db.Model):
+    """
+    Category Tabelle - vom Nutzer verwaltbare Kategorien für das Haushaltsbuch.
+    Zweistufig über parent_id: Hauptkategorie (parent_id = NULL) und
+    Unterkategorie (parent_id verweist auf die Hauptkategorie).
+    type unterscheidet zwischen Einkommen, Fixkosten und variablen Ausgaben.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    name = db.Column(db.String, nullable=False)
+    type = db.Column(db.String, nullable=False)  # income, fixed_expense oder variable_expense
+    parent_id = db.Column(db.Integer, db.ForeignKey('category.id'))
+
+
+class Transaction(db.Model):
+    """
+    Transaction Tabelle - einzelne Einnahmen und Ausgaben des Nutzers.
+    Der Typ (Einkommen/Fixkosten/variable Ausgabe) ergibt sich über die
+    verknüpfte Category, wird hier nicht separat gespeichert.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id'))
+    amount = db.Column(db.Float, nullable=False)
+    description = db.Column(db.String)
+    date = db.Column(db.DateTime, default=db.func.now())
+
+
 # ─── PYDANTIC SCHEMAS ─────────────────────────────────────────────────────────
 
 class AllocationItem(PydanticBaseModel):
