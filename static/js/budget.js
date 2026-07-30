@@ -98,6 +98,7 @@ async function loadBudget() {
 
     // Donut Chart über alle Ausgaben aktualisieren
     renderExpenseDonut(mainCategoryTotals)
+    renderTransactionsList(transactions)
 }
 
 // Rendert die Liste der Hauptkategorien mit Betrag und Prozentanteil
@@ -173,6 +174,63 @@ function renderExpenseDonut(mainCategoryTotals) {
         }
     })
 }
+
+
+// Rendert die Liste aller Buchungen des aktuellen Monats als Tabelle
+function renderTransactionsList(transactions) {
+    const tableBody = document.getElementById('transactions-body')
+
+    if (transactions.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-secondary);">Keine Buchungen in diesem Monat</td></tr>'
+        return
+    }
+
+    // Nach Datum absteigend sortieren, neueste zuerst
+    const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date))
+
+    tableBody.innerHTML = sorted.map(transaction => {
+        const isIncome = transaction.category_type === 'income'
+        const amountColor = isIncome ? '#2ea043' : '#f85149'
+        const amountPrefix = isIncome ? '+' : '-'
+        const recurringIcon = transaction.is_recurring
+            ? '<i class="fa-solid fa-rotate" title="Wiederkehrend" style="margin-left: 6px; color: var(--text-secondary); font-size: 12px;"></i>'
+            : ''
+
+        return `
+            <tr>
+                <td>${formatDate(transaction.date)}</td>
+                <td>${transaction.category_name}${recurringIcon}</td>
+                <td>${transaction.description || '-'}</td>
+                <td style="color: ${amountColor}">${amountPrefix}${formatCurrency(transaction.amount)} €</td>
+                <td>
+                    <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 13px;" onclick="deleteTransaction(${transaction.id})">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `
+    }).join('')
+}
+
+// Datum im deutschen Format formatieren z.B. 05.07.2026
+function formatDate(dateString) {
+    const [year, month, day] = dateString.split('-')
+    return `${day}.${month}.${year}`
+}
+
+async function deleteTransaction(transactionId) {
+    const response = await fetch(`/transactions/${transactionId}`, {
+        method: 'DELETE'
+    })
+
+    if (response.ok) {
+        showToast('Buchung gelöscht!')
+        loadBudget()
+    } else {
+        showToast('Fehler beim Löschen!', 'error')
+    }
+}
+
 
 // Modal anzeigen
 function showAddTransaction() {
