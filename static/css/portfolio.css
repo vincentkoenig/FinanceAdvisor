@@ -51,51 +51,6 @@
     max-height: 170px;
 }
 
-.donut-container {
-    flex: 1;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-}
-
-.donut-container canvas {
-    max-width: 250px;
-    max-height: 250px;
-}
-
-.donut-chart-wrapper {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    position: relative;
-}
-
-.donut-center {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    text-align: center;
-}
-
-.donut-center p {
-    color: var(--text-secondary);
-    font-size: 13px;
-}
-
-.donut-center h3 {
-    color: var(--text-primary);
-    font-size: 18px;
-    font-weight: bold;
-}
-
 .chart-period-buttons {
     display: flex;
     gap: 8px;
