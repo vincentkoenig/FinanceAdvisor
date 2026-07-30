@@ -31,10 +31,80 @@
 
         <!-- Hauptbereich -->
         <div class="main-content">
-            <h2>Haushaltsbuch</h2>
-            <p>Kommt gleich...</p>
+            <div class="section-header">
+                <h2>Haushaltsbuch</h2>
+                <button class="btn-primary add-button" onclick="showAddTransaction()">+ Buchung hinzufügen</button>
+            </div>
+
+            <!-- Monats-Navigation -->
+            <div class="month-nav">
+                <button onclick="changeMonth(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+                <span id="current-month-label">Lädt...</span>
+                <button onclick="changeMonth(1)"><i class="fa-solid fa-chevron-right"></i></button>
+            </div>
+
+            <!-- Monatsübersicht Kennzahlen -->
+            <div class="budget-summary">
+                <div class="budget-summary-card">
+                    <p>Einnahmen</p>
+                    <h3 id="summary-income"><span class="spinner"></span></h3>
+                </div>
+                <div class="budget-summary-card">
+                    <p>Fixkosten</p>
+                    <h3 id="summary-fixed"><span class="spinner"></span></h3>
+                </div>
+                <div class="budget-summary-card">
+                    <p>Variable Ausgaben</p>
+                    <h3 id="summary-variable"><span class="spinner"></span></h3>
+                </div>
+                <div class="budget-summary-card">
+                    <p>Saldo</p>
+                    <h3 id="summary-balance"><span class="spinner"></span></h3>
+                </div>
+            </div>
         </div>
 
+    </div>
+
+    <!-- Modal: Buchung hinzufügen -->
+    <div id="add-transaction-modal" style="display:none;">
+        <div class="modal-overlay" onclick="hideAddTransaction()"></div>
+        <div class="modal">
+            <h3>Buchung hinzufügen</h3>
+
+            <label>Typ</label>
+            <select id="transaction-type" onchange="loadMainCategoryOptions()">
+                <option value="income">Einnahme</option>
+                <option value="fixed_expense">Fixkosten</option>
+                <option value="variable_expense">Variable Ausgabe</option>
+            </select>
+
+            <label>Hauptkategorie</label>
+            <select id="transaction-main-category" onchange="loadSubCategoryOptions()"></select>
+
+            <label>Unterkategorie</label>
+            <select id="transaction-sub-category"></select>
+
+            <input type="number" id="transaction-amount" placeholder="Betrag z.B. 850">
+
+            <label class="checkbox-label">
+                <input type="checkbox" id="transaction-recurring" onchange="toggleEndDateField()">
+                Wiederkehrend (z.B. monatliches Gehalt oder Miete)
+            </label>
+
+            <label id="transaction-date-label">Datum</label>
+            <input type="date" id="transaction-date">
+
+            <div id="end-date-field" style="display:none;">
+                <label>Endet am (optional, leer lassen = unbegrenzt)</label>
+                <input type="date" id="transaction-end-date">
+            </div>
+
+            <input type="text" id="transaction-description" placeholder="Beschreibung (optional)">
+
+            <button class="btn-primary" onclick="addTransaction()">Hinzufügen</button>
+            <button class="btn-secondary" onclick="hideAddTransaction()">Abbrechen</button>
+        </div>
     </div>
 
     <!-- FAB Button -->
