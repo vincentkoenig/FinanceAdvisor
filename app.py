@@ -722,6 +722,66 @@ def delete_asset_from_watchlist(user_id, asset_id):
     return jsonify({"message": "Watchlist successfully updated"}), 200
 
 
+# ─── HAUSHALTSBUCH: KATEGORIEN ENDPOINTS ──────────────────────────────────────
+
+@app.route('/users/<user_id>/categories', methods=['GET'])
+def get_categories(user_id):
+    """Alle Kategorien eines Nutzers abrufen, inkl. Haupt-/Unterkategorie-Zuordnung"""
+    categories = Category.query.filter_by(user_id=user_id).all()
+
+    result = []
+    for category in categories:
+        result.append({
+            "id": category.id,
+            "name": category.name,
+            "type": category.type,
+            "parent_id": category.parent_id
+        })
+
+    return jsonify(result), 200
+
+
+@app.route('/users/<user_id>/categories', methods=['POST'])
+def add_category(user_id):
+    """
+    Neue Kategorie anlegen.
+    parent_id ist optional - leer/None bedeutet Hauptkategorie.
+    """
+    data = request.json
+    name = data['name']
+    category_type = data['type']
+    parent_id = data.get('parent_id')  # optional, deshalb .get() statt ['parent_id']
+
+    new_category = Category(user_id=user_id, name=name, type=category_type, parent_id=parent_id)
+    db.session.add(new_category)
+    db.session.commit()
+
+    return jsonify({"message": "Category successfully added", "category_id": new_category.id}), 201
+
+
+@app.route('/categories/<category_id>', methods=['DELETE'])
+def delete_category(category_id):
+    """
+    Kategorie löschen.
+    Falls es eine Hauptkategorie mit Unterkategorien ist, werden diese
+    ebenfalls gelöscht, um verwaiste Unterkategorien zu vermeiden.
+    """
+    category = db.session.get(Category, category_id)
+
+    if not category:
+        return jsonify({"error": "Category not found"}), 404
+
+    # Zugehörige Unterkategorien mitlöschen
+    sub_categories = Category.query.filter_by(parent_id=category_id).all()
+    for sub_category in sub_categories:
+        db.session.delete(sub_category)
+
+    db.session.delete(category)
+    db.session.commit()
+
+    return jsonify({"message": "Category successfully deleted"}), 200
+
+
 # ─── CHAT ENDPOINTS ───────────────────────────────────────────────────────────
 
 @app.route('/chat', methods=['POST'])
