@@ -66,3 +66,108 @@ async function loadBudget() {
 
 // Beim Laden der Seite aufrufen
 loadBudget()
+
+
+// Globale Variable für alle Kategorien - einmal geladen, wird für die
+// verschachtelte Dropdown-Auswahl (Typ -> Hauptkategorie -> Unterkategorie) genutzt
+let allCategories = []
+
+async function loadCategories() {
+    const response = await fetch(`/users/${userId}/categories`)
+    allCategories = await response.json()
+}
+
+// Modal anzeigen
+function showAddTransaction() {
+    document.getElementById('add-transaction-modal').style.display = 'block'
+    loadMainCategoryOptions()
+}
+
+// Modal verstecken
+function hideAddTransaction() {
+    document.getElementById('add-transaction-modal').style.display = 'none'
+}
+
+// Hauptkategorien passend zum gewählten Typ ins Dropdown laden
+function loadMainCategoryOptions() {
+    const type = document.getElementById('transaction-type').value
+    const mainCategorySelect = document.getElementById('transaction-main-category')
+
+    // Nur Hauptkategorien (parent_id ist null) mit passendem Typ
+    const mainCategories = allCategories.filter(c => c.type === type && c.parent_id === null)
+
+    mainCategorySelect.innerHTML = mainCategories
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('')
+
+    // Direkt im Anschluss die passenden Unterkategorien laden
+    loadSubCategoryOptions()
+}
+
+// Unterkategorien passend zur gewählten Hauptkategorie ins Dropdown laden
+function loadSubCategoryOptions() {
+    const mainCategoryId = parseInt(document.getElementById('transaction-main-category').value)
+    const subCategorySelect = document.getElementById('transaction-sub-category')
+
+    const subCategories = allCategories.filter(c => c.parent_id === mainCategoryId)
+
+    subCategorySelect.innerHTML = subCategories
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('')
+}
+
+async function addTransaction() {
+    const categoryId = document.getElementById('transaction-sub-category').value
+    const amount = document.getElementById('transaction-amount').value
+    const date = document.getElementById('transaction-date').value
+    const description = document.getElementById('transaction-description').value
+    const isRecurring = document.getElementById('transaction-recurring').checked
+    const endDate = document.getElementById('transaction-end-date').value
+
+    // Betrag muss eine gültige, positive Zahl sein
+    if (amount === '' || isNaN(amount) || parseFloat(amount) <= 0) {
+        showToast('Bitte einen gültigen Betrag größer 0 angeben!', 'error')
+        return
+    }
+    if (!date) {
+        showToast('Bitte ein Datum angeben!', 'error')
+        return
+    }
+
+    const response = await fetch(`/users/${userId}/transactions`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            category_id: categoryId,
+            amount: amount,
+            date: date,
+            description: description,
+            is_recurring: isRecurring,
+            end_date: endDate || null
+        })
+    })
+
+    if (response.ok) {
+        showToast('Buchung hinzugefügt!')
+        hideAddTransaction()
+        loadBudget()
+    } else {
+        showToast('Fehler beim Hinzufügen der Buchung!', 'error')
+    }
+}
+
+
+// Enddatum-Feld ein-/ausblenden je nachdem ob "Wiederkehrend" angehakt ist,
+// und das Datum-Label entsprechend anpassen
+function toggleEndDateField() {
+    const isRecurring = document.getElementById('transaction-recurring').checked
+    const endDateField = document.getElementById('end-date-field')
+    const dateLabel = document.getElementById('transaction-date-label')
+
+    endDateField.style.display = isRecurring ? 'block' : 'none'
+    dateLabel.innerHTML = isRecurring ? 'Startdatum' : 'Datum'
+}
+
+
+// Kategorien beim Laden der Seite direkt mit abrufen
+loadCategories()
