@@ -1,0 +1,67 @@
+/* ─── HAUSHALTSBUCH ───────────────────────────────────────── */
+
+.month-nav {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.month-nav button {
+    background: none;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+.month-nav button:hover {
+    background-color: var(--bg-hover);
+}
+
+.month-nav span {
+    font-size: 16px;
+    font-weight: bold;
+    min-width: 160px;
+    text-align: center;
+}
+
+.budget-summary {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.budget-summary-card {
+    flex: 1;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.budget-summary-card p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.budget-summary-card h3 {
+    font-size: 24px;
+    color: var(--text-primary);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: auto;
+}
