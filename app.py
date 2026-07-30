@@ -68,6 +68,12 @@ def portfolio_page():
     return render_template('portfolio.html')
 
 
+@app.route('/budget-page')
+def budget_page():
+    """Haushaltsbuch Seite - Einnahmen und Ausgaben tracken"""
+    return render_template('budget.html')
+
+
 @app.route('/chat-page')
 def chat_page():
     """Chat Seite - KI Finanzberater"""
