@@ -65,3 +65,62 @@
 .checkbox-label input[type="checkbox"] {
     width: auto;
 }
+
+.budget-breakdown {
+    display: flex;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.budget-breakdown-column {
+    flex: 1;
+    background-color: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.budget-breakdown-column h3 {
+    font-size: 16px;
+    margin-bottom: 15px;
+    color: var(--text-primary);
+}
+
+.breakdown-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--bg-hover);
+}
+
+.breakdown-row:last-child {
+    border-bottom: none;
+}
+
+.breakdown-row-name {
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.breakdown-row-values {
+    text-align: right;
+}
+
+.breakdown-row-amount {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.breakdown-row-percent {
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+
+.breakdown-empty {
+    color: var(--text-secondary);
+    font-size: 14px;
+    text-align: center;
+    padding: 10px 0;
+}
