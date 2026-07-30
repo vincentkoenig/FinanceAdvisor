@@ -4,6 +4,10 @@ const userId = localStorage.getItem('user_id')
 // Aktuell angezeigter Monat - startet mit dem heutigen Monat
 let currentMonthDate = new Date()
 
+// Globale Variable für alle Kategorien - einmal geladen, wird für die
+// verschachtelte Dropdown-Auswahl (Typ -> Hauptkategorie -> Unterkategorie) genutzt
+let allCategories = []
+
 // Zahl im deutschen Format formatieren z.B. 1.234,50
 function formatCurrency(value) {
     return value.toLocaleString('de-DE', {
@@ -34,15 +38,23 @@ async function loadBudget() {
     // Aktuellen Monat anzeigen
     document.getElementById('current-month-label').innerHTML = getMonthLabel(currentMonthDate)
 
+    // Sicherstellen dass Kategorien bereits geladen sind, bevor wir sie nachschlagen
+    if (allCategories.length === 0) {
+        await loadCategories()
+    }
+
     // Transaktionen für den gewählten Monat holen
     const month = getMonthString(currentMonthDate)
     const response = await fetch(`/users/${userId}/transactions?month=${month}`)
     const transactions = await response.json()
 
-    // Nach Kategorie-Typ aufsummieren
+    // Nach Kategorie-Typ aufsummieren (Gesamtzahlen für die Kennzahlen oben)
     let totalIncome = 0
     let totalFixed = 0
     let totalVariable = 0
+
+    // Zusätzlich pro Hauptkategorie aufsummieren (für die Aufschlüsselung)
+    const mainCategoryTotals = {}  // z.B. { 6: 850 } - Hauptkategorie-ID -> Summe
 
     transactions.forEach(transaction => {
         if (transaction.category_type === 'income') {
@@ -51,6 +63,13 @@ async function loadBudget() {
             totalFixed += transaction.amount
         } else if (transaction.category_type === 'variable_expense') {
             totalVariable += transaction.amount
+        }
+
+        // Zur Hauptkategorie hochrechnen: Unterkategorie -> parent_id finden
+        const subCategory = allCategories.find(c => c.id === transaction.category_id)
+        if (subCategory) {
+            const mainCategoryId = subCategory.parent_id || subCategory.id
+            mainCategoryTotals[mainCategoryId] = (mainCategoryTotals[mainCategoryId] || 0) + transaction.amount
         }
     })
 
@@ -62,15 +81,45 @@ async function loadBudget() {
     document.getElementById('summary-fixed').innerHTML = `${formatCurrency(totalFixed)} €`
     document.getElementById('summary-variable').innerHTML = `${formatCurrency(totalVariable)} €`
     document.getElementById('summary-balance').innerHTML = `<span style="color: ${balanceColor}">${formatCurrency(balance)} €</span>`
+
+    // Aufschlüsselung nach Hauptkategorie für alle drei Blöcke rendern
+    renderBreakdown('breakdown-income', 'income', mainCategoryTotals, totalIncome)
+    renderBreakdown('breakdown-fixed', 'fixed_expense', mainCategoryTotals, totalFixed)
+    renderBreakdown('breakdown-variable', 'variable_expense', mainCategoryTotals, totalVariable)
+}
+
+// Rendert die Liste der Hauptkategorien mit Betrag und Prozentanteil
+// für einen der drei Blöcke (Einkommen/Fixkosten/Variable Ausgaben)
+function renderBreakdown(containerId, type, mainCategoryTotals, blockTotal) {
+    const container = document.getElementById(containerId)
+
+    // Alle Hauptkategorien dieses Typs, die tatsächlich Buchungen haben
+    const mainCategories = allCategories.filter(c => c.type === type && c.parent_id === null)
+
+    let html = ''
+    mainCategories.forEach(category => {
+        const amount = mainCategoryTotals[category.id]
+        if (!amount) return  // Kategorien ohne Buchungen in diesem Monat überspringen
+
+        const percent = blockTotal > 0 ? ((amount / blockTotal) * 100).toFixed(1) : 0
+
+        html += `
+            <div class="breakdown-row">
+                <span class="breakdown-row-name">${category.name}</span>
+                <div class="breakdown-row-values">
+                    <div class="breakdown-row-amount">${formatCurrency(amount)} €</div>
+                    <div class="breakdown-row-percent">${percent}%</div>
+                </div>
+            </div>
+        `
+    })
+
+    container.innerHTML = html || '<div class="breakdown-empty">Keine Buchungen</div>'
 }
 
 // Beim Laden der Seite aufrufen
 loadBudget()
 
-
-// Globale Variable für alle Kategorien - einmal geladen, wird für die
-// verschachtelte Dropdown-Auswahl (Typ -> Hauptkategorie -> Unterkategorie) genutzt
-let allCategories = []
 
 async function loadCategories() {
     const response = await fetch(`/users/${userId}/categories`)
