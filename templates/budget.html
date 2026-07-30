@@ -63,20 +63,37 @@
                 </div>
             </div>
 
-            <!-- Kategorien-Aufschlüsselung -->
-            <div class="budget-breakdown">
-                <div class="budget-breakdown-column">
-                    <h3>Einkommen</h3>
-                    <div id="breakdown-income"></div>
+            <!-- Kategorien-Aufschlüsselung + Donut Chart -->
+            <div class="budget-bottom">
+
+                <!-- Links: Kategorien-Aufschlüsselung -->
+                <div class="budget-breakdown">
+                    <div class="budget-breakdown-column">
+                        <h3>Einkommen</h3>
+                        <div id="breakdown-income"></div>
+                    </div>
+                    <div class="budget-breakdown-column">
+                        <h3>Fixkosten</h3>
+                        <div id="breakdown-fixed"></div>
+                    </div>
+                    <div class="budget-breakdown-column">
+                        <h3>Variable Ausgaben</h3>
+                        <div id="breakdown-variable"></div>
+                    </div>
                 </div>
-                <div class="budget-breakdown-column">
-                    <h3>Fixkosten</h3>
-                    <div id="breakdown-fixed"></div>
+
+                <!-- Rechts: Donut Diagramm Ausgaben -->
+                <div class="donut-container">
+                    <h3>Ausgaben nach Kategorie</h3>
+                    <div class="donut-chart-wrapper">
+                        <canvas id="expenseDonutChart"></canvas>
+                        <div class="donut-center">
+                            <p>Gesamtausgaben</p>
+                            <h3 id="donut-expense-value"><span class="spinner"></span></h3>
+                        </div>
+                    </div>
                 </div>
-                <div class="budget-breakdown-column">
-                    <h3>Variable Ausgaben</h3>
-                    <div id="breakdown-variable"></div>
-                </div>
+
             </div>
         </div>
 
@@ -142,6 +159,7 @@
     </div>
 
     <script src="/static/js/toast.js"></script>
+    <script src="/static/js/utils.js"></script>
     <script src="/static/js/budget.js"></script>
     <script src="/static/js/logout.js"></script>
     <script src="/static/js/widget.js"></script>
