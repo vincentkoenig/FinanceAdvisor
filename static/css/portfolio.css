@@ -74,8 +74,3 @@
     color: var(--text-primary);
     background-color: var(--bg-hover);
 }
-
-.positions-container {
-    border-radius: 10px;
-    padding: 20px;
-}
