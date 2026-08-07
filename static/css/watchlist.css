@@ -9,10 +9,10 @@
 
 .watchlist-add input {
     flex: 1;
-    background-color: rgba(22, 27, 34, 0.4);
+    background-color: var(--glass-input-bg);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid var(--glass-border);
     color: var(--text-primary);
     padding: 12px 18px;
     border-radius: 10px;
@@ -21,7 +21,7 @@
 }
 
 .watchlist-add input:focus {
-    border-color: rgba(88, 166, 255, 0.5);
+    border-color: var(--glass-accent-border-hover);
 }
 
 .watchlist-add button {
