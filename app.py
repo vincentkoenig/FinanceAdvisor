@@ -1053,31 +1053,39 @@ def chat():
         tools=tools
     )
 
-    # Prüfen ob das LLM ein Tool aufrufen will
+    # Prüfen ob das LLM ein oder mehrere Tools aufrufen will
     if response.choices[0].message.tool_calls:
-        tool_call = response.choices[0].message.tool_calls[0]
-        function_name = tool_call.function.name
-        function_args = json.loads(tool_call.function.arguments)
-
-        # Richtige Funktion aufrufen basierend auf function_name
-        if function_name == "get_crypto_price":
-            result = get_crypto_price(function_args['coin_id'])
-        elif function_name == "get_stock_price":
-            result = get_stock_price(function_args['symbol'])
-        elif function_name == "get_metal_price":
-            result = get_metal_price(function_args['symbol'])
-        elif function_name == "search_web":
-            result = search_web(function_args['query'])
-
-        # Ergebnis zurück ans LLM schicken für finale Antwort
+        # Assistant-Nachricht mit allen Tool-Calls zur History hinzufügen -
+        # muss vor den einzelnen Tool-Antworten stehen
         messages.append(response.choices[0].message)
-        messages.append({
-            "role": "tool",
-            "tool_call_id": tool_call.id,
-            "content": str(result)
-        })
 
-        # Zweiter API Call - LLM formuliert finale Antwort mit Tool-Ergebnis
+        # Für JEDEN angeforderten Tool-Call eine passende Antwort erzeugen -
+        # OpenAI verlangt zwingend eine Antwort pro tool_call_id, sonst
+        # schlägt der nächste API-Call mit einem BadRequestError fehl
+        for tool_call in response.choices[0].message.tool_calls:
+            function_name = tool_call.function.name
+            function_args = json.loads(tool_call.function.arguments)
+
+            # Richtige Funktion aufrufen basierend auf function_name
+            if function_name == "get_crypto_price":
+                result = get_crypto_price(function_args['coin_id'])
+            elif function_name == "get_stock_price":
+                result = get_stock_price(function_args['symbol'])
+            elif function_name == "get_metal_price":
+                result = get_metal_price(function_args['symbol'])
+            elif function_name == "search_web":
+                result = search_web(function_args['query'])
+            else:
+                result = None
+
+            # Ergebnis dieses einzelnen Tool-Calls zurück ans LLM schicken
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": str(result)
+            })
+
+        # Zweiter API Call - LLM formuliert finale Antwort mit allen Tool-Ergebnissen
         second_response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
