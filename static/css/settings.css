@@ -17,8 +17,8 @@
 
 .settings-card select,
 .settings-card input {
-    background-color: rgba(13, 17, 23, 0.5);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: var(--glass-input-bg);
+    border: 1px solid var(--glass-border);
     color: var(--text-primary);
     padding: 10px 14px;
     border-radius: 8px;
