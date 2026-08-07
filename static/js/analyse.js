@@ -5,7 +5,7 @@ async function analysePortfolio() {
     // Spinner anzeigen während die Analyse läuft
     const result = document.getElementById('analyse-result')
     result.innerHTML = `
-        <div class="analyse-card" style="align-items: center; flex-direction: row; justify-content: center; gap: 15px;">
+        <div class="analyse-card glass-card" style="align-items: center; flex-direction: row; justify-content: center; gap: 15px;">
             <span class="spinner"></span>
             <p style="margin: 0;">Analyse wird erstellt...</p>
         </div>
@@ -30,7 +30,7 @@ async function analysePortfolio() {
 
     // Ergebnis anzeigen
     result.innerHTML = `
-        <div class="analyse-card">
+        <div class="analyse-card glass-card">
             <h3>Gesamtwert: ${data.total_value} ${data.currency}</h3>
             <p>${data.summary}</p>
             <h4>Risikobewertung:</h4>
@@ -57,7 +57,7 @@ async function loadPreviousAnalyses() {
 
     data.forEach(analysis => {
         analysesList.innerHTML += `
-            <div class="analysis-item" onclick="showAnalysis(${analysis.id})">
+            <div class="analysis-item glass-card" onclick="showAnalysis(${analysis.id})">
                 <div class="analysis-item-header">
                     <span>${analysis.created_at}</span>
                     <span>${analysis.total_value.toLocaleString('de-DE', {minimumFractionDigits: 2})} €</span>
@@ -76,7 +76,7 @@ async function showAnalysis(analysisId) {
 
     const result = document.getElementById('analyse-result')
     result.innerHTML = `
-        <div class="analyse-card">
+        <div class="analyse-card glass-card">
             <h3>Gesamtwert: ${analysis.total_value.toLocaleString('de-DE', {minimumFractionDigits: 2})} €</h3>
             <p>${analysis.summary}</p>
             <h4>Risikobewertung:</h4>
