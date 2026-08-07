@@ -1,8 +1,6 @@
 /* ─── EINSTELLUNGEN ───────────────────────────────────────── */
 
 .settings-card {
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
     border-radius: 10px;
     padding: 20px;
     margin-top: 20px;
@@ -19,8 +17,8 @@
 
 .settings-card select,
 .settings-card input {
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
+    background-color: rgba(13, 17, 23, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
     padding: 10px 14px;
     border-radius: 8px;
