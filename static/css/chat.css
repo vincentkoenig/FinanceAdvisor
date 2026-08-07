@@ -18,8 +18,10 @@
 
 .chat-input-container input {
     flex: 1;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
+    background-color: rgba(22, 27, 34, 0.4);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     color: var(--text-primary);
     padding: 12px 18px;
     border-radius: 25px;
@@ -28,13 +30,16 @@
 }
 
 .chat-input-container input:focus {
-    border-color: var(--text-primary);
+    border-color: rgba(88, 166, 255, 0.5);
 }
 
 .chat-input-container button {
-    background-color: var(--bg-hover);
+    background-color: rgba(88, 166, 255, 0.22);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     color: var(--text-primary);
-    border: none;
+    border: 1px solid rgba(88, 166, 255, 0.45);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
     padding: 12px 20px;
     border-radius: 25px;
     cursor: pointer;
@@ -42,7 +47,8 @@
 }
 
 .chat-input-container button:hover {
-    background-color: var(--border-color);
+    background-color: rgba(88, 166, 255, 0.32);
+    border-color: rgba(88, 166, 255, 0.6);
 }
 
 .message {
@@ -52,11 +58,13 @@
 }
 
 .user-message {
-    background-color: transparent;
+    background-color: rgba(22, 27, 34, 0.35);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
     color: var(--text-primary);
     align-self: flex-end;
     max-width: 60%;
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 25px;
     padding: 12px 18px;
 }
@@ -112,84 +120,4 @@
 
 .assistant-message tr:nth-child(even) {
     background-color: var(--bg-secondary) !important;
-}
-
-/* ─── CHAT WIDGET ─────────────────────────────────────────── */
-
-.chat-widget {
-    position: fixed;
-    bottom: 90px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 600px;
-    height: 450px;
-    background-color: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    z-index: 200;
-}
-
-.chat-widget-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    border-bottom: 1px solid var(--border-color);
-    font-weight: bold;
-}
-
-.chat-widget-header button {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 16px;
-}
-
-.chat-widget-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.chat-widget-input {
-    display: flex;
-    gap: 10px;
-    padding: 15px;
-    border-top: 1px solid var(--border-color);
-}
-
-.chat-widget-input input {
-    flex: 1;
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-color);
-    color: var(--text-primary);
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 14px;
-    outline: none;
-}
-
-.chat-widget-input button {
-    background-color: var(--accent-green);
-    color: white;
-    border: none;
-    padding: 10px 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-}
-
-.chat-widget-messages .assistant-message {
-    max-width: 100%;
-}
-
-.chat-widget-messages .user-message {
-    max-width: 60%;
 }
