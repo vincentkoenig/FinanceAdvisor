@@ -27,3 +27,13 @@
     margin-top: 6px !important;
     font-size: 13px !important;
 }
+
+@media (max-width: 768px) {
+    .home-overview {
+        flex-direction: column;
+    }
+
+    .home-overview-card h3 {
+        font-size: 24px;
+    }
+}
