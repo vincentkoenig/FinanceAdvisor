@@ -20,6 +20,7 @@ from models import (db, User, Asset, UserAsset, PriceHistory,
                     Category, Transaction)
 from scheduler import start_scheduler
 from tools import tools
+from budget_logic import calculate_budget_summary
 
 
 # ─── KONFIGURATION ────────────────────────────────────────────────────────────
@@ -788,6 +789,22 @@ def delete_category(category_id):
     return jsonify({"message": "Category successfully deleted"}), 200
 
 
+@app.route('/users/<user_id>/categories/init-defaults', methods=['POST'])
+def init_default_categories(user_id):
+    """
+    Legt nachträglich Standardkategorien für einen bestehenden Nutzer an,
+    falls er noch keine hat. Nötig für Nutzer die vor Einführung der
+    automatischen Kategorien-Erstellung bei der Registrierung angelegt wurden.
+    """
+    existing_count = Category.query.filter_by(user_id=user_id).count()
+
+    if existing_count > 0:
+        return jsonify({"message": "Categories already exist, nothing to do"}), 200
+
+    create_default_categories(user_id)
+
+    return jsonify({"message": "Default categories created"}), 201
+
 # ─── HAUSHALTSBUCH: TRANSAKTIONEN ENDPOINTS ───────────────────────────────────
 
 @app.route('/users/<user_id>/transactions', methods=['GET'])
@@ -897,75 +914,11 @@ def delete_transaction(transaction_id):
 def get_budget_summary(user_id):
     """
     Gesamtübersicht über das Haushaltsbuch eines Nutzers.
-    Berechnet den kumulierten Cash-Saldo über alle Monate seit der
-    ersten Buchung des Nutzers, sowie den Saldo des aktuellen Monats
-    separat. Wiederkehrende Buchungen werden dabei für jeden Monat
-    mitgezählt, in dem sie aktiv waren.
+    Nutzt die gemeinsame Berechnungslogik aus budget_logic.py,
+    die auch vom MCP-Server verwendet wird.
     """
-    # Früheste Buchung des Nutzers finden - Startpunkt der Kumulierung
-    first_transaction = Transaction.query.filter_by(user_id=user_id) \
-        .order_by(Transaction.date.asc()).first()
-
-    if not first_transaction:
-        return jsonify({"cumulative_balance": 0, "current_month_balance": 0}), 200
-
-    # Alle Buchungen des Nutzers auf einmal holen, statt pro Monat einzeln
-    # abzufragen - spart wiederholte Datenbank-Zugriffe
-    one_time_transactions = Transaction.query.filter_by(user_id=user_id, is_recurring=False).all()
-    recurring_transactions = Transaction.query.filter_by(user_id=user_id, is_recurring=True).all()
-
-    cumulative_balance = 0
-    current_month_balance = 0
-
-    today = datetime.now()
-    current_month_start = datetime(today.year, today.month, 1)
-
-    # Monatsweise von der ersten Buchung bis heute durchgehen
-    year = first_transaction.date.year
-    month = first_transaction.date.month
-
-    while datetime(year, month, 1) <= today:
-        month_start = datetime(year, month, 1)
-        month_end = datetime(year + 1, 1, 1) if month == 12 else datetime(year, month + 1, 1)
-
-        month_total = 0
-
-        # Einmalige Buchungen die genau in diesen Monat fallen
-        for transaction in one_time_transactions:
-            if month_start <= transaction.date < month_end:
-                sign = 1 if _is_income(transaction) else -1
-                month_total += sign * transaction.amount
-
-        # Wiederkehrende Buchungen deren Zeitraum diesen Monat abdeckt
-        for transaction in recurring_transactions:
-            starts_before_month_end = transaction.date < month_end
-            no_end_or_ends_after_month_start = transaction.end_date is None or transaction.end_date >= month_start
-            if starts_before_month_end and no_end_or_ends_after_month_start:
-                sign = 1 if _is_income(transaction) else -1
-                month_total += sign * transaction.amount
-
-        cumulative_balance += month_total
-
-        if month_start == current_month_start:
-            current_month_balance = month_total
-
-        # Zum nächsten Monat weiterspringen
-        if month == 12:
-            year += 1
-            month = 1
-        else:
-            month += 1
-
-    return jsonify({
-        "cumulative_balance": round(cumulative_balance, 2),
-        "current_month_balance": round(current_month_balance, 2)
-    }), 200
-
-
-def _is_income(transaction):
-    """Hilfsfunktion: prüft ob eine Transaktion eine Einnahme ist, über ihre Kategorie"""
-    category = db.session.get(Category, transaction.category_id)
-    return category is not None and category.type == 'income'
+    summary = calculate_budget_summary(user_id)
+    return jsonify(summary), 200
 
 # ─── CHAT ENDPOINTS ───────────────────────────────────────────────────────────
 
