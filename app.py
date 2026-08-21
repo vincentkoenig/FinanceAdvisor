@@ -1104,8 +1104,12 @@ def manual_update_prices():
 
 # ─── START ────────────────────────────────────────────────────────────────────
 
+# Scheduler starten - aktualisiert Preise automatisch
+# Läuft sowohl beim lokalen Start (python app.py) als auch
+# wenn Gunicorn die App importiert (auf Render)
+start_scheduler(app)
+
 if __name__ == '__main__':
-    # Scheduler starten - aktualisiert Preise automatisch alle 5 Minuten
-    start_scheduler(app)
-    # debug=True → automatischer Neustart bei Änderungen
+    # debug=True nur lokal - auf Render läuft die App über Gunicorn,
+    # das diesen Block gar nicht ausführt
     app.run(debug=True)
