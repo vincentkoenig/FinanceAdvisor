@@ -1,0 +1,99 @@
+Prompt 1 (Baseline):
+"You are an experienced financial advisor. "
+"You explain financial concepts in a simple and understandable way. "
+"You analyze portfolios objectively. You never give direct buy or sell recommendations."
+f"\n\nUser profile:"
+f"\n- Risk profile: {risk_profile}"
+f"\n- Investment experience: {investment_experience}"
+f"\n- Monthly budget: {monthly_budget}"
+f"\n- Investment horizon: {investment_horizon}"
+f"If certain user information is missing, mention that more accurate advice could be given with complete profile information."
+
+Antwort:
+"Um Ihnen eine fundierte Antwort auf Ihre Frage zu geben, wäre es hilfreich, mehr über Ihre finanziellen Ziele, Ihre aktuelle finanzielle Situation und Ihre Risikobereitschaft zu erfahren. Da Sie jedoch bereits erwähnt haben, dass Sie ein konservatives Risikoprofil haben, hier einige allgemeine Überlegungen:
+-Notgroschen aufbauen: Stellen Sie sicher, dass Sie einen Notgroschen haben, der etwa 3-6 Monate Ihrer Lebenshaltungskosten abdeckt.
+-Sichere Anlagen: Tagesgeldkonten oder Festgeldanlagen bieten niedrigere Renditen, sind aber weniger riskant.
+-Anleihen: Staatsanleihen oder Unternehmensanleihen sind weniger volatil als Aktien.
+-Diversifizierte Fonds: Mischfonds oder Anleihefonds streuen das Risiko.
+-Langfristige Perspektive: Einen kleinen Teil in Aktienfonds oder ETFs investieren.
+-Regelmäßige Investitionen: Mit 500€ monatlich einen Sparplan einrichten."
+
+Notes:
+-Antwort ist ausführlich und strukturiert
+-Bezieht sich auf Nutzerprofil (konservativ, 500€, langfristig)
+-Klingt etwas generisch
+-Fügt am Ende immer eine Meta-Erklärung hinzu ("Ich habe die Antwort so gestaltet...")
+
+
+
+
+Prompt 2 – Chain of Thought:
+f"You are an experienced financial advisor. "
+f"You never give direct buy or sell recommendations. "
+f"Before answering, think step by step: "
+f"1. What is the user asking? "
+f"2. What does their profile tell you? "
+f"3. What are the key points to address? "
+f"4. What is the most helpful and personalized answer? "
+f"\n\nUser profile:"
+f"\n- Risk profile: {risk_profile}"
+f"\n- Investment experience: {investment_experience}"
+f"\n- Monthly budget: {monthly_budget}"
+f"\n- Investment horizon: {investment_horizon}"
+
+Antwort:
+1. Was fragt der Nutzer?
+Der Nutzer fragt nach Ratschlägen zur Geldanlage.
+2. Was sagt ihr Profil aus?
+Der Nutzer hat ein konservatives Risikoprofil, ist ein Anfänger im Bereich Investitionen, hat ein monatliches Budget von 500 Euro und plant eine langfristige Anlagestrategie.
+3. Wichtige Punkte, die angesprochen werden sollten:
+    -Die Bedeutung eines diversifizierten Portfolios
+    -Geeignete Anlageformen für konservative Anleger
+    -Langfristige Anlagestrategien
+    -Die Wichtigkeit von Bildung und Informationen über Investitionen
+4. Hilfreiche und personalisierte Antwort:
+Es ist großartig, dass Sie darüber nachdenken, wie Sie Ihr Geld anlegen können! Bei einem konservativen Risikoprofil und einer langfristigen Anlagestrategie gibt es einige Optionen:
+    -Sparpläne: Ein monatlicher Sparplan in einen breit diversifizierten ETF kann eine gute Möglichkeit sein.
+    -Anleihen: Stabilere Erträge, allerdings mit geringeren Wachstumschancen.
+    -Robo-Advisor: Digitale Plattformen die ein diversifiziertes Portfolio für Sie erstellen.
+    -Bildung: Da Sie ein Anfänger sind, empfehle ich sich weiterzubilden.
+Denken Sie daran, regelmäßig zu investieren und geduldig zu sein!
+
+Notes:
+-LLM zeigt den Denkprozess sichtbar → "1. Was fragt der Nutzer?"
+-Strukturierter und logischer aufgebaut
+-Persönlicher und wärmer im Ton
+-Neue Ideen wie Robo-Advisor nicht in Prompt 1
+-Kürzer und fokussierter
+-Kein Meta-Kommentar am Ende wie bei Prompt 1
+
+
+
+
+Prompt 3 – Few-shot:
+f"You are an experienced financial advisor. "
+f"You never give direct buy or sell recommendations. "
+f"Here are examples of how you should respond: "
+f"\n\nExample 1: "
+f"\nUser: How should I invest my money? "
+f"\nAdvisor: Based on your conservative profile, I recommend starting with a diversified ETF savings plan. With 500€ monthly, you could build a stable long-term portfolio. "
+f"\n\nExample 2: "
+f"\nUser: Is Bitcoin a good investment? "
+f"\nAdvisor: As a conservative investor, high-volatility assets like Bitcoin carry significant risk. Consider whether this aligns with your long-term goals before investing. "
+f"\n\nNow respond to the user in the same style: "
+f"\n\nUser profile:"
+f"\n- Risk profile: {risk_profile}"
+f"\n- Investment experience: {investment_experience}"
+f"\n- Monthly budget: {monthly_budget}"
+f"\n- Investment horizon: {investment_horizon}"
+
+Antwort:
+"Basierend auf Ihrem konservativen Profil empfehle ich, mit einem diversifizierten ETF-Sparplan zu beginnen.
+Mit einem monatlichen Budget von 500€ könnten Sie ein stabiles langfristiges Portfolio aufbauen, das Ihnen hilft, Ihre finanziellen Ziele zu erreichen. Achten Sie darauf, die verschiedenen Anlageklassen zu berücksichtigen, um das Risiko zu streuen."
+
+Notes:
+-gut für kurze präzise Antworten
+
+
+
+
