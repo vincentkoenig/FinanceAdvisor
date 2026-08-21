@@ -10,8 +10,9 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
 from flask import Flask
-from models import db, User, Asset, UserAsset
+from models import db, User, Asset, UserAsset, Category, Transaction
 from budget_logic import calculate_budget_summary
+from datetime import datetime
 
 # Absoluter Pfad zur Datenbank-Datei, damit es unabhängig vom
 # Arbeitsverzeichnis funktioniert
@@ -86,6 +87,69 @@ def get_budget_status() -> str:
             f"Kumulierter Cash-Bestand seit Beginn: {summary['cumulative_balance']} €"
         )
 
+
+@mcp.tool()
+def add_transaction(category_name: str, amount: float, description: str = "", date: str = "") -> str:
+    """
+    Legt eine neue, einmalige Buchung (Einnahme oder Ausgabe) im
+    Haushaltsbuch an. category_name wird gegen die vorhandenen
+    Kategorien des Nutzers abgeglichen (z.B. "Lebensmittel", "Gehalt").
+    date im Format YYYY-MM-DD, wird bei leerem Wert auf heute gesetzt.
+    Für wiederkehrende Buchungen bitte das Web-Frontend nutzen.
+    """
+    with db_app.app_context():
+        # Kategorie anhand des Namens suchen - Groß-/Kleinschreibung
+        # wird dabei ignoriert, damit "lebensmittel" auch "Lebensmittel" trifft
+        category = Category.query.filter_by(user_id=DEFAULT_USER_ID) \
+            .filter(db.func.lower(Category.name) == category_name.lower()) \
+            .first()
+
+        if not category:
+            # Verfügbare Kategorien auflisten, damit Claude einen
+            # passenden Vorschlag machen kann, statt einfach zu scheitern
+            available = Category.query.filter_by(user_id=DEFAULT_USER_ID).all()
+            names = ", ".join(c.name for c in available)
+            return (
+                f"Keine Kategorie namens '{category_name}' gefunden. "
+                f"Verfügbare Kategorien: {names}"
+            )
+
+        # Nur Unterkategorien dürfen Buchungen bekommen, keine
+        # Hauptkategorien (parent_id ist dann None) - analog zum Frontend
+        if category.parent_id is None:
+            return (
+                f"'{category_name}' ist eine Hauptkategorie, keine Unterkategorie. "
+                f"Bitte eine konkrete Unterkategorie angeben, z.B. 'Lebensmittel' statt 'Lebenshaltung'."
+            )
+
+        if amount <= 0:
+            return "Der Betrag muss größer als 0 sein."
+
+        # Datum parsen, bei leerem Wert oder Fehler heutiges Datum nutzen
+        if date:
+            try:
+                transaction_date = datetime.strptime(date, '%Y-%m-%d')
+            except ValueError:
+                return f"Ungültiges Datumsformat '{date}'. Bitte YYYY-MM-DD verwenden, z.B. 2026-08-20."
+        else:
+            transaction_date = datetime.now()
+
+        new_transaction = Transaction(
+            user_id=DEFAULT_USER_ID,
+            category_id=category.id,
+            amount=amount,
+            description=description if description else None,
+            date=transaction_date,
+            is_recurring=False
+        )
+        db.session.add(new_transaction)
+        db.session.commit()
+
+        type_label = "Einnahme" if category.type == "income" else "Ausgabe"
+        return (
+            f"{type_label} erfolgreich eingetragen: {amount} € "
+            f"unter '{category.name}' am {transaction_date.strftime('%d.%m.%Y')}."
+        )
 
 if __name__ == "__main__":
     mcp.run()
