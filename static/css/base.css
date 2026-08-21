@@ -218,6 +218,64 @@ body {
     color: var(--text-primary);
 }
 
+/* ─── MOBILE BOTTOM NAVIGATION ─────────────────────────────── */
+/* Nur sichtbar unter 768px - ersetzt die Desktop-Sidebar */
+
+.bottom-nav {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    /* Desktop-Sidebar auf Mobile komplett ausblenden */
+    .sidebar {
+        display: none;
+    }
+
+    /* Mobile Bottom Nav einblenden */
+    .bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        width: 100%;
+        justify-content: space-around;
+        align-items: center;
+        background-color: var(--glass-bg-strong);
+        backdrop-filter: blur(24px) saturate(200%);
+        -webkit-backdrop-filter: blur(24px) saturate(200%);
+        border-top: 1px solid var(--glass-border);
+        box-shadow: inset 0 1px 0 var(--glass-highlight);
+        padding: 10px 0;
+        z-index: 150;
+    }
+
+    .bottom-nav a,
+    .bottom-nav button {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        color: var(--text-secondary);
+        text-decoration: none;
+        font-size: 10px;
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px 8px;
+    }
+
+    .bottom-nav a i,
+    .bottom-nav button i {
+        font-size: 18px;
+    }
+
+    .bottom-nav a.active,
+    .bottom-nav a:hover,
+    .bottom-nav button:hover {
+        color: var(--text-primary);
+    }
+}
+
 /* ─── TABELLE ─────────────────────────────────────────────── */
 
 .portfolio-table {
