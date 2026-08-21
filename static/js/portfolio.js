@@ -122,10 +122,10 @@ function renderTable(assets) {
 
         tableBody.innerHTML += `
             <tr onclick="showAssetDetail(${asset.asset_id}, '${asset.name}')" style="cursor: pointer;">
-                <td><strong>${asset.name}</strong><br><small>${asset.quantity}x</small></td>
-                <td>${formatCurrency(kaufpreisGesamt)} €<br><small>${formatCurrency(asset.avg_buy_price)} €</small></td>
-                <td>${formatCurrency(positionGesamt)} €<br><small>${formatCurrency(asset.current_price)} €</small></td>
-                <td style="color: ${rowPlColor}">${formatCurrency(plEur)} €<br><small>${plProzent}%</small></td>
+                <td data-label="Titel"><strong>${asset.name}</strong><br><small>${asset.quantity}x</small></td>
+                <td data-label="Kaufpreis">${formatCurrency(kaufpreisGesamt)} €<br><small>${formatCurrency(asset.avg_buy_price)} €</small></td>
+                <td data-label="Position">${formatCurrency(positionGesamt)} €<br><small>${formatCurrency(asset.current_price)} €</small></td>
+                <td data-label="P/L" style="color: ${rowPlColor}">${formatCurrency(plEur)} €<br><small>${plProzent}%</small></td>
             </tr>
         `
     })

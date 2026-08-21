@@ -337,7 +337,54 @@ body {
     .bottom-nav button:hover {
         color: var(--text-primary);
     }
+
+    /* Tabellen auf Mobile als Karten statt starrer Spalten anzeigen */
+    .portfolio-table thead {
+        display: none;
+    }
+
+    .portfolio-table,
+    .portfolio-table tbody,
+    .portfolio-table tfoot,
+    .portfolio-table tr,
+    .portfolio-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .portfolio-table tr {
+        margin-bottom: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--glass-border);
+    }
+
+    .portfolio-table tr:last-child {
+        border-bottom: none;
+    }
+
+    .portfolio-table td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        border: none !important;
+    }
+
+    .portfolio-table td::before {
+        content: attr(data-label);
+        color: var(--text-secondary);
+        font-size: 13px;
+        font-weight: normal;
+        flex-shrink: 0;
+        margin-right: 12px;
+    }
+
+    .portfolio-table td[data-label="Titel"]::before,
+    .portfolio-table td[data-label="Gesamt"]::before {
+        display: none;
+    }
 }
+
 
 /* ─── TABELLE ─────────────────────────────────────────────── */
 
