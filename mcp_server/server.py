@@ -14,7 +14,7 @@ from models import db, User, Asset, UserAsset
 
 # Absoluter Pfad zur Datenbank-Datei, damit es unabhängig vom
 # Arbeitsverzeichnis funktioniert
-DB_PATH = os.path.join(PROJECT_ROOT, 'finance_advisor.db')
+DB_PATH = os.path.join(PROJECT_ROOT, 'instance', 'finance_advisor.db')
 
 db_app = Flask(__name__)
 db_app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
