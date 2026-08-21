@@ -74,3 +74,18 @@
     color: var(--text-primary);
     background-color: var(--bg-hover);
 }
+
+
+@media (max-width: 768px) {
+    .dashboard-top {
+        flex-direction: column;
+    }
+
+    #total-value {
+        font-size: 26px;
+    }
+
+    .chart-period-buttons {
+        flex-wrap: wrap;
+    }
+}
