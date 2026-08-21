@@ -37,8 +37,18 @@ MAX_CHAT_HISTORY = 20
 # Flask App erstellen
 app = Flask(__name__)
 
-# Datenbank konfigurieren - Pfad zur SQLite Datei
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///finance_advisor.db'
+# Datenbank konfigurieren - nutzt Postgres auf Render (über DATABASE_URL),
+# fällt lokal automatisch auf SQLite zurück, falls DATABASE_URL nicht gesetzt ist
+database_url = os.getenv('DATABASE_URL')
+
+if database_url:
+    # Render liefert die URL im Format 'postgres://...', SQLAlchemy braucht
+    # aber 'postgresql://...' - deshalb hier korrigieren
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///finance_advisor.db'
 
 # SQLAlchemy mit der Flask App verbinden
 db.init_app(app)
