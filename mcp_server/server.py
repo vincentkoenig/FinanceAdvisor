@@ -11,6 +11,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from flask import Flask
 from models import db, User, Asset, UserAsset
+from budget_logic import calculate_budget_summary
 
 # Absoluter Pfad zur Datenbank-Datei, damit es unabhängig vom
 # Arbeitsverzeichnis funktioniert
@@ -63,6 +64,27 @@ def get_portfolio_summary() -> str:
             )
 
         return "\n".join(lines)
+
+
+@mcp.tool()
+def get_budget_status() -> str:
+    """
+    Gibt eine Übersicht über den aktuellen Haushaltsbuch-Status zurück -
+    Einnahmen, Fixkosten, Variable Ausgaben und Saldo des laufenden
+    Monats, sowie den kumulierten Cash-Bestand seit Beginn der Buchungen.
+    Nutzt dieselbe Berechnungslogik wie die Budget-Seite der Web-App.
+    """
+    with db_app.app_context():
+        summary = calculate_budget_summary(DEFAULT_USER_ID)
+
+        return (
+            f"Haushaltsbuch-Status für den aktuellen Monat:\n"
+            f"- Einnahmen: {summary['current_month_income']} €\n"
+            f"- Fixkosten: {summary['current_month_fixed']} €\n"
+            f"- Variable Ausgaben: {summary['current_month_variable']} €\n"
+            f"- Saldo diesen Monat: {summary['current_month_balance']} €\n\n"
+            f"Kumulierter Cash-Bestand seit Beginn: {summary['cumulative_balance']} €"
+        )
 
 
 if __name__ == "__main__":
