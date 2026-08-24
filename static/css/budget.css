@@ -126,3 +126,27 @@
     text-align: center;
     padding: 10px 0;
 }
+
+
+@media (max-width: 768px) {
+    .budget-summary {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .budget-summary-card h3 {
+        font-size: 20px;
+    }
+
+    .budget-bottom {
+        flex-direction: column;
+    }
+
+    .budget-breakdown {
+        flex-direction: column;
+    }
+
+    .month-nav {
+        justify-content: center;
+    }
+}

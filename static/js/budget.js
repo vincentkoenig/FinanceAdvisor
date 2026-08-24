@@ -198,11 +198,11 @@ function renderTransactionsList(transactions) {
 
         return `
             <tr>
-                <td>${formatDate(transaction.date)}</td>
-                <td>${transaction.category_name}${recurringIcon}</td>
-                <td>${transaction.description || '-'}</td>
-                <td style="color: ${amountColor}">${amountPrefix}${formatCurrency(transaction.amount)} €</td>
-                <td>
+                <td data-label="Datum">${formatDate(transaction.date)}</td>
+                <td data-label="Kategorie">${transaction.category_name}${recurringIcon}</td>
+                <td data-label="Beschreibung">${transaction.description || '-'}</td>
+                <td data-label="Betrag" style="color: ${amountColor}">${amountPrefix}${formatCurrency(transaction.amount)} €</td>
+                <td data-label="">
                     <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 13px;" onclick="deleteTransaction(${transaction.id})">
                         <i class="fa-solid fa-trash"></i>
                     </button>

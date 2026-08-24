@@ -154,6 +154,10 @@ body {
     border-color: var(--text-primary);
 }
 
+.mobile-only-button {
+    display: none;
+}
+
 /* ─── LAYOUT ──────────────────────────────────────────────── */
 
 .app-container {
@@ -380,8 +384,21 @@ body {
     }
 
     .portfolio-table td[data-label="Titel"]::before,
+    .portfolio-table td[data-label=""]::before,
     .portfolio-table td[data-label="Gesamt"]::before {
         display: none;
+    }
+
+    /* Auf Mobile: Header-Button ausblenden, stattdessen den
+    zwischen den Karten platzierten Button anzeigen */
+    .section-header .add-button {
+        display: none;
+    }
+
+    .mobile-only-button {
+        display: block;
+        width: 100%;
+        margin: 10px 0 20px 0;
     }
 }
 
