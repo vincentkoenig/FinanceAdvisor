@@ -601,15 +601,15 @@ function renderWatchlist(data) {
 
         tableBody.innerHTML += `
             <tr onclick="showWatchlistDetail(${item.asset_id}, '${item.name}')" style="cursor: pointer;">
-                <td><strong>${item.name}</strong></td>
-                <td>${item.symbol}</td>
-                <td>${item.current_price} €</td>
-                <td>${item.price_added ? item.price_added + ' €' : '-'}</td>
-                <td style="color: ${changeColor}">
+                <td data-label="Titel"><strong>${item.name}</strong></td>
+                <td data-label="Symbol">${item.symbol}</td>
+                <td data-label="Aktueller Preis">${item.current_price} €</td>
+                <td data-label="Preis beim Hinzufügen">${item.price_added ? item.price_added + ' €' : '-'}</td>
+                <td data-label="Veränderung" style="color: ${changeColor}">
                     ${changeSign}${change.toFixed(2)} €<br>
                     <small>${changeSign}${changePercent}%</small>
                 </td>
-                <td>${item.added_at}</td>
+                <td data-label="Hinzugefügt am">${item.added_at}</td>
             </tr>
         `
     }
