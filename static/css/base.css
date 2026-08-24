@@ -316,6 +316,10 @@ body {
         background-color: var(--glass-bg);
     }
 
+    .chat-fab {
+        display: none !important;
+    }
+
     .bottom-nav a,
     .bottom-nav button {
         display: flex;
