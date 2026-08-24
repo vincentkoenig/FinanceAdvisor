@@ -11,6 +11,11 @@ let chartInstance = null
 let portfolioData = []
 let sortDirection = 1  // 1 = aufsteigend, -1 = absteigend
 
+// Globale Variablen für die Watchlist (Tab-Umschalter auf Portfolio-Seite)
+let watchlistData = []
+let watchlistSortDirection = 1
+let selectedWatchlistAssetId = null
+
 // User ID aus localStorage holen
 const userId = localStorage.getItem('user_id')
 
@@ -525,4 +530,205 @@ function changeChartPeriod(period) {
 
     // Chart neu laden
     loadChart(period)
+}
+
+
+// Wechselt zwischen dem Positionen-Tab und dem Watchlist-Tab
+function switchTab(tab) {
+    const positionsTab = document.getElementById('tab-positions')
+    const watchlistTab = document.getElementById('tab-watchlist')
+    const positionsPanel = document.getElementById('positions-panel')
+    const watchlistPanel = document.getElementById('watchlist-panel')
+
+    if (tab === 'positions') {
+        positionsTab.classList.add('active')
+        watchlistTab.classList.remove('active')
+        positionsPanel.style.display = 'block'
+        watchlistPanel.style.display = 'none'
+    } else {
+        watchlistTab.classList.add('active')
+        positionsTab.classList.remove('active')
+        watchlistPanel.style.display = 'block'
+        positionsPanel.style.display = 'none'
+
+        // Watchlist erst beim ersten Öffnen des Tabs laden,
+        // nicht schon beim Laden der Seite - spart unnötige Requests
+        if (watchlistData.length === 0) {
+            loadWatchlist()
+        }
+    }
+}
+
+
+async function addToWatchlist() {
+    const query = document.getElementById('asset-search').value
+
+    const searchResponse = await fetch(`/assets/search?query=${query}`)
+    const asset = await searchResponse.json()
+
+    if (!searchResponse.ok) {
+        showToast('Asset nicht gefunden!')
+        return
+    }
+
+    const response = await fetch(`/users/${userId}/watchlist`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({asset_id: asset.id})
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+        showToast('Asset hinzugefügt!')
+        document.getElementById('asset-search').value = ''
+        loadWatchlist()
+    } else {
+        showToast(data.error, 'error')
+    }
+}
+
+
+function renderWatchlist(data) {
+    const tableBody = document.getElementById('watchlist-body')
+    tableBody.innerHTML = ''
+
+    for (const item of data) {
+        const change = item.current_price - item.price_added
+        const changePercent = ((change / item.price_added) * 100).toFixed(2)
+        const changeColor = change >= 0 ? '#2ea043' : '#f85149'
+        const changeSign = change >= 0 ? '+' : ''
+
+        tableBody.innerHTML += `
+            <tr onclick="showWatchlistDetail(${item.asset_id}, '${item.name}')" style="cursor: pointer;">
+                <td><strong>${item.name}</strong></td>
+                <td>${item.symbol}</td>
+                <td>${item.current_price} €</td>
+                <td>${item.price_added ? item.price_added + ' €' : '-'}</td>
+                <td style="color: ${changeColor}">
+                    ${changeSign}${change.toFixed(2)} €<br>
+                    <small>${changeSign}${changePercent}%</small>
+                </td>
+                <td>${item.added_at}</td>
+            </tr>
+        `
+    }
+}
+
+
+async function loadWatchlist() {
+    const response = await fetch(`/users/${userId}/watchlist`)
+    const data = await response.json()
+
+    watchlistData = []
+
+    for (const item of data) {
+        const assetResponse = await fetch(`/assets/${item.asset_id}`)
+        const asset = await assetResponse.json()
+
+        watchlistData.push({
+            asset_id: item.asset_id,
+            name: asset.name,
+            symbol: asset.symbol,
+            current_price: asset.current_price,
+            price_added: item.price_added,
+            added_at: item.added_at
+        })
+    }
+
+    renderWatchlist(watchlistData)
+}
+
+
+function sortWatchlist(column) {
+    watchlistData.sort((a, b) => {
+        let valueA, valueB
+
+        if (column === 'name') {
+            valueA = a.name
+            valueB = b.name
+            return watchlistSortDirection * valueA.localeCompare(valueB)
+        } else if (column === 'symbol') {
+            valueA = a.symbol
+            valueB = b.symbol
+            return watchlistSortDirection * valueA.localeCompare(valueB)
+        }
+    })
+
+    watchlistSortDirection *= -1
+    renderWatchlist(watchlistData)
+}
+
+
+function showWatchlistDetail(assetId, assetName) {
+    selectedWatchlistAssetId = assetId
+    document.getElementById('watchlist-modal-asset-name').innerHTML = assetName
+    document.getElementById('watchlist-detail-modal').style.display = 'block'
+}
+
+function hideWatchlistDetail() {
+    document.getElementById('watchlist-detail-modal').style.display = 'none'
+}
+
+async function removeFromWatchlistModal() {
+    await removeFromWatchlist(selectedWatchlistAssetId)
+    hideWatchlistDetail()
+}
+
+function showWatchlistBuy() {
+    document.getElementById('watchlist-buy-fields').style.display = 'block'
+}
+
+async function buyFromWatchlist() {
+    const quantity = document.getElementById('watchlist-buy-quantity').value
+    const price = document.getElementById('watchlist-buy-price').value
+    const today = new Date().toISOString().split('T')[0]
+
+    if (quantity === '' || isNaN(quantity) || parseFloat(quantity) <= 0) {
+        showToast('Bitte eine gültige Menge größer 0 angeben!', 'error')
+        return
+    }
+    if (price === '' || isNaN(price) || parseFloat(price) <= 0) {
+        showToast('Bitte einen gültigen Preis größer 0 angeben!', 'error')
+        return
+    }
+
+    const response = await fetch(`/users/${userId}/assets`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            asset_id: selectedWatchlistAssetId,
+            quantity: quantity,
+            avg_buy_price: price,
+            bought_at: today,
+            status: 'owned'
+        })
+    })
+
+    if (response.ok) {
+        await removeFromWatchlist(selectedWatchlistAssetId)
+        hideWatchlistDetail()
+        showToast('Asset gekauft und zur Watchlist entfernt!')
+        // Portfolio-Tab aktualisieren, da eine neue Position hinzugekommen ist
+        loadPortfolio()
+    } else {
+        showToast('Fehler beim Kaufen!', 'error')
+    }
+}
+
+
+async function removeFromWatchlist(assetId) {
+    const response = await fetch(`/users/${userId}/watchlist/${assetId}`, {
+        method: 'DELETE',
+        headers: {'Content-Type': 'application/json'}
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+        showToast('Asset entfernt!')
+        loadWatchlist()
+    } else {
+        showToast(data.error)
+    }
 }

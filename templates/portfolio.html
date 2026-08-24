@@ -23,7 +23,6 @@
                 <a href="/budget-page">Haushaltsbuch</a>
                 <a href="/chat-page">Chat</a>
                 <a href="/analyse-page">Analyse</a>
-                <a href="/watchlist-page">Watchlist</a>
                 <a href="/settings-page">Einstellungen</a>
                 <a href="#" onclick="logout()">Logout</a>
             </nav>
@@ -44,7 +43,6 @@
         <div id="more-menu" class="more-menu" style="display:none;">
             <div class="more-menu-overlay" onclick="toggleMoreMenu()"></div>
             <div class="more-menu-content">
-                <a href="/watchlist-page"><i class="fa-solid fa-eye"></i> Watchlist</a>
                 <a href="/settings-page"><i class="fa-solid fa-gear"></i> Einstellungen</a>
                 <button onclick="toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i> Dark/Light Mode</button>
                 <a href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
@@ -93,8 +91,14 @@
 
             </div>
 
-            <!-- Unterer Bereich: Positionen -->
-            <div class="positions-container glass-card">
+            <!-- Tab-Umschalter: Positionen / Watchlist -->
+            <div class="portfolio-tabs">
+                <button class="portfolio-tab active" id="tab-positions" onclick="switchTab('positions')">Positionen</button>
+                <button class="portfolio-tab" id="tab-watchlist" onclick="switchTab('watchlist')">Watchlist</button>
+            </div>
+
+            <!-- Panel: Positionen -->
+            <div class="positions-container glass-card" id="positions-panel">
                 <div class="section-header">
                     <h2>Positionen</h2>
                     <button class="btn-primary add-button" onclick="showAddPosition()">+ Position hinzufügen</button>
@@ -117,6 +121,30 @@
                             <td data-label="P/L" id="total-pl-table"></td>
                         </tr>
                     </tfoot>
+                </table>
+            </div>
+
+            <!-- Panel: Watchlist -->
+            <div class="positions-container glass-card" id="watchlist-panel" style="display:none;">
+                <div class="section-header">
+                    <h2>Watchlist</h2>
+                </div>
+                <div class="watchlist-add">
+                    <input type="text" id="asset-search" placeholder="Asset suchen z.B. AAPL, bitcoin...">
+                    <button class="btn-primary" onclick="addToWatchlist()">Hinzufügen</button>
+                </div>
+                <table class="portfolio-table">
+                    <thead>
+                        <tr>
+                            <th onclick="sortWatchlist('name')" style="cursor: pointer;">Titel ↕</th>
+                            <th onclick="sortWatchlist('symbol')" style="cursor: pointer;">Symbol ↕</th>
+                            <th>Aktueller Preis</th>
+                            <th>Preis beim Hinzufügen</th>
+                            <th>Veränderung</th>
+                            <th>Hinzugefügt am</th>
+                        </tr>
+                    </thead>
+                    <tbody id="watchlist-body"></tbody>
                 </table>
             </div>
 
@@ -161,6 +189,27 @@
         </div>
 
         <button class="btn-secondary" onclick="hideAssetDetail()">Schließen</button>
+    </div>
+</div>
+
+<!-- Modal: Watchlist Detail -->
+<div id="watchlist-detail-modal" style="display:none;">
+    <div class="modal-overlay" onclick="hideWatchlistDetail()"></div>
+    <div class="modal">
+        <h3 id="watchlist-modal-asset-name">Asset</h3>
+        <div class="modal-buttons">
+            <button onclick="showWatchlistBuy()">Kaufen</button>
+            <button onclick="removeFromWatchlistModal()">Von Watchlist entfernen</button>
+        </div>
+
+        <!-- Kauf Felder -->
+        <div id="watchlist-buy-fields" style="display:none;">
+            <input type="number" id="watchlist-buy-quantity" placeholder="Menge">
+            <input type="number" id="watchlist-buy-price" placeholder="Kaufpreis">
+            <button class="btn-primary" onclick="buyFromWatchlist()">Kaufen bestätigen</button>
+        </div>
+
+        <button class="btn-secondary" onclick="hideWatchlistDetail()">Schließen</button>
     </div>
 </div>
 

@@ -97,12 +97,6 @@ def analyse_page():
     return render_template('analyse.html')
 
 
-@app.route('/watchlist-page')
-def watchlist_page():
-    """Watchlist Seite - Assets beobachten"""
-    return render_template('watchlist.html')
-
-
 @app.route('/settings-page')
 def settings_page():
     """Einstellungen Seite - Nutzerprofil"""
