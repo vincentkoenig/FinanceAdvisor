@@ -6,6 +6,7 @@
     <title>FinanceAdvisor - Chat</title>
     <link rel="stylesheet" href="/static/css/base.css">
     <link rel="stylesheet" href="/static/css/chat.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 </head>
 <body>
@@ -28,6 +29,27 @@
             <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark / ☀️ Light</button>
         </div>
 
+        <!-- Mobile Bottom Navigation - nur unter 768px sichtbar -->
+        <nav class="bottom-nav">
+            <a href="/home-page"><i class="fa-solid fa-house"></i>Home</a>
+            <a href="/portfolio-page"><i class="fa-solid fa-chart-line"></i>Portfolio</a>
+            <a href="/budget-page"><i class="fa-solid fa-wallet"></i>Budget</a>
+            <a href="/chat-page" class="active"><i class="fa-solid fa-comment"></i>Chat</a>
+            <a href="/analyse-page"><i class="fa-solid fa-magnifying-glass-chart"></i>Analyse</a>
+            <button onclick="toggleMoreMenu()"><i class="fa-solid fa-ellipsis"></i>Mehr</button>
+        </nav>
+
+        <!-- Mobile "Mehr"-Menü -->
+        <div id="more-menu" class="more-menu" style="display:none;">
+            <div class="more-menu-overlay" onclick="toggleMoreMenu()"></div>
+            <div class="more-menu-content">
+                <a href="/watchlist-page"><i class="fa-solid fa-eye"></i> Watchlist</a>
+                <a href="/settings-page"><i class="fa-solid fa-gear"></i> Einstellungen</a>
+                <button onclick="toggleTheme()"><i class="fa-solid fa-circle-half-stroke"></i> Dark/Light Mode</button>
+                <a href="#" onclick="logout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+            </div>
+        </div>
+
         <!-- Hauptbereich -->
         <div class="main-content">
             <h2>Chat</h2>
@@ -47,6 +69,7 @@
     </div>
 
     <script src="/static/js/toast.js"></script>
+    <script src="/static/js/mobile-nav.js"></script>
     <script src="/static/js/chat.js"></script>
     <script src="/static/js/logout.js"></script>
     <script src="/static/js/theme.js"></script>

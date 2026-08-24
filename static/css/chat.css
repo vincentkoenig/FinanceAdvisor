@@ -121,3 +121,31 @@
 .assistant-message tr:nth-child(even) {
     background-color: var(--bg-secondary) !important;
 }
+
+
+@media (max-width: 768px) {
+    .main-content {
+        padding-bottom: 0;
+    }
+
+    .main-content h2 {
+        display: none;
+    }
+
+    .chat-messages {
+        padding: 15px;
+        padding-bottom: 90px;
+    }
+
+    .chat-input-container {
+        padding: 10px 15px;
+        padding-bottom: 15px;
+        position: sticky;
+        bottom: 65px;
+    }
+
+    .user-message,
+    .assistant-message {
+        max-width: 85%;
+    }
+}
