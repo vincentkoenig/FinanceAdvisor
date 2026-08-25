@@ -1,0 +1,36 @@
+{
+    "name": "FinTrack",
+    "short_name": "FinTrack",
+    "description": "Portfolio-Tracking, Haushaltsbuch und KI-Finanzberater in einer App",
+    "start_url": "/home-page",
+    "display": "standalone",
+    "background_color": "#0d1117",
+    "theme_color": "#1e293b",
+    "orientation": "portrait",
+    "icons": [
+        {
+            "src": "/static/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/static/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/static/icons/icon-192-maskable.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "maskable"
+        },
+        {
+            "src": "/static/icons/icon-512-maskable.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ]
+}
