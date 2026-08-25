@@ -73,5 +73,10 @@
     <script src="/static/js/chat.js"></script>
     <script src="/static/js/logout.js"></script>
     <script src="/static/js/theme.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/service-worker.js')
+        }
+    </script>
 </body>
 </html>
