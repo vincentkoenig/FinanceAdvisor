@@ -1,223 +1,253 @@
-# FinanceAdvisor 💹
+# FinTrack (ehemals FinanceAdvisor) 💹
 
-A full-stack AI-powered personal finance web application built with **Flask** and **OpenAI**. Track your investment portfolio, manage a household budget, chat with an AI financial advisor, and get structured portfolio analyses — all in one app, accessible to Claude Desktop via a custom MCP server.
+Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwalte dein Investment-Portfolio, führe ein Haushaltsbuch, chatte mit einem KI-Finanzberater und lass dir strukturierte Portfolio-Analysen erstellen — installierbar als mobile App (PWA), live deployed auf Render, und über einen eigenen MCP-Server auch für Claude Desktop nutzbar.
+
+**Live-Demo:** https://financeadvisor-snxz.onrender.com *(kostenloser Tarif — nach Inaktivität kann der erste Aufruf 30-60 Sekunden dauern, während der Server aufwacht)*
 
 ## Features
 
-### 🏠 Home Overview
-- Consolidated dashboard showing portfolio value, cumulative cash balance, and total net worth
-- Combines live portfolio valuation with the household budget's running balance
+### 🏠 Home-Übersicht
+- Zentrales Dashboard mit Portfolio-Wert, kumuliertem Cash-Bestand und Gesamtvermögen
+- Kombiniert die live bewertete Portfolio-Position mit dem laufenden Saldo aus dem Haushaltsbuch
 
-### 📊 Portfolio
-- Add, buy, and sell stocks, ETFs, cryptocurrencies, and precious metals
-- Assets can be added by name (e.g. "Tesla") — automatically resolved to the correct ticker via **yfinance**
-- Live prices fetched on every page load via **yfinance** and **CoinGecko API**
-- Automatic average buy price recalculation on new purchases
-- Historical prices auto-loaded (1 year) when a new asset is added, plus a background scheduler (**APScheduler**) that snapshots current prices daily and backfills any gaps for chart continuity
-- Interactive portfolio value chart with switchable time ranges (1W / 1M / YTD / 1J / Max), using forward-filled prices so weekends/holidays and newly added assets don't distort the chart
-- Sortable positions table (by title, buy price, position value, profit/loss)
-- Allocation donut chart with dynamically generated, unique colors per asset and total portfolio value in the center
-- Privacy toggle — hide all monetary values behind asterisks with one click
+### 📊 Portfolio & Watchlist
+- Aktien, ETFs, Kryptowährungen und Edelmetalle hinzufügen, kaufen und verkaufen
+- Assets können per Name (z.B. „Tesla") hinzugefügt werden — das passende Symbol wird automatisch über **yfinance** aufgelöst
+- Live-Preise werden bei jedem Seitenaufruf über **yfinance** und die **CoinGecko API** abgerufen
+- Automatische Neuberechnung des durchschnittlichen Kaufpreises bei weiteren Käufen
+- Historische Preise werden beim Hinzufügen eines neuen Assets automatisch für 1 Jahr geladen, zusätzlich sorgt ein Hintergrund-Scheduler (**APScheduler**) für tägliche Preis-Snapshots inklusive Lückenfüllung für eine durchgehende Chart-Historie
+- Interaktiver Portfolio-Wert-Chart mit wählbaren Zeiträumen (1W / 1M / YTD / 1J / Max), mit vorwärts aufgefüllten Preisen, damit Wochenenden/Feiertage und neu hinzugefügte Assets den Chart nicht verzerren
+- Sortierbare Positionstabelle (nach Titel, Kaufpreis, Positionswert, Gewinn/Verlust)
+- Allokations-Donut-Chart mit dynamisch generierten, eindeutigen Farben pro Asset sowie dem Gesamtportfoliowert in der Mitte
+- Privatsphäre-Umschalter — alle Beträge mit einem Klick hinter Sternchen verstecken
+- **Watchlist als Tab auf derselben Seite** — Assets beobachten, die man noch nicht besitzt, Preis beim Hinzufügen im Vergleich zum aktuellen Preis sehen, und direkt aus der Watchlist heraus kaufen (das Asset wandert dabei automatisch ins Portfolio)
 
-### 💰 Haushaltsbuch (Household Budget)
-- Track income, fixed costs, and variable expenses in a three-tier category structure (Einkommen / Fixkosten / Variable Ausgaben), each with customizable main and sub-categories
-- Default category set auto-created for every new user, fully editable/deletable afterward
-- One-time and recurring transactions (e.g. monthly salary or rent) with optional end dates — recurring entries are calculated on the fly per month, not duplicated in the database
-- Month-by-month navigation with income/fixed/variable/balance summary cards
-- Category breakdown per section with percentage share, and a donut chart visualizing expenses by category
-- Full transaction list with delete functionality
-- Cumulative cash balance calculated across all months since the first transaction, feeding into the Home overview
+### 💰 Haushaltsbuch
+- Einnahmen, Fixkosten und variable Ausgaben in einer dreistufigen Kategorienstruktur (Einkommen / Fixkosten / Variable Ausgaben), jeweils mit anpassbaren Haupt- und Unterkategorien
+- Standardkategorien werden für jeden neuen Nutzer automatisch angelegt und können danach frei bearbeitet oder gelöscht werden
+- Einmalige und wiederkehrende Buchungen (z.B. monatliches Gehalt oder Miete) mit optionalem Enddatum — wiederkehrende Einträge werden pro Monat live berechnet, statt in der Datenbank dupliziert zu werden
+- Monatsweise Navigation mit Kennzahlen-Karten für Einnahmen, Fixkosten, Variable Ausgaben und Saldo
+- Kategorien-Aufschlüsselung je Bereich mit Prozentanteil sowie ein Donut-Chart zur Visualisierung der Ausgaben nach Kategorie
+- Vollständige Buchungsliste mit Löschfunktion
+- Kumulierter Cash-Bestand über alle Monate seit der ersten Buchung, der auch in die Home-Übersicht einfließt
 
-### 🤖 AI Financial Advisor (Chat)
-- Chat with a GPT-4o-mini powered financial advisor, available as a floating widget on every page and as a dedicated full chat page
-- **Function Calling** — the AI autonomously fetches live prices (stocks, crypto, metals) and can call multiple tools in a single turn
-- **Web search via Tavily** — the AI searches the web for current market news and events instead of relying only on outdated training knowledge
-- Adaptive response formatting (short answers for price questions, tables for comparisons, examples for explanations) — no rigid one-size-fits-all format
-- Persistent chat history stored in SQLite, with a sliding window (last 20 messages) sent to the model to manage token cost and context length
-- Personalized responses based on user risk profile, experience, budget, and investment horizon
+### 🤖 KI-Finanzberater (Chat)
+- Chat mit einem GPT-4o-mini-gestützten Finanzberater, verfügbar als schwebendes Widget auf jeder Seite (Desktop) sowie als eigene Vollbild-Chat-Seite
+- **Function Calling** — die KI ruft eigenständig Live-Preise ab (Aktien, Krypto, Edelmetalle) und verarbeitet auch mehrere gleichzeitige Tool-Aufrufe in einem Zug korrekt
+- **Websuche über Tavily** — die KI sucht bei Bedarf aktuelle Marktnachrichten, statt sich nur auf veraltetes Trainingswissen zu verlassen
+- Adaptives Antwortformat (kurze Antworten bei Preisfragen, Tabellen bei Vergleichen, Beispiele bei Erklärungen) — kein starres Einheitsformat
+- Persistenter Chatverlauf in der Datenbank, mit einem Sliding Window der letzten 20 Nachrichten, um Tokenkosten und Kontextlänge im Griff zu behalten
+- Personalisierte Antworten basierend auf Risikoprofil, Erfahrung, Budget und Anlagehorizont des Nutzers
 
-### 📈 AI Portfolio Analysis
-- On-demand AI analysis using **Pydantic Structured Output** (`response_format`)
-- Returns structured JSON: risk assessment, diversification score, summary, recommendations, and allocation
-- Total portfolio value is computed server-side (not left to the LLM) for numerical accuracy
-- All past analyses saved and browsable from the analysis page
+### 📈 KI-Portfolio-Analyse
+- Analyse auf Knopfdruck mittels **Pydantic Structured Output** (`response_format`)
+- Liefert strukturiertes JSON: Risikobewertung, Diversifikationsscore, Zusammenfassung, Empfehlungen und Allokation
+- Der Gesamtwert des Portfolios wird serverseitig berechnet (nicht dem LLM überlassen), um numerische Genauigkeit sicherzustellen
+- Alle vorherigen Analysen werden gespeichert und können auf der Analyse-Seite eingesehen werden
 
-### 👤 User System
-- Register and login with email and hashed password (`werkzeug.security`)
-- Per-user settings: risk profile, investment experience, monthly budget, investment horizon
-- User profile data injected into every AI system prompt for personalized advice
-- Dark/Light mode toggle, persisted across pages and sessions
+### 👤 Nutzerverwaltung
+- Registrierung und Login mit E-Mail und gehashtem Passwort (`werkzeug.security`)
+- Persönliche Einstellungen: Risikoprofil, Anlageerfahrung, monatliches Budget, Anlagehorizont
+- Nutzerprofil-Daten fließen in jeden System-Prompt der KI ein, für personalisierte Beratung
+- Dark-/Light-Mode-Umschalter, seiten- und sitzungsübergreifend gespeichert
 
-### 👁️ Watchlist
-- Add and remove assets to a personal watchlist — separate from the portfolio, for tracking without owning
-- Shows current price, price at the time it was added, absolute/percentage change, and date added
-- Buy directly from the watchlist (moves the asset into the portfolio and removes it from the watchlist)
+### 🔌 MCP-Server
+- Eigenständiger Model-Context-Protocol-Server, der FinTrack-Daten für MCP-fähige Clients wie Claude Desktop bereitstellt
+- Drei Tools: `get_portfolio_summary` (aktuelle Bestände), `get_budget_status` (monatliche Einnahmen/Ausgaben/Saldo), `add_transaction` (neue Haushaltsbuch-Buchung direkt aus einem Chat-Gespräch heraus anlegen)
+- Nutzt dieselben SQLAlchemy-Modelle und dieselbe Budget-Berechnungslogik wie die Web-App (`budget_logic.py`) — keine doppelte Geschäftslogik
+- Läuft lokal gegen dieselbe Datenbank und löst absolute Pfade zur Laufzeit auf, damit es unabhängig davon funktioniert, aus welchem Arbeitsverzeichnis Claude Desktop den Server startet
+- Details siehe [`mcp_server/`](./mcp_server)
 
-### 🔌 MCP Server
-- Standalone Model Context Protocol server exposing FinanceAdvisor data to MCP-compatible clients like Claude Desktop
-- Three tools: `get_portfolio_summary` (current holdings), `get_budget_status` (monthly income/expenses/balance), `add_transaction` (create a new budget entry directly from a chat conversation)
-- Reuses the same SQLAlchemy models and budget calculation logic as the web app (no duplicated business logic)
-- See [`mcp_server/`](./mcp_server) for setup details
+### 📱 Mobile & PWA
+- Durchgängig responsives Layout auf jeder Seite — untere Tab-Navigation unter 768px Bildschirmbreite, kartenbasierte Tabellen statt gequetschter Spalten, sowie ein „Mehr"-Menü für sekundäre Seiten
+- Installierbar als Progressive Web App: eigenes App-Icon, Standalone-Anzeigemodus (ohne Browserleiste), nutzbar wie eine native App vom Homescreen aus
+- Service Worker für die Installierbarkeit registriert (bewusst ohne aggressives Offline-Caching, da die App auf Live-Kurs- und Chat-Daten angewiesen ist)
 
 ### 🎨 UI / Design
-- Custom "liquid glass" interface — translucent, blurred cards over a soft radial gradient background, applied consistently across every page, modal, and the chat widget
-- Fully theme-aware: all glass effect colors are defined as CSS variables with separate dark and light mode values
-- Toast notifications instead of browser alerts, loading spinners on all async data fetches, and client-side validation on every form
+- Eigenes „Liquid Glass"-Interface — durchscheinende, geblurrte Karten über einem sanften radialen Farbverlauf, konsistent auf jeder Seite, in Modals und im Chat-Widget
+- Vollständig theme-fähig: alle Glas-Effekt-Farben sind als CSS-Variablen mit separaten Dark- und Light-Mode-Werten definiert
+- Toast-Benachrichtigungen statt Browser-Alerts, Ladeindikatoren bei allen asynchronen Datenabrufen, clientseitige Validierung in jedem Formular
+
+### ☁️ Deployment
+- Live auf **Render**, läuft unter **Gunicorn** mit einem einzigen Worker (nötig, damit der Preis-Update-Scheduler nicht mehrfach parallel läuft)
+- **PostgreSQL** im Produktivbetrieb, die App fällt lokal automatisch auf **SQLite** zurück, wenn keine `DATABASE_URL`-Umgebungsvariable gesetzt ist — derselbe Code für lokale Entwicklung und Produktion
+- Geheimnisse (OpenAI-, CoinGecko-, Tavily-API-Keys, Datenbank-URL) werden über Umgebungsvariablen verwaltet, niemals im Repository gespeichert
 
 ## Tech Stack
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white)
 ![Flask](https://img.shields.io/badge/Flask-000000?style=flat&logo=flask&logoColor=white)
 ![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-D71F00?style=flat&logo=sqlalchemy&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI_API-412991?style=flat&logo=openai&logoColor=white)
 ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
 ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
+![Render](https://img.shields.io/badge/Render-46E3B7?style=flat&logo=render&logoColor=white)
 
-- **Flask** — REST API backend & HTML page rendering
-- **SQLAlchemy** — ORM with SQLite for all persistent data
-- **OpenAI API** — GPT-4o-mini for chat (Function Calling) and portfolio analysis (Structured Output)
-- **Tavily** — real-time web search for current financial news, integrated as an LLM tool
-- **Pydantic** — structured output parsing for portfolio analysis
-- **yfinance** — stock, ETF, and precious metal price data, historical prices, and asset search by name
-- **CoinGecko API** — cryptocurrency prices
-- **APScheduler** — background scheduler for daily price history snapshots and gap-filling
-- **MCP (Model Context Protocol)** — standalone server exposing app data as tools to Claude Desktop
-- **werkzeug** — password hashing and security
-- **python-dotenv** — secure API key management
-- **Chart.js** — portfolio value line chart, allocation donut, and budget expense donut
-- **marked.js** — Markdown rendering for AI chat responses
+- **Flask** — REST-API-Backend & HTML-Seiten-Rendering
+- **SQLAlchemy** — ORM, PostgreSQL im Live-Betrieb / SQLite für die lokale Entwicklung
+- **OpenAI API** — GPT-4o-mini für Chat (Function Calling) und Portfolio-Analyse (Structured Output)
+- **Tavily** — Echtzeit-Websuche für aktuelle Finanznachrichten, als LLM-Tool eingebunden
+- **Pydantic** — Structured-Output-Parsing für die Portfolio-Analyse
+- **yfinance** — Kursdaten für Aktien, ETFs und Edelmetalle, historische Preise und Asset-Suche per Name
+- **CoinGecko API** — Kryptowährungskurse
+- **APScheduler** — Hintergrund-Scheduler für tägliche Preis-Snapshots und Lückenfüllung
+- **MCP (Model Context Protocol)** — eigenständiger Server, der App-Daten als Tools für Claude Desktop bereitstellt
+- **Gunicorn** — Produktions-WSGI-Server
+- **werkzeug** — Passwort-Hashing und Sicherheit
+- **python-dotenv** — sichere Verwaltung der API-Keys
+- **Chart.js** — Portfolio-Wert-Chart, Allokations-Donut und Budget-Ausgaben-Donut
+- **marked.js** — Markdown-Rendering für die KI-Chat-Antworten
+- **Web App Manifest + Service Worker** — PWA-Installierbarkeit
 
-## Project Structure
+## Projektstruktur
 
 ```
-FinanceAdvisor/
-├── app.py                   # All Flask routes
-├── models.py                 # SQLAlchemy models + Pydantic schemas for structured output
-├── budget_logic.py            # Shared household budget calculation logic (used by app.py and mcp_server)
-├── api_services.py            # Live price fetching (stocks, crypto, metals, exchange rate, web search)
-├── scheduler.py                # APScheduler — daily price snapshots with gap-filling
-├── tools.py                    # OpenAI Function Calling tool definitions
-├── requirements.txt
+FinTrack/
+├── app.py                    # Alle Flask-Routen
+├── models.py                  # SQLAlchemy-Modelle + Pydantic-Schemas für Structured Output
+├── budget_logic.py             # Gemeinsame Haushaltsbuch-Berechnungslogik (genutzt von app.py und mcp_server)
+├── api_services.py             # Live-Preisabruf (Aktien, Krypto, Edelmetalle, Wechselkurs, Websuche)
+├── scheduler.py                 # APScheduler — tägliche Preis-Snapshots mit Lückenfüllung
+├── tools.py                     # OpenAI Function-Calling-Tool-Definitionen
+├── requirements.txt              # Abhängigkeiten der Haupt-App (Flask, gunicorn, psycopg2-binary, etc.)
+├── start.bat                     # Windows-Starter — startet den Server und öffnet den Browser
 ├── mcp_server/
-│   └── server.py                # MCP server exposing portfolio/budget tools to Claude Desktop
-├── docs/                        # Screenshots, demo video, misc project assets
+│   ├── server.py                  # MCP-Server, stellt Portfolio-/Budget-Tools für Claude Desktop bereit
+│   └── requirements.txt            # Separate, schlanke Abhängigkeiten nur für die lokale MCP-Nutzung
+├── docs/                          # Screenshots, Demo-Video, sonstige Projekt-Assets
 ├── static/
+│   ├── manifest.json               # PWA-Manifest (Name, Icons, Anzeigemodus)
+│   ├── service-worker.js            # Minimaler Service Worker für PWA-Installierbarkeit
+│   ├── icons/                       # App-Icons (192px/512px, Standard + maskable)
 │   ├── css/
-│   │   ├── base.css             # Shared layout, sidebar, glass effect variables, modal, chat widget
+│   │   ├── base.css                  # Gemeinsames Layout, Sidebar, Mobile-Nav, Glas-Effekt-Variablen, Modal, Chat-Widget
 │   │   ├── home.css
-│   │   ├── portfolio.css
+│   │   ├── portfolio.css               # Enthält den Watchlist-Tab samt mobilem Karten-Layout
 │   │   ├── budget.css
 │   │   ├── chat.css
 │   │   ├── analyse.css
-│   │   ├── watchlist.css
 │   │   └── settings.css
 │   └── js/
 │       ├── home.js
-│       ├── portfolio.js
+│       ├── portfolio.js                # Enthält die komplette Watchlist-Logik (aus der früheren eigenen Seite übernommen)
 │       ├── budget.js
 │       ├── chat.js
 │       ├── analyse.js
-│       ├── watchlist.js
 │       ├── settings.js
-│       ├── widget.js             # Floating chat widget
-│       ├── theme.js               # Dark/Light mode toggle
-│       ├── toast.js               # Toast notification helper
-│       ├── utils.js               # Shared helpers (e.g. dynamic color generation)
+│       ├── widget.js                    # Schwebendes Chat-Widget (nur Desktop)
+│       ├── theme.js                      # Dark-/Light-Mode-Umschalter
+│       ├── toast.js                      # Toast-Benachrichtigungs-Helfer
+│       ├── mobile-nav.js                  # Mobile Bottom-Nav + „Mehr"-Menü-Umschalter
+│       ├── utils.js                       # Gemeinsame Hilfsfunktionen (z.B. dynamische Farbgenerierung)
 │       └── logout.js
 └── templates/
-    ├── index.html               # Login / Register
-    ├── home.html                 # Net worth overview
-    ├── portfolio.html             # Portfolio overview & chart
-    ├── budget.html                 # Household budget
-    ├── chat.html                   # Full-page AI chat interface
-    ├── analyse.html                 # Portfolio analysis & history
-    ├── watchlist.html               # Watchlist
-    └── settings.html                 # User profile settings
+    ├── index.html                # Login / Registrierung
+    ├── home.html                  # Vermögensübersicht
+    ├── portfolio.html              # Portfolio-Übersicht, Chart und Watchlist-Tab
+    ├── budget.html                  # Haushaltsbuch
+    ├── chat.html                     # Vollbild-Chat-Oberfläche
+    ├── analyse.html                   # Portfolio-Analyse & Verlauf
+    └── settings.html                   # Nutzerprofil-Einstellungen
 ```
 
-## API Overview
+## API-Übersicht
 
-| Method | Route | Description |
+| Methode | Route | Beschreibung |
 |--------|-------|-------------|
-| `POST` | `/register` | Register new user (auto-creates default budget categories) |
+| `POST` | `/register` | Neuen Nutzer registrieren (legt automatisch Standard-Budgetkategorien an) |
 | `POST` | `/login` | Login |
-| `GET` | `/users/<id>` | Get user profile |
-| `PUT` | `/users/<id>/settings` | Update investment settings |
-| `GET` | `/assets/<id>` | Get asset details with live price |
-| `GET` | `/assets/search` | Search asset by name or symbol, auto-creates it and loads historical prices |
-| `POST` | `/assets/<id>/prices` | Manually add a historical price entry |
-| `GET` | `/users/<id>/assets` | Get portfolio (live prices) |
-| `POST` | `/users/<id>/assets` | Add asset to portfolio |
-| `PUT` | `/users/<id>/assets/<id>/buy` | Record a buy (updates avg price) |
-| `PUT` | `/users/<id>/assets/<id>/sell` | Record a sell |
-| `GET` | `/users/<id>/portfolio/history` | Price history for chart |
-| `POST` | `/portfolio/analyze` | AI portfolio analysis |
-| `GET` | `/users/<id>/portfolio/analyses` | Get all past analyses |
-| `POST` | `/chat` | AI chat with Function Calling and web search |
-| `GET` | `/chat/history/<id>` | Get chat history |
-| `GET/POST/DELETE` | `/users/<id>/watchlist` | Manage watchlist |
-| `POST` | `/update-prices` | Manually trigger a price update |
-| `GET` | `/users/<id>/categories` | Get all budget categories for a user |
-| `POST` | `/users/<id>/categories` | Add a new category or subcategory |
-| `DELETE` | `/categories/<id>` | Delete a category (and its subcategories) |
-| `POST` | `/users/<id>/categories/init-defaults` | Retroactively create default categories for an existing user |
-| `GET` | `/users/<id>/transactions` | Get transactions, optionally filtered by month (`?month=YYYY-MM`) |
-| `POST` | `/users/<id>/transactions` | Add a transaction (one-time or recurring) |
-| `DELETE` | `/transactions/<id>` | Delete a transaction |
-| `GET` | `/users/<id>/budget/summary` | Cumulative cash balance and current month breakdown |
+| `GET` | `/users/<id>` | Nutzerprofil abrufen |
+| `PUT` | `/users/<id>/settings` | Anlage-Einstellungen aktualisieren |
+| `GET` | `/assets/<id>` | Asset-Details mit Live-Preis abrufen |
+| `GET` | `/assets/search` | Asset per Name oder Symbol suchen, legt es bei Bedarf automatisch an und lädt historische Preise |
+| `POST` | `/assets/<id>/prices` | Manuell einen historischen Preiseintrag hinzufügen |
+| `GET` | `/users/<id>/assets` | Portfolio abrufen (Live-Preise) |
+| `POST` | `/users/<id>/assets` | Asset zum Portfolio hinzufügen |
+| `PUT` | `/users/<id>/assets/<id>/buy` | Kauf erfassen (aktualisiert den Durchschnittspreis) |
+| `PUT` | `/users/<id>/assets/<id>/sell` | Verkauf erfassen |
+| `GET` | `/users/<id>/portfolio/history` | Preishistorie für den Chart |
+| `POST` | `/portfolio/analyze` | KI-Portfolio-Analyse |
+| `GET` | `/users/<id>/portfolio/analyses` | Alle vorherigen Analysen abrufen |
+| `POST` | `/chat` | KI-Chat mit Function Calling und Websuche |
+| `GET` | `/chat/history/<id>` | Chatverlauf abrufen |
+| `GET/POST/DELETE` | `/users/<id>/watchlist` | Watchlist verwalten |
+| `POST` | `/update-prices` | Preisaktualisierung manuell anstoßen |
+| `GET` | `/users/<id>/categories` | Alle Budgetkategorien eines Nutzers abrufen |
+| `POST` | `/users/<id>/categories` | Neue Kategorie oder Unterkategorie hinzufügen |
+| `DELETE` | `/categories/<id>` | Kategorie (samt Unterkategorien) löschen |
+| `POST` | `/users/<id>/categories/init-defaults` | Standardkategorien nachträglich für einen bestehenden Nutzer anlegen |
+| `GET` | `/users/<id>/transactions` | Buchungen abrufen, optional gefiltert nach Monat (`?month=YYYY-MM`) |
+| `POST` | `/users/<id>/transactions` | Buchung hinzufügen (einmalig oder wiederkehrend) |
+| `DELETE` | `/transactions/<id>` | Buchung löschen |
+| `GET` | `/users/<id>/budget/summary` | Kumulierter Cash-Bestand und Aufschlüsselung des aktuellen Monats |
 
-## Getting Started
+## Erste Schritte
 
-**1. Clone the repository**
+**1. Repository klonen**
 ```bash
 git clone https://github.com/vincentkoenig/FinanceAdvisor.git
 cd FinanceAdvisor
 ```
 
-**2. Install dependencies**
+**2. Abhängigkeiten installieren**
 ```bash
 pip install -r requirements.txt
 ```
 
-**3. Create a `.env` file**
+**3. `.env`-Datei anlegen**
 ```
-OPENAI_API_KEY=your_openai_api_key
-COINGECKO_API_KEY=your_coingecko_api_key
-TAVILY_API_KEY=your_tavily_api_key
+OPENAI_API_KEY=dein_openai_api_key
+COINGECKO_API_KEY=dein_coingecko_api_key
+TAVILY_API_KEY=dein_tavily_api_key
 ```
-> Get your keys at [platform.openai.com](https://platform.openai.com/api-keys), [coingecko.com](https://www.coingecko.com/en/api), and [tavily.com](https://tavily.com)
+> API-Keys gibt es unter [platform.openai.com](https://platform.openai.com/api-keys), [coingecko.com](https://www.coingecko.com/en/api) und [tavily.com](https://tavily.com)
+>
+> `DATABASE_URL` ist optional — ist sie nicht gesetzt, nutzt die App automatisch eine lokale SQLite-Datenbank.
 
-**4. Run the app**
+**4. App starten**
 ```bash
 python app.py
 ```
-Or, on Windows, double-click `start.bat` to launch the server and open it in your browser automatically.
+Alternativ unter Windows: Doppelklick auf `start.bat`, um den Server zu starten und automatisch im Browser zu öffnen.
 
-The SQLite database is created automatically on first run inside the `instance/` folder. The price scheduler starts in the background.
+Die SQLite-Datenbank wird beim ersten Start automatisch im `instance/`-Ordner angelegt. Der Preis-Scheduler startet im Hintergrund.
 
-**5. Open in your browser**
+**5. Im Browser öffnen**
 ```
 http://localhost:5000
 ```
+Auf dem Smartphone bietet Chrome an, die App über „Zum Startbildschirm hinzufügen" bzw. den Installations-Prompt als PWA zu installieren.
 
-**6. (Optional) Connect the MCP server to Claude Desktop**
+**6. (Optional) MCP-Server mit Claude Desktop verbinden**
 
-See [`mcp_server/`](./mcp_server) for the full setup guide — in short, add an entry to your `claude_desktop_config.json` pointing to `mcp_server/server.py` using your virtual environment's Python interpreter, then restart Claude Desktop.
+Die komplette Anleitung dazu findet sich in [`mcp_server/`](./mcp_server) — kurz zusammengefasst: einen Eintrag in der `claude_desktop_config.json` anlegen, der auf `mcp_server/server.py` verweist und den Python-Interpreter der eigenen virtuellen Umgebung nutzt, danach Claude Desktop neu starten.
 
-## What I Learned
+## Deployment
 
-- Building a complete multi-page Flask REST API with 30+ endpoints
-- Integrating OpenAI Function Calling to let the AI autonomously fetch live data, search the web (via Tavily), and correctly handle multiple simultaneous tool calls in one turn
-- Using Pydantic Structured Output (`response_format`) for reliable, schema-conformant JSON from LLMs, while keeping numerically critical values (like total portfolio value) computed server-side rather than trusting the LLM's arithmetic
-- Designing a relational SQLAlchemy database with 9 interconnected models, including a two-level self-referencing category structure for the household budget
-- Modeling recurring transactions (income/expenses) as single database rows that are evaluated per-month on read, instead of duplicating rows — avoiding scheduler-dependent generation entirely
-- Implementing secure user authentication with password hashing via `werkzeug`
-- Running background tasks with APScheduler inside a Flask app context, including gap-filling logic for missed price updates
-- Fetching and reconciling live financial data across multiple APIs and currencies (yfinance, CoinGecko, USD → EUR conversion), and debugging chart artifacts caused by weekends/holidays and by applying live exchange rates to historical prices
-- Iteratively engineering a system prompt with adaptive response formatting through direct comparison against ChatGPT outputs
-- Managing LLM context and token cost with a sliding window over chat history
-- Extracting shared business logic (`budget_logic.py`) so the same calculation is used by both the Flask web app and an independent MCP server, avoiding logic duplication
-- Building and debugging a Model Context Protocol server from scratch — resolving Flask application context requirements, absolute path handling (a MCP client can launch the server from an arbitrary working directory), and virtual environment interpreter resolution for Claude Desktop
-- Implementing a cohesive, theme-aware "glass" design system using CSS custom properties, `backdrop-filter`, and layered transparency across an entire multi-page application
-- Separating concerns across multiple modules (routes, models, services, scheduler, tools, budget logic) and splitting frontend CSS/JS per page for maintainability
+Die App läuft live auf [Render](https://render.com):
+- **Web Service** mit `gunicorn app:app --workers=1` (ein einzelner Worker ist nötig, damit der Preis-Update-Scheduler nicht mehrfach parallel läuft)
+- **PostgreSQL**-Datenbank (kostenloser Tarif), verbunden über die Umgebungsvariable `DATABASE_URL`
+- Umgebungsvariablen (`OPENAI_API_KEY`, `COINGECKO_API_KEY`, `TAVILY_API_KEY`, `DATABASE_URL`) direkt im Render-Dashboard hinterlegt, nie im Repository gespeichert
+
+## Was ich dabei gelernt habe
+
+- Aufbau einer vollständigen, mehrseitigen Flask-REST-API mit über 30 Endpoints
+- Integration von OpenAI Function Calling, damit die KI eigenständig Live-Daten abruft, im Web sucht (über Tavily) und auch mehrere gleichzeitige Tool-Aufrufe in einem Zug korrekt verarbeitet
+- Nutzung von Pydantic Structured Output (`response_format`) für zuverlässiges, schema-konformes JSON von LLMs, während numerisch kritische Werte (wie der Gesamtportfoliowert) serverseitig berechnet statt der LLM-Arithmetik überlassen werden
+- Entwurf einer relationalen SQLAlchemy-Datenbank mit 9 verknüpften Modellen, inklusive einer zweistufigen, selbstreferenzierenden Kategorienstruktur für das Haushaltsbuch
+- Modellierung wiederkehrender Buchungen (Einnahmen/Ausgaben) als einzelne Datenbankzeilen, die beim Lesen pro Monat live ausgewertet werden, statt Zeilen zu duplizieren — dadurch keine Abhängigkeit von einem Scheduler zur Generierung
+- Umsetzung sicherer Nutzerauthentifizierung mit Passwort-Hashing über `werkzeug`
+- Ausführung von Hintergrundaufgaben mit APScheduler innerhalb eines Flask-App-Kontexts, inklusive Lückenfüllungs-Logik für verpasste Preisaktualisierungen, sowie Sicherstellung, dass der Scheduler auch unter Gunicorn statt dem Flask-Entwicklungsserver zuverlässig läuft
+- Abruf und Abgleich von Live-Finanzdaten über mehrere APIs und Währungen hinweg (yfinance, CoinGecko, USD-→-EUR-Umrechnung), sowie Debugging von Chart-Artefakten durch Wochenenden/Feiertage und durch die Anwendung aktueller Wechselkurse auf historische Preise
+- Iteratives Prompt Engineering mit adaptivem Antwortformat, durch direkten Vergleich mit ChatGPT-Ausgaben
+- Verwaltung von LLM-Kontext und Tokenkosten mittels Sliding Window über den Chatverlauf
+- Auslagerung gemeinsamer Geschäftslogik (`budget_logic.py`), sodass dieselbe Berechnung sowohl von der Flask-Web-App als auch von einem unabhängigen MCP-Server genutzt wird, ohne Logik zu duplizieren
+- Aufbau und Debugging eines Model-Context-Protocol-Servers von Grund auf — Lösung von Flask-App-Kontext-Anforderungen, absoluter Pfadauflösung (ein MCP-Client kann den Server aus einem beliebigen Arbeitsverzeichnis heraus starten) und Auflösung des richtigen virtuellen-Umgebungs-Interpreters für Claude Desktop
+- Umsetzung eines stimmigen, theme-fähigen „Glas"-Designsystems mittels CSS Custom Properties, `backdrop-filter` und geschichteter Transparenz über eine komplette mehrseitige Anwendung hinweg
+- Nachträgliche Anpassung eines bestehenden Desktop-Layouts für Mobilgeräte: eine untere Tab-Leiste mit „Mehr"-Overflow-Menü, Umwandlung dichter Datentabellen in gestapelte Karten über `data-label`-Attribute und CSS, sowie Debugging realer Responsive-Probleme (ein fehlender Viewport-Meta-Tag, der sämtliche Media Queries stillschweigend deaktivierte; sich stapelndes Padding über verschachtelte Container hinweg)
+- Umbau der App in eine installierbare Progressive Web App mit eigenem Manifest, generiertem Icon-Set und einem bewusst minimalen Service Worker (kein Offline-Caching, da die App auf Live-Kurs- und Chat-Daten angewiesen ist)
+- Zusammenführung einer eigenständigen Seite (Watchlist) in eine bestehende Seite als Tab-Ansicht, ohne das Backend anzufassen, mit sorgfältiger Konsolidierung von Navigation und JavaScript-Zustand zur Vermeidung von Variablenkonflikten
+- Migration von SQLite zu einem dualen SQLite/PostgreSQL-Setup, gesteuert über eine Umgebungsvariable, sowie Deployment auf Render mit Gunicorn, inklusive Behebung eines Schedulers, der beim Wechsel vom Flask-Entwicklungsserver zu einem WSGI-Server stillschweigend aufgehört hatte zu laufen
+- Trennung von Verantwortlichkeiten über mehrere Module hinweg (Routen, Modelle, Services, Scheduler, Tools, Budget-Logik) sowie Aufteilung von Frontend-CSS/JS pro Seite zur besseren Wartbarkeit
