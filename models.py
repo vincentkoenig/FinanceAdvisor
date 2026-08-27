@@ -80,6 +80,23 @@ class AssetTransaction(db.Model):
     date = db.Column(db.DateTime, default=db.func.now())
 
 
+class SavingsPlan(db.Model):
+    """
+    SavingsPlan Tabelle - definiert einen wiederkehrenden Sparplan für
+    ein bestimmtes Asset. Wird nicht automatisch ausgeführt (Variante B):
+    der Nutzer bestätigt jede fällige Ausführung manuell, wodurch eine
+    ganz normale AssetTransaction entsteht und last_executed fortgeschrieben wird.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
+    amount = db.Column(db.Float, nullable=False)  # Betrag pro Ausführung in EUR
+    day_of_month = db.Column(db.Integer, nullable=False)  # Tag im Monat, z.B. 1 für den Ersten
+    start_date = db.Column(db.DateTime, default=db.func.now())
+    last_executed = db.Column(db.DateTime)  # NULL solange noch nie ausgeführt
+    active = db.Column(db.Boolean, default=True)
+
+
 class PriceHistory(db.Model):
     """
     PriceHistory Tabelle - speichert täglich die Preise aller Assets.
