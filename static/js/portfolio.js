@@ -16,6 +16,7 @@ let watchlistData = []
 let watchlistSortDirection = 1
 let selectedWatchlistAssetId = null
 let assetTransactionsData = []
+let assetIdsWithSavingsPlan = []
 
 // User ID aus localStorage holen
 const userId = localStorage.getItem('user_id')
@@ -52,6 +53,12 @@ async function loadPortfolio() {
     // Daten global speichern für Sortierung
     portfolioData = data
 
+    // Aktive Sparpläne abrufen, um in der Tabelle ein Badge bei
+    // betroffenen Assets anzuzeigen
+    const savingsPlansResponse = await fetch(`/users/${userId}/savings-plans`)
+    const savingsPlans = await savingsPlansResponse.json()
+    assetIdsWithSavingsPlan = savingsPlans.map(plan => plan.asset_id)
+
     // Tabelle rendern
     renderTable(portfolioData)
 
@@ -68,20 +75,15 @@ async function loadPortfolio() {
     const totalPLProzent = (totalPL / totalKaufpreis * 100).toFixed(2)
     const plColor = totalPL >= 0 ? '#2ea043' : '#f85149'
 
-    // Globale Variablen setzen damit mouseleave sie benutzen kann
     currentTotalValue = totalValue
     currentTotalPL = totalPL
     currentTotalPLProzent = totalPLProzent
     currentPlColor = plColor
 
-    // Gesamtwert anzeigen
     document.getElementById('total-value').innerHTML = `${formatCurrency(totalValue)} €`
     document.getElementById('total-pl').innerHTML = `<span style="color: ${plColor}">${formatCurrency(totalPL)} € (${totalPLProzent}%)</span>`
-
-    // Donut Mitte aktualisieren
     document.getElementById('donut-value').innerHTML = `${formatCurrency(totalValue)} €`
 
-    // Donut Diagramm erstellen
     const labels = data.map(asset => asset.name)
     const values = data.map(asset => asset.current_price * asset.quantity)
 
@@ -126,9 +128,14 @@ function renderTable(assets) {
         totalPositionGesamt += positionGesamt
         totalPLGesamt += plEur
 
+        // Sparplan-Badge anzeigen, falls für dieses Asset ein aktiver Sparplan existiert
+        const savingsPlanBadge = assetIdsWithSavingsPlan.includes(asset.asset_id)
+            ? '<i class="fa-solid fa-rotate" title="Sparplan aktiv" style="margin-left: 6px; color: var(--text-secondary); font-size: 12px;"></i>'
+            : ''
+
         tableBody.innerHTML += `
             <tr onclick="showAssetDetail(${asset.asset_id}, '${asset.name}')" style="cursor: pointer;">
-                <td data-label="Titel"><strong>${asset.name}</strong><br><small>${asset.quantity}x</small></td>
+                <td data-label="Titel"><strong>${asset.name}</strong>${savingsPlanBadge}<br><small>${asset.quantity}x</small></td>
                 <td data-label="Kaufpreis">${formatCurrency(kaufpreisGesamt)} €<br><small>${formatCurrency(asset.avg_buy_price)} €</small></td>
                 <td data-label="Position">${formatCurrency(positionGesamt)} €<br><small>${formatCurrency(asset.current_price)} €</small></td>
                 <td data-label="P/L" style="color: ${rowPlColor}">${formatCurrency(plEur)} €<br><small>${plProzent}%</small></td>
@@ -136,7 +143,6 @@ function renderTable(assets) {
         `
     })
 
-    // Gesamtsummen anzeigen
     const totalPLColor = totalPLGesamt >= 0 ? '#2ea043' : '#f85149'
     document.getElementById('total-kaufpreis').innerHTML = `<strong>${formatCurrency(totalKaufpreisGesamt)} €</strong>`
     document.getElementById('total-position').innerHTML = `<strong>${formatCurrency(totalPositionGesamt)} €</strong>`
