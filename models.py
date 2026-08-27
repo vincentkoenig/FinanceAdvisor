@@ -63,6 +63,23 @@ class UserAsset(db.Model):
     status = db.Column(db.String)
 
 
+class AssetTransaction(db.Model):
+    """
+    AssetTransaction Tabelle - protokolliert jeden einzelnen Kauf und
+    Verkauf eines Assets als eigene Zeile. Im Unterschied zu UserAsset
+    (das nur den aktuellen, aggregierten Zustand hält: Gesamtmenge und
+    Durchschnittspreis) bleibt hier die vollständige Historie erhalten,
+    auch nachdem sich der Durchschnittspreis durch weitere Käufe ändert.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
+    type = db.Column(db.String, nullable=False)  # 'buy' oder 'sell'
+    quantity = db.Column(db.Float, nullable=False)
+    price = db.Column(db.Float, nullable=False)  # Preis pro Einheit zum Zeitpunkt der Transaktion
+    date = db.Column(db.DateTime, default=db.func.now())
+
+
 class PriceHistory(db.Model):
     """
     PriceHistory Tabelle - speichert täglich die Preise aller Assets.
