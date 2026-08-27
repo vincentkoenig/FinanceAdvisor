@@ -220,6 +220,38 @@ def search_web(query):
     except Exception as e:
         print(f"Error searching web: {e}")
         return None
+
+
+def get_dividends_since(symbol, since_date):
+    """
+    Ruft alle Dividendenausschüttungen eines Assets seit einem
+    bestimmten Datum ab. Gibt eine Liste von Dictionaries mit
+    date und amount_per_share zurück (in der Originalwährung von
+    Yahoo Finance, meist USD für US-Aktien).
+    """
+    try:
+        ticker = yf.Ticker(symbol)
+        dividends = ticker.dividends
+
+        if dividends.empty:
+            return []
+
+        result = []
+        for date, amount in dividends.items():
+            # Zeitzone entfernen, damit der Vergleich mit unseren
+            # eigenen, naiven datetime-Objekten funktioniert
+            dividend_date = date.tz_localize(None) if date.tzinfo else date
+
+            if dividend_date > since_date:
+                result.append({
+                    "date": dividend_date.strftime('%Y-%m-%d'),
+                    "amount_per_share": round(float(amount), 4)
+                })
+
+        return result
+    except Exception as e:
+        print(f"Error fetching dividends: {e}")
+        return []
     
 
 # Testaufruf - wird nur ausgeführt wenn diese Datei direkt gestartet wird
