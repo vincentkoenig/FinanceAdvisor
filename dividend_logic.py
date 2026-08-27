@@ -17,10 +17,19 @@ def calculate_shares_held_at(user_id, asset_id, target_date):
     Berechnet, wie viele Stück eines Assets ein Nutzer an einem
     bestimmten Datum hielt, basierend auf der Transaktionshistorie
     bis zu diesem Zeitpunkt (Käufe addiert, Verkäufe subtrahiert).
+    Falls keine Transaktionshistorie vor diesem Datum existiert (z.B.
+    weil die Position vor Einführung der Transaktions-Protokollierung
+    angelegt wurde), wird ersatzweise die aktuelle Bestandsmenge
+    verwendet - eine Näherung, die zwischenzeitliche Käufe/Verkäufe
+    nicht berücksichtigen kann, aber besser ist als 0 anzunehmen.
     """
     transactions = AssetTransaction.query.filter_by(
         user_id=user_id, asset_id=asset_id
     ).filter(AssetTransaction.date <= target_date).all()
+
+    if not transactions:
+        user_asset = UserAsset.query.filter_by(user_id=user_id, asset_id=asset_id).first()
+        return user_asset.quantity if user_asset else 0
 
     shares = 0
     for transaction in transactions:
@@ -33,20 +42,13 @@ def calculate_shares_held_at(user_id, asset_id, target_date):
 
 
 def process_dividends_for_user(user_id):
-    """
-    Prüft für alle aktuell gehaltenen Assets eines Nutzers, ob es neue,
-    noch nicht verbuchte Dividenden gibt, und verbucht sie automatisch
-    als Einnahme im Haushaltsbuch.
-    """
     holdings = UserAsset.query.filter_by(user_id=user_id).filter(UserAsset.quantity > 0).all()
+    print(f"Prüfe Dividenden für {len(holdings)} gehaltene Assets")
 
-    # Kategorie "Dividenden" des Nutzers finden
     dividend_category = Category.query.filter_by(user_id=user_id, name="Dividenden").first()
 
     if not dividend_category:
-        # Nutzer hat noch keine Dividenden-Kategorie (z.B. sehr alter
-        # Account) - ohne passende Kategorie können wir nicht sauber
-        # verbuchen, also überspringen
+        print("Keine Dividenden-Kategorie gefunden - breche ab")
         return
 
     for holding in holdings:
@@ -54,16 +56,17 @@ def process_dividends_for_user(user_id):
         if not asset:
             continue
 
-        # Letzte bereits verbuchte Dividende für dieses Asset finden,
-        # um nur wirklich neue Ausschüttungen abzufragen
+        print(f"\nPrüfe {asset.name} ({asset.symbol})...")
+
         last_dividend = Dividend.query.filter_by(
             user_id=user_id, asset_id=asset.id
         ).order_by(Dividend.ex_dividend_date.desc()).first()
 
-        # Falls noch nie verbucht, ein Jahr zurückschauen als Startpunkt
         since_date = last_dividend.ex_dividend_date if last_dividend else datetime(datetime.now().year - 1, 1, 1)
+        print(f"  Suche Dividenden seit {since_date}")
 
         new_dividends = get_dividends_since(asset.symbol, since_date)
+        print(f"  Gefundene neue Dividenden: {new_dividends}")
 
         if not new_dividends:
             continue
@@ -75,13 +78,14 @@ def process_dividends_for_user(user_id):
             amount_per_share = entry['amount_per_share'] * rate
 
             shares_held = calculate_shares_held_at(user_id, asset.id, dividend_date)
+            print(f"    Am {dividend_date.date()}: {shares_held} Stück gehalten")
 
             if shares_held <= 0:
-                # Nutzer hielt zu diesem Zeitpunkt keine Aktien,
-                # diese Ausschüttung betrifft ihn nicht
+                print(f"    -> übersprungen, keine Stücke gehalten")
                 continue
 
             total_amount = round(amount_per_share * shares_held, 2)
+            print(f"    -> verbuche {total_amount} EUR")
 
             # Transaction im Haushaltsbuch anlegen
             transaction = Transaction(
