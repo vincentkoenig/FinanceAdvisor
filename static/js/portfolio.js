@@ -452,10 +452,17 @@ async function addBuy() {
 async function addSell() {
     const userId = localStorage.getItem('user_id')
     const quantity = document.getElementById('sell-quantity').value
+    const price = document.getElementById('sell-price').value
 
     // Menge muss eine gültige, positive Zahl sein
     if (quantity === '' || isNaN(quantity) || parseFloat(quantity) <= 0) {
         showToast('Bitte eine gültige Menge größer 0 angeben!', 'error')
+        return
+    }
+
+    // Verkaufspreis muss eine gültige, positive Zahl sein
+    if (price === '' || isNaN(price) || parseFloat(price) <= 0) {
+        showToast('Bitte einen gültigen Verkaufspreis größer 0 angeben!', 'error')
         return
     }
 
@@ -469,7 +476,7 @@ async function addSell() {
     const response = await fetch(`/users/${userId}/assets/${selectedAssetId}/sell`, {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({quantity: quantity})
+        body: JSON.stringify({quantity: quantity, price: price})
     })
 
     const data = await response.json()
