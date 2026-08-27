@@ -93,10 +93,11 @@
 
             </div>
 
-            <!-- Tab-Umschalter: Positionen / Watchlist -->
+            <!-- Tab-Umschalter: Positionen / Watchlist / Transaktionen -->
             <div class="portfolio-tabs">
                 <button class="portfolio-tab active" id="tab-positions" onclick="switchTab('positions')">Positionen</button>
                 <button class="portfolio-tab" id="tab-watchlist" onclick="switchTab('watchlist')">Watchlist</button>
+                <button class="portfolio-tab" id="tab-transactions" onclick="switchTab('transactions')">Transaktionen</button>
             </div>
 
             <!-- Panel: Positionen -->
@@ -147,6 +148,26 @@
                         </tr>
                     </thead>
                     <tbody id="watchlist-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Panel: Transaktionen -->
+            <div class="positions-container glass-card" id="transactions-panel" style="display:none;">
+                <div class="section-header">
+                    <h2>Transaktionen</h2>
+                </div>
+                <table class="portfolio-table">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Titel</th>
+                            <th>Typ</th>
+                            <th>Menge</th>
+                            <th>Preis</th>
+                            <th>Gesamt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactions-body"></tbody>
                 </table>
             </div>
 

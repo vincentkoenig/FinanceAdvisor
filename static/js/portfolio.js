@@ -15,6 +15,7 @@ let sortDirection = 1  // 1 = aufsteigend, -1 = absteigend
 let watchlistData = []
 let watchlistSortDirection = 1
 let selectedWatchlistAssetId = null
+let assetTransactionsData = []
 
 // User ID aus localStorage holen
 const userId = localStorage.getItem('user_id')
@@ -540,29 +541,31 @@ function changeChartPeriod(period) {
 }
 
 
-// Wechselt zwischen dem Positionen-Tab und dem Watchlist-Tab
+// Wechselt zwischen Positionen-, Watchlist- und Transaktionen-Tab
 function switchTab(tab) {
-    const positionsTab = document.getElementById('tab-positions')
-    const watchlistTab = document.getElementById('tab-watchlist')
-    const positionsPanel = document.getElementById('positions-panel')
-    const watchlistPanel = document.getElementById('watchlist-panel')
+    const tabs = {
+        positions: { button: 'tab-positions', panel: 'positions-panel' },
+        watchlist: { button: 'tab-watchlist', panel: 'watchlist-panel' },
+        transactions: { button: 'tab-transactions', panel: 'transactions-panel' }
+    }
 
-    if (tab === 'positions') {
-        positionsTab.classList.add('active')
-        watchlistTab.classList.remove('active')
-        positionsPanel.style.display = 'block'
-        watchlistPanel.style.display = 'none'
-    } else {
-        watchlistTab.classList.add('active')
-        positionsTab.classList.remove('active')
-        watchlistPanel.style.display = 'block'
-        positionsPanel.style.display = 'none'
+    // Alle Tabs zunächst deaktivieren und ihre Panels verstecken
+    for (const key in tabs) {
+        document.getElementById(tabs[key].button).classList.remove('active')
+        document.getElementById(tabs[key].panel).style.display = 'none'
+    }
 
-        // Watchlist erst beim ersten Öffnen des Tabs laden,
-        // nicht schon beim Laden der Seite - spart unnötige Requests
-        if (watchlistData.length === 0) {
-            loadWatchlist()
-        }
+    // Den gewählten Tab aktivieren und sein Panel anzeigen
+    document.getElementById(tabs[tab].button).classList.add('active')
+    document.getElementById(tabs[tab].panel).style.display = 'block'
+
+    // Watchlist bzw. Transaktionen erst beim ersten Öffnen laden,
+    // nicht schon beim Laden der Seite - spart unnötige Requests
+    if (tab === 'watchlist' && watchlistData.length === 0) {
+        loadWatchlist()
+    }
+    if (tab === 'transactions' && assetTransactionsData.length === 0) {
+        loadAssetTransactions()
     }
 }
 
@@ -738,4 +741,40 @@ async function removeFromWatchlist(assetId) {
     } else {
         showToast(data.error)
     }
+}
+
+
+async function loadAssetTransactions() {
+    const response = await fetch(`/users/${userId}/assets/transactions`)
+    const data = await response.json()
+
+    assetTransactionsData = data
+    renderAssetTransactions(data)
+}
+
+
+function renderAssetTransactions(transactions) {
+    const tableBody = document.getElementById('transactions-body')
+
+    if (transactions.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-secondary);">Keine Transaktionen vorhanden</td></tr>'
+        return
+    }
+
+    tableBody.innerHTML = transactions.map(t => {
+        const isBuy = t.type === 'buy'
+        const typeLabel = isBuy ? 'Kauf' : 'Verkauf'
+        const typeColor = isBuy ? '#2ea043' : '#f85149'
+
+        return `
+            <tr>
+                <td data-label="Datum">${formatDate(t.date)}</td>
+                <td data-label="Titel"><strong>${t.asset_name}</strong></td>
+                <td data-label="Typ" style="color: ${typeColor}">${typeLabel}</td>
+                <td data-label="Menge">${t.quantity}</td>
+                <td data-label="Preis">${formatCurrency(t.price)} €</td>
+                <td data-label="Gesamt">${formatCurrency(t.total)} €</td>
+            </tr>
+        `
+    }).join('')
 }
