@@ -101,6 +101,22 @@
                 <button class="portfolio-tab" id="tab-savings-plans" onclick="switchTab('savings-plans')">Sparpläne</button>
             </div>
 
+            <!-- Tab-Umschalter: Positionen / Watchlist / Transaktionen / Sparpläne -->
+            <div class="portfolio-tabs">
+                <button class="portfolio-tab active" id="tab-positions" onclick="switchTab('positions')">Positionen</button>
+                <button class="portfolio-tab" id="tab-watchlist" onclick="switchTab('watchlist')">Watchlist</button>
+                <button class="portfolio-tab" id="tab-transactions" onclick="switchTab('transactions')">Transaktionen</button>
+                <button class="portfolio-tab" id="tab-savings-plans" onclick="switchTab('savings-plans')">Sparpläne</button>
+            </div>
+
+            <!-- Mobile Tab-Auswahl als Dropdown, nur unter 768px sichtbar -->
+            <select class="portfolio-tabs-mobile" id="portfolio-tabs-mobile" onchange="switchTab(this.value)">
+                <option value="positions">Positionen</option>
+                <option value="watchlist">Watchlist</option>
+                <option value="transactions">Transaktionen</option>
+                <option value="savings-plans">Sparpläne</option>
+            </select>
+
             <!-- Panel: Positionen -->
             <div class="positions-container glass-card" id="positions-panel">
                 <div class="section-header">
