@@ -93,12 +93,13 @@
 
             </div>
 
-            <!-- Tab-Umschalter: Positionen / Watchlist / Transaktionen / Sparpläne -->
+            <!-- Tab-Umschalter: Positionen / Watchlist / Transaktionen / Sparpläne / Dividenden -->
             <div class="portfolio-tabs">
                 <button class="portfolio-tab active" id="tab-positions" onclick="switchTab('positions')">Positionen</button>
                 <button class="portfolio-tab" id="tab-watchlist" onclick="switchTab('watchlist')">Watchlist</button>
                 <button class="portfolio-tab" id="tab-transactions" onclick="switchTab('transactions')">Transaktionen</button>
                 <button class="portfolio-tab" id="tab-savings-plans" onclick="switchTab('savings-plans')">Sparpläne</button>
+                <button class="portfolio-tab" id="tab-dividends" onclick="switchTab('dividends')">Dividenden</button>
             </div>
 
             <!-- Mobile Tab-Auswahl als Dropdown, nur unter 768px sichtbar -->
@@ -107,6 +108,7 @@
                 <option value="watchlist">Watchlist</option>
                 <option value="transactions">Transaktionen</option>
                 <option value="savings-plans">Sparpläne</option>
+                <option value="dividends">Dividenden</option>
             </select>
 
             <!-- Panel: Positionen -->
@@ -197,6 +199,25 @@
                         </tr>
                     </thead>
                     <tbody id="savings-plans-body"></tbody>
+                </table>
+            </div>
+
+            <!-- Panel: Dividenden -->
+            <div class="positions-container glass-card" id="dividends-panel" style="display:none;">
+                <div class="section-header">
+                    <h2>Dividenden</h2>
+                </div>
+                <table class="portfolio-table">
+                    <thead>
+                        <tr>
+                            <th>Datum</th>
+                            <th>Titel</th>
+                            <th>Pro Aktie</th>
+                            <th>Stück</th>
+                            <th>Gesamt</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dividends-body"></tbody>
                 </table>
             </div>
 

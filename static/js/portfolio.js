@@ -17,6 +17,7 @@ let watchlistSortDirection = 1
 let selectedWatchlistAssetId = null
 let assetTransactionsData = []
 let assetIdsWithSavingsPlan = []
+let dividendsData = []
 
 // User ID aus localStorage holen
 const userId = localStorage.getItem('user_id')
@@ -547,13 +548,14 @@ function changeChartPeriod(period) {
 }
 
 
-// Wechselt zwischen Positionen-, Watchlist-, Transaktionen- und Sparplan-Tab
+// Wechselt zwischen Positionen-, Watchlist-, Transaktionen-, Sparplan- und Dividenden-Tab
 function switchTab(tab) {
     const tabs = {
         positions: { button: 'tab-positions', panel: 'positions-panel' },
         watchlist: { button: 'tab-watchlist', panel: 'watchlist-panel' },
         transactions: { button: 'tab-transactions', panel: 'transactions-panel' },
-        'savings-plans': { button: 'tab-savings-plans', panel: 'savings-plans-panel' }
+        'savings-plans': { button: 'tab-savings-plans', panel: 'savings-plans-panel' },
+        dividends: { button: 'tab-dividends', panel: 'dividends-panel' }
     }
 
     for (const key in tabs) {
@@ -564,8 +566,6 @@ function switchTab(tab) {
     document.getElementById(tabs[tab].button).classList.add('active')
     document.getElementById(tabs[tab].panel).style.display = 'block'
 
-    // Mobile Dropdown synchron halten, falls der Wechsel über einen
-    // Desktop-Button ausgelöst wurde (z.B. bei einer Fenstergrößenänderung)
     document.getElementById('portfolio-tabs-mobile').value = tab
 
     if (tab === 'watchlist' && watchlistData.length === 0) {
@@ -576,6 +576,9 @@ function switchTab(tab) {
     }
     if (tab === 'savings-plans') {
         loadSavingsPlans()
+    }
+    if (tab === 'dividends' && dividendsData.length === 0) {
+        loadDividends()
     }
 }
 
@@ -912,4 +915,33 @@ async function deleteSavingsPlan(planId) {
     } else {
         showToast('Fehler beim Löschen!', 'error')
     }
+}
+
+
+async function loadDividends() {
+    const response = await fetch(`/users/${userId}/dividends`)
+    const data = await response.json()
+
+    dividendsData = data
+    renderDividends(data)
+}
+
+
+function renderDividends(dividends) {
+    const tableBody = document.getElementById('dividends-body')
+
+    if (dividends.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-secondary);">Noch keine Dividenden erhalten</td></tr>'
+        return
+    }
+
+    tableBody.innerHTML = dividends.map(d => `
+        <tr>
+            <td data-label="Datum">${formatDate(d.ex_dividend_date)}</td>
+            <td data-label="Titel"><strong>${d.asset_name}</strong></td>
+            <td data-label="Pro Aktie">${formatCurrency(d.amount_per_share)} €</td>
+            <td data-label="Stück">${d.shares_held}</td>
+            <td data-label="Gesamt" style="color: #2ea043;">+${formatCurrency(d.total_amount)} €</td>
+        </tr>
+    `).join('')
 }
