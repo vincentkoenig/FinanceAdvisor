@@ -17,7 +17,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from api_services import get_crypto_price, get_stock_price, get_metal_price, get_historical_prices, search_web
 from models import (db, User, Asset, UserAsset, PriceHistory,
                     Watchlist, ChatHistory, PortfolioAnalysis, PortfolioAnalysisSchema,
-                    Category, Transaction, AssetTransaction, SavingsPlan)
+                    Category, Transaction, AssetTransaction, SavingsPlan, Dividend)
 from scheduler import start_scheduler
 from tools import tools
 from budget_logic import calculate_budget_summary
@@ -1307,6 +1307,33 @@ def manual_update_prices():
 
 
 # ─── Dividende ENDPOINTS ──────────────────────────────────────────────────────────
+
+@app.route('/users/<user_id>/dividends', methods=['GET'])
+def get_dividends(user_id):
+    """
+    Alle verbuchten Dividenden eines Nutzers, neueste zuerst.
+    Enthält Asset-Name und -Symbol, damit das Frontend nicht pro
+    Zeile einen zusätzlichen Request braucht.
+    """
+    dividends = Dividend.query.filter_by(user_id=user_id) \
+        .order_by(Dividend.ex_dividend_date.desc()).all()
+
+    result = []
+    for dividend in dividends:
+        asset = db.session.get(Asset, dividend.asset_id)
+
+        result.append({
+            "id": dividend.id,
+            "asset_name": asset.name if asset else "Unbekannt",
+            "asset_symbol": asset.symbol if asset else "-",
+            "ex_dividend_date": dividend.ex_dividend_date.strftime('%Y-%m-%d'),
+            "amount_per_share": dividend.amount_per_share,
+            "shares_held": dividend.shares_held,
+            "total_amount": dividend.total_amount
+        })
+
+    return jsonify(result), 200
+
 
 @app.route('/check-dividends', methods=['POST'])
 def manual_check_dividends():
