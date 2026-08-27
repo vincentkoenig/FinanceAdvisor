@@ -17,7 +17,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from api_services import get_crypto_price, get_stock_price, get_metal_price, get_historical_prices, search_web
 from models import (db, User, Asset, UserAsset, PriceHistory,
                     Watchlist, ChatHistory, PortfolioAnalysis, PortfolioAnalysisSchema,
-                    Category, Transaction)
+                    Category, Transaction, AssetTransaction)
 from scheduler import start_scheduler
 from tools import tools
 from budget_logic import calculate_budget_summary
@@ -377,6 +377,35 @@ def add_prices(asset_id):
     return jsonify({"message": "Price successfully added"}), 201
 
 
+@app.route('/users/<user_id>/assets/transactions', methods=['GET'])
+def get_asset_transactions(user_id):
+    """
+    Vollständige Kauf-/Verkaufshistorie eines Nutzers über alle Assets,
+    neueste zuerst. Enthält Asset-Name und -Symbol, damit das Frontend
+    nicht pro Zeile einen zusätzlichen Request braucht.
+    """
+    transactions = AssetTransaction.query.filter_by(user_id=user_id) \
+        .order_by(AssetTransaction.date.desc()).all()
+
+    result = []
+    for transaction in transactions:
+        asset = db.session.get(Asset, transaction.asset_id)
+
+        result.append({
+            "id": transaction.id,
+            "asset_id": transaction.asset_id,
+            "asset_name": asset.name if asset else "Unbekannt",
+            "asset_symbol": asset.symbol if asset else "-",
+            "type": transaction.type,
+            "quantity": transaction.quantity,
+            "price": transaction.price,
+            "total": round(transaction.quantity * transaction.price, 2),
+            "date": transaction.date.strftime('%Y-%m-%d')
+        })
+
+    return jsonify(result), 200
+
+
 # ─── USER ASSET ENDPOINTS ─────────────────────────────────────────────────────
 
 @app.route('/users/<user_id>/assets', methods=['GET'])
@@ -421,12 +450,14 @@ def get_user_assets(user_id):
 
 @app.route('/users/<user_id>/assets', methods=['POST'])
 def add_user_asset(user_id):
-    """Neues Asset dem Nutzer zuweisen"""
+    """
+    Neues Asset dem Nutzer zuweisen.
+    Legt zusätzlich den ersten Kauf in der Transaktionshistorie an.
+    """
     data = request.json
     asset_id = data['asset_id']
     quantity = data['quantity']
     avg_buy_price = data['avg_buy_price']
-    # Datum von String in Python datetime Objekt umwandeln
     bought_at = datetime.strptime(data['bought_at'], '%Y-%m-%d')
     status = data['status']
 
@@ -439,6 +470,18 @@ def add_user_asset(user_id):
         status=status
     )
     db.session.add(user_asset)
+
+    # Ersten Kauf zusätzlich in der Transaktionshistorie protokollieren
+    transaction = AssetTransaction(
+        user_id=user_id,
+        asset_id=asset_id,
+        type='buy',
+        quantity=float(quantity),
+        price=float(avg_buy_price),
+        date=bought_at
+    )
+    db.session.add(transaction)
+
     db.session.commit()
 
     return jsonify({"message": "User asset successfully added"}), 201
@@ -448,7 +491,8 @@ def add_user_asset(user_id):
 def add_buy(user_id, asset_id):
     """
     Weiteren Kauf eines Assets hinzufügen.
-    Berechnet neuen Durchschnittspreis basierend auf altem und neuem Kauf.
+    Berechnet neuen Durchschnittspreis basierend auf altem und neuem Kauf,
+    und protokolliert den Kauf zusätzlich in der Transaktionshistorie.
     """
     data = request.json
     quantity = data['quantity']
@@ -460,15 +504,23 @@ def add_buy(user_id, asset_id):
         return jsonify({"error": "Asset not found"}), 404
 
     # Neuen Durchschnittspreis berechnen
-    # (alter Wert + neuer Wert) / neue Gesamtmenge
     old_value = user_asset.quantity * user_asset.avg_buy_price
     new_value = float(quantity) * float(price)
     new_quantity = user_asset.quantity + float(quantity)
     new_avg_price = (old_value + new_value) / new_quantity
 
-    # Werte aktualisieren
     user_asset.quantity = new_quantity
     user_asset.avg_buy_price = round(new_avg_price, 2)
+
+    # Kauf zusätzlich in der Transaktionshistorie protokollieren
+    transaction = AssetTransaction(
+        user_id=user_id,
+        asset_id=asset_id,
+        type='buy',
+        quantity=float(quantity),
+        price=float(price)
+    )
+    db.session.add(transaction)
 
     db.session.commit()
 
@@ -480,25 +532,34 @@ def add_sell(user_id, asset_id):
     """
     Verkauf eines Assets hinzufügen.
     Reduziert die Menge - wenn alles verkauft wird Status auf 'sold' gesetzt.
+    Protokolliert den Verkauf zusätzlich in der Transaktionshistorie.
     """
     data = request.json
     quantity = data['quantity']
+    price = data.get('price')  # Verkaufspreis, optional falls Frontend ihn noch nicht schickt
 
     user_asset = UserAsset.query.filter_by(user_id=user_id, asset_id=asset_id).first()
 
     if not user_asset:
         return jsonify({"error": "Asset not found"}), 404
 
-    # Prüfen ob genug Anteile vorhanden sind
     if float(quantity) > user_asset.quantity:
         return jsonify({"error": "Nicht genug Anteile!"}), 400
 
-    # Menge reduzieren
     user_asset.quantity -= float(quantity)
 
-    # Wenn alles verkauft → Status auf sold setzen
     if user_asset.quantity == 0:
         user_asset.status = "sold"
+
+    # Verkauf zusätzlich in der Transaktionshistorie protokollieren
+    transaction = AssetTransaction(
+        user_id=user_id,
+        asset_id=asset_id,
+        type='sell',
+        quantity=float(quantity),
+        price=float(price) if price else user_asset.avg_buy_price
+    )
+    db.session.add(transaction)
 
     db.session.commit()
 
