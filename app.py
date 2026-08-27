@@ -302,52 +302,57 @@ def search_asset():
     """
     query = request.args.get('query')
 
-    # Erst in DB nach Symbol suchen
+    # Erst versuchen, direkt per Symbol in der DB zu finden -
+    # deckt den Fall ab, dass der Nutzer bereits das exakte Symbol eintippt
     asset = Asset.query.filter_by(symbol=query.upper()).first()
 
-    # Wenn nicht gefunden → mit yfinance suchen und erstellen
     if not asset:
         try:
-            # Mit yfinance nach Name oder Symbol suchen
+            # Mit yfinance nach Name oder Symbol suchen, um das
+            # kanonische Ticker-Symbol zu ermitteln
             search = yf.Search(query)
             quotes = search.quotes
 
             if not quotes:
                 return jsonify({"error": f"Asset '{query}' nicht gefunden!"}), 404
 
-            # Erstes Ergebnis nehmen
             first_result = quotes[0]
             symbol = first_result['symbol']
             name = first_result.get('longname', first_result.get('shortname', symbol))
 
-            # Preis validieren um sicherzustellen dass das Asset handelbar ist
-            ticker = yf.Ticker(symbol)
-            price = ticker.fast_info['lastPrice']
+            # Jetzt, mit dem von yfinance aufgelösten Symbol, NOCHMAL in
+            # der DB nachschauen - verhindert Duplikate, wenn der Nutzer
+            # z.B. "Nvidia" statt "NVDA" eingegeben hat, das Asset aber
+            # bereits unter dem Symbol NVDA existiert
+            asset = Asset.query.filter_by(symbol=symbol).first()
 
-            # Asset in DB erstellen
-            asset = Asset(
-                name=name,
-                symbol=symbol,
-                asset_type='stock',
-                currency='EUR'
-            )
-            db.session.add(asset)
-            db.session.commit()
+            if not asset:
+                # Preis validieren um sicherzustellen dass das Asset handelbar ist
+                ticker = yf.Ticker(symbol)
+                price = ticker.fast_info['lastPrice']
 
-            # Historische Preise automatisch laden und speichern
-            historical_prices = get_historical_prices(symbol)
-
-            if historical_prices:
-                for price_data in historical_prices:
-                    new_price = PriceHistory(
-                        asset_id=asset.id,
-                        date=datetime.strptime(price_data['date'], '%Y-%m-%d'),
-                        price=price_data['price'],
-                        currency='EUR'
-                    )
-                    db.session.add(new_price)
+                asset = Asset(
+                    name=name,
+                    symbol=symbol,
+                    asset_type='stock',
+                    currency='EUR'
+                )
+                db.session.add(asset)
                 db.session.commit()
-                print(f"Historische Preise für {symbol} gespeichert!")
+
+                historical_prices = get_historical_prices(symbol)
+
+                if historical_prices:
+                    for price_data in historical_prices:
+                        new_price = PriceHistory(
+                            asset_id=asset.id,
+                            date=datetime.strptime(price_data['date'], '%Y-%m-%d'),
+                            price=price_data['price'],
+                            currency='EUR'
+                        )
+                        db.session.add(new_price)
+                    db.session.commit()
+                    print(f"Historische Preise für {symbol} gespeichert!")
 
         except Exception as e:
             print(f"Error searching asset: {e}")
