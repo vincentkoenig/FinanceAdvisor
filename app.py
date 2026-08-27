@@ -114,7 +114,7 @@ def create_default_categories(user_id):
     """
     categories = {
         "income": {
-            "Einkommen": ["Gehalt", "Kindergeld", "Arbeitslosengeld", "Sonstige Einnahmen"]
+            "Einkommen": ["Gehalt", "Kindergeld", "Arbeitslosengeld", "Dividenden", "Sonstige Einnahmen"]
         },
         "fixed_expense": {
             "Wohnen": ["Miete", "Strom", "Nebenkosten"],
