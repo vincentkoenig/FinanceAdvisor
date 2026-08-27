@@ -17,7 +17,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from api_services import get_crypto_price, get_stock_price, get_metal_price, get_historical_prices, search_web
 from models import (db, User, Asset, UserAsset, PriceHistory,
                     Watchlist, ChatHistory, PortfolioAnalysis, PortfolioAnalysisSchema,
-                    Category, Transaction, AssetTransaction)
+                    Category, Transaction, AssetTransaction, SavingsPlan)
 from scheduler import start_scheduler
 from tools import tools
 from budget_logic import calculate_budget_summary
@@ -792,6 +792,150 @@ def delete_asset_from_watchlist(user_id, asset_id):
     db.session.commit()
 
     return jsonify({"message": "Watchlist successfully updated"}), 200
+
+
+# ─── SPARPLÄNE ─────────────────────────────────────────────────────────────
+
+@app.route('/users/<user_id>/savings-plans', methods=['POST'])
+def add_savings_plan(user_id):
+    """Neuen Sparplan anlegen"""
+    data = request.json
+    asset_id = data['asset_id']
+    amount = data['amount']
+    day_of_month = data['day_of_month']
+
+    plan = SavingsPlan(
+        user_id=user_id,
+        asset_id=asset_id,
+        amount=amount,
+        day_of_month=day_of_month
+    )
+    db.session.add(plan)
+    db.session.commit()
+
+    return jsonify({"message": "Sparplan erfolgreich angelegt"}), 201
+
+
+@app.route('/users/<user_id>/savings-plans', methods=['GET'])
+def get_savings_plans(user_id):
+    """
+    Alle Sparpläne eines Nutzers abrufen, inkl. Asset-Info und ob der
+    Sparplan aktuell fällig ist (Tag im Monat erreicht, seit dem
+    letzten Ausführen noch nicht in diesem Zyklus gebucht).
+    """
+    plans = SavingsPlan.query.filter_by(user_id=user_id, active=True).all()
+
+    today = datetime.now()
+    result = []
+
+    for plan in plans:
+        asset = db.session.get(Asset, plan.asset_id)
+
+        # Fällig wenn: heutiger Tag >= geplanter Tag im Monat,
+        # UND (noch nie ausgeführt ODER letzte Ausführung liegt vor
+        # dem aktuellen Fälligkeitstermin dieses Monats)
+        due_date_this_month = datetime(today.year, today.month, min(plan.day_of_month, 28))
+        is_due = today >= due_date_this_month and (
+            plan.last_executed is None or plan.last_executed < due_date_this_month
+        )
+
+        result.append({
+            "id": plan.id,
+            "asset_id": plan.asset_id,
+            "asset_name": asset.name if asset else "Unbekannt",
+            "asset_symbol": asset.symbol if asset else "-",
+            "amount": plan.amount,
+            "day_of_month": plan.day_of_month,
+            "last_executed": plan.last_executed.strftime('%Y-%m-%d') if plan.last_executed else None,
+            "is_due": is_due
+        })
+
+    return jsonify(result), 200
+
+
+@app.route('/savings-plans/<plan_id>', methods=['DELETE'])
+def delete_savings_plan(plan_id):
+    """Sparplan löschen"""
+    plan = db.session.get(SavingsPlan, plan_id)
+
+    if not plan:
+        return jsonify({"error": "Sparplan nicht gefunden"}), 404
+
+    db.session.delete(plan)
+    db.session.commit()
+
+    return jsonify({"message": "Sparplan gelöscht"}), 200
+
+
+@app.route('/savings-plans/<plan_id>/execute', methods=['POST'])
+def execute_savings_plan(plan_id):
+    """
+    Führt einen fälligen Sparplan aus: holt den aktuellen Live-Preis,
+    berechnet die Menge aus dem festen Euro-Betrag, legt eine normale
+    Kauf-Transaktion an (inkl. UserAsset-Aktualisierung) und schreibt
+    last_executed fort.
+    """
+    plan = db.session.get(SavingsPlan, plan_id)
+
+    if not plan:
+        return jsonify({"error": "Sparplan nicht gefunden"}), 404
+
+    asset = db.session.get(Asset, plan.asset_id)
+
+    if asset.asset_type in ("stock", "etf"):
+        current_price = get_stock_price(asset.symbol)
+    elif asset.asset_type == "crypto":
+        current_price = get_crypto_price(asset.symbol)
+    elif asset.asset_type == "metal":
+        current_price = get_metal_price(asset.symbol)
+    else:
+        current_price = None
+
+    if not current_price:
+        return jsonify({"error": "Aktueller Preis konnte nicht ermittelt werden"}), 500
+
+    quantity = round(plan.amount / current_price, 6)
+
+    # Bestehende Position suchen oder neu anlegen - gleiche Logik
+    # wie beim manuellen Kauf über add_buy / add_user_asset
+    user_asset = UserAsset.query.filter_by(user_id=plan.user_id, asset_id=plan.asset_id).first()
+
+    if user_asset:
+        old_value = user_asset.quantity * user_asset.avg_buy_price
+        new_value = quantity * current_price
+        new_quantity = user_asset.quantity + quantity
+        user_asset.avg_buy_price = round((old_value + new_value) / new_quantity, 2)
+        user_asset.quantity = new_quantity
+    else:
+        user_asset = UserAsset(
+            user_id=plan.user_id,
+            asset_id=plan.asset_id,
+            quantity=quantity,
+            avg_buy_price=current_price,
+            status='owned'
+        )
+        db.session.add(user_asset)
+
+    # Kauf in der Transaktionshistorie protokollieren
+    transaction = AssetTransaction(
+        user_id=plan.user_id,
+        asset_id=plan.asset_id,
+        type='buy',
+        quantity=quantity,
+        price=current_price
+    )
+    db.session.add(transaction)
+
+    # Sparplan als ausgeführt markieren
+    plan.last_executed = datetime.now()
+
+    db.session.commit()
+
+    return jsonify({
+        "message": "Sparplan erfolgreich ausgeführt",
+        "quantity": quantity,
+        "price": current_price
+    }), 200
 
 
 # ─── HAUSHALTSBUCH: KATEGORIEN ENDPOINTS ──────────────────────────────────────
