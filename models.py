@@ -97,6 +97,25 @@ class SavingsPlan(db.Model):
     active = db.Column(db.Boolean, default=True)
 
 
+class Dividend(db.Model):
+    """
+    Dividend Tabelle - protokolliert automatisch erkannte und
+    verbuchte Dividendenausschüttungen. Verhindert doppelte
+    Verbuchung, indem für jedes (asset_id, ex_dividend_date)-Paar
+    nur ein Eintrag existieren kann. Verweist zusätzlich auf die
+    erzeugte Transaction im Haushaltsbuch.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
+    ex_dividend_date = db.Column(db.DateTime, nullable=False)
+    amount_per_share = db.Column(db.Float, nullable=False)
+    shares_held = db.Column(db.Float, nullable=False)
+    total_amount = db.Column(db.Float, nullable=False)
+    transaction_id = db.Column(db.Integer, db.ForeignKey('transaction.id'))
+    booked_at = db.Column(db.DateTime, default=db.func.now())
+
+
 class PriceHistory(db.Model):
     """
     PriceHistory Tabelle - speichert täglich die Preise aller Assets.
