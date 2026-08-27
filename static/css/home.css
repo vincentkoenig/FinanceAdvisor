@@ -28,6 +28,23 @@
     font-size: 13px !important;
 }
 
+.due-plan-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.due-plan-row:last-child {
+    border-bottom: none;
+}
+
+#due-savings-plans .glass-card {
+    max-width: 500px;
+}
+
+
 @media (max-width: 768px) {
     .home-overview {
         flex-direction: column;
