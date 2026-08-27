@@ -114,9 +114,27 @@ def update_prices(flask_app):
         print(f"Prices updated successfully at {datetime.now()}")
 
 
+def check_dividends(flask_app):
+    """
+    Prüft für alle Nutzer, ob es neue Dividendenausschüttungen gibt,
+    und verbucht sie automatisch als Einnahme im Haushaltsbuch.
+    Läuft separat vom Preis-Update, da Dividenden deutlich seltener
+    anfallen als tägliche Kursänderungen.
+    """
+    with flask_app.app_context():
+        from dividend_logic import process_dividends_for_all_users
+        process_dividends_for_all_users()
+        print(f"Dividends checked and booked at {datetime.now()}")
+
+
 def start_scheduler(flask_app):
-    """Startet den Scheduler - aktualisiert die Preise täglich um 18:00 Uhr."""
+    """
+    Startet den Scheduler:
+    - aktualisiert die Preise täglich um 18:00 Uhr
+    - prüft Dividenden täglich um 19:00 Uhr (nach dem Preis-Update)
+    """
     scheduler = BackgroundScheduler()
     scheduler.add_job(update_prices, 'cron', hour=18, minute=0, args=[flask_app])
+    scheduler.add_job(check_dividends, 'cron', hour=19, minute=0, args=[flask_app])
     scheduler.start()
-    print("Scheduler started - prices will update daily at 18:00")
+    print("Scheduler started - prices update at 18:00, dividends checked at 19:00")

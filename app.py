@@ -1306,6 +1306,19 @@ def manual_update_prices():
     return jsonify({"message": "Prices updated successfully"}), 200
 
 
+# ─── Dividende ENDPOINTS ──────────────────────────────────────────────────────────
+
+@app.route('/check-dividends', methods=['POST'])
+def manual_check_dividends():
+    """
+    Manuelle Dividendenprüfung - nützlich zum Testen, ohne bis zum
+    geplanten Scheduler-Zeitpunkt warten zu müssen.
+    """
+    from dividend_logic import process_dividends_for_all_users
+    process_dividends_for_all_users()
+    return jsonify({"message": "Dividends checked and booked successfully"}), 200
+
+
 # ─── START ────────────────────────────────────────────────────────────────────
 
 # Scheduler starten - aktualisiert Preise automatisch
