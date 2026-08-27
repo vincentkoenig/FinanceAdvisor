@@ -564,6 +564,10 @@ function switchTab(tab) {
     document.getElementById(tabs[tab].button).classList.add('active')
     document.getElementById(tabs[tab].panel).style.display = 'block'
 
+    // Mobile Dropdown synchron halten, falls der Wechsel über einen
+    // Desktop-Button ausgelöst wurde (z.B. bei einer Fenstergrößenänderung)
+    document.getElementById('portfolio-tabs-mobile').value = tab
+
     if (tab === 'watchlist' && watchlistData.length === 0) {
         loadWatchlist()
     }
