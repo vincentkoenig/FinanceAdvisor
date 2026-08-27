@@ -93,11 +93,12 @@
 
             </div>
 
-            <!-- Tab-Umschalter: Positionen / Watchlist / Transaktionen -->
+            <!-- Tab-Umschalter: Positionen / Watchlist / Transaktionen / Sparpläne -->
             <div class="portfolio-tabs">
                 <button class="portfolio-tab active" id="tab-positions" onclick="switchTab('positions')">Positionen</button>
                 <button class="portfolio-tab" id="tab-watchlist" onclick="switchTab('watchlist')">Watchlist</button>
                 <button class="portfolio-tab" id="tab-transactions" onclick="switchTab('transactions')">Transaktionen</button>
+                <button class="portfolio-tab" id="tab-savings-plans" onclick="switchTab('savings-plans')">Sparpläne</button>
             </div>
 
             <!-- Panel: Positionen -->
@@ -171,6 +172,26 @@
                 </table>
             </div>
 
+            <!-- Panel: Sparpläne -->
+            <div class="positions-container glass-card" id="savings-plans-panel" style="display:none;">
+                <div class="section-header">
+                    <h2>Sparpläne</h2>
+                    <button class="btn-primary add-button" onclick="showAddSavingsPlan()">+ Sparplan anlegen</button>
+                </div>
+                <table class="portfolio-table">
+                    <thead>
+                        <tr>
+                            <th>Titel</th>
+                            <th>Betrag</th>
+                            <th>Fällig am</th>
+                            <th>Zuletzt ausgeführt</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="savings-plans-body"></tbody>
+                </table>
+            </div>
+
     </div>
 
    <!-- Modal: Position hinzufügen -->
@@ -233,6 +254,19 @@
         </div>
 
         <button class="btn-secondary" onclick="hideWatchlistDetail()">Schließen</button>
+    </div>
+</div>
+
+<!-- Modal: Sparplan anlegen -->
+<div id="add-savings-plan-modal" style="display:none;">
+    <div class="modal-overlay" onclick="hideAddSavingsPlan()"></div>
+    <div class="modal">
+        <h3>Sparplan anlegen</h3>
+        <input type="text" id="savings-plan-symbol" placeholder="Symbol z.B. AAPL, bitcoin">
+        <input type="number" id="savings-plan-amount" placeholder="Betrag pro Monat in €">
+        <input type="number" id="savings-plan-day" placeholder="Tag im Monat (1-28)" min="1" max="28">
+        <button class="btn-primary" onclick="addSavingsPlan()">Anlegen</button>
+        <button class="btn-secondary" onclick="hideAddSavingsPlan()">Abbrechen</button>
     </div>
 </div>
 

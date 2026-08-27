@@ -541,31 +541,31 @@ function changeChartPeriod(period) {
 }
 
 
-// Wechselt zwischen Positionen-, Watchlist- und Transaktionen-Tab
+// Wechselt zwischen Positionen-, Watchlist-, Transaktionen- und Sparplan-Tab
 function switchTab(tab) {
     const tabs = {
         positions: { button: 'tab-positions', panel: 'positions-panel' },
         watchlist: { button: 'tab-watchlist', panel: 'watchlist-panel' },
-        transactions: { button: 'tab-transactions', panel: 'transactions-panel' }
+        transactions: { button: 'tab-transactions', panel: 'transactions-panel' },
+        'savings-plans': { button: 'tab-savings-plans', panel: 'savings-plans-panel' }
     }
 
-    // Alle Tabs zunächst deaktivieren und ihre Panels verstecken
     for (const key in tabs) {
         document.getElementById(tabs[key].button).classList.remove('active')
         document.getElementById(tabs[key].panel).style.display = 'none'
     }
 
-    // Den gewählten Tab aktivieren und sein Panel anzeigen
     document.getElementById(tabs[tab].button).classList.add('active')
     document.getElementById(tabs[tab].panel).style.display = 'block'
 
-    // Watchlist bzw. Transaktionen erst beim ersten Öffnen laden,
-    // nicht schon beim Laden der Seite - spart unnötige Requests
     if (tab === 'watchlist' && watchlistData.length === 0) {
         loadWatchlist()
     }
     if (tab === 'transactions' && assetTransactionsData.length === 0) {
         loadAssetTransactions()
+    }
+    if (tab === 'savings-plans') {
+        loadSavingsPlans()
     }
 }
 
@@ -777,4 +777,129 @@ function renderAssetTransactions(transactions) {
             </tr>
         `
     }).join('')
+}
+
+
+async function loadSavingsPlans() {
+    const response = await fetch(`/users/${userId}/savings-plans`)
+    const data = await response.json()
+    renderSavingsPlans(data)
+}
+
+
+function renderSavingsPlans(plans) {
+    const tableBody = document.getElementById('savings-plans-body')
+
+    if (plans.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-secondary);">Keine Sparpläne vorhanden</td></tr>'
+        return
+    }
+
+    tableBody.innerHTML = plans.map(plan => {
+        const dueLabel = plan.is_due
+            ? `<span style="color: #2ea043;">Fällig!</span>`
+            : `Am ${plan.day_of_month}.`
+
+        const executeButton = plan.is_due
+            ? `<button class="btn-primary" style="width: auto; padding: 6px 14px; font-size: 13px;" onclick="executeSavingsPlan(${plan.id})">Jetzt ausführen</button>`
+            : ''
+
+        return `
+            <tr>
+                <td data-label="Titel"><strong>${plan.asset_name}</strong></td>
+                <td data-label="Betrag">${formatCurrency(plan.amount)} €</td>
+                <td data-label="Fällig am">${dueLabel}</td>
+                <td data-label="Zuletzt ausgeführt">${plan.last_executed ? formatDate(plan.last_executed) : '-'}</td>
+                <td data-label="">
+                    ${executeButton}
+                    <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 13px; margin-left: 6px;" onclick="deleteSavingsPlan(${plan.id})">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `
+    }).join('')
+}
+
+
+function showAddSavingsPlan() {
+    document.getElementById('add-savings-plan-modal').style.display = 'block'
+}
+
+function hideAddSavingsPlan() {
+    document.getElementById('add-savings-plan-modal').style.display = 'none'
+}
+
+
+async function addSavingsPlan() {
+    const symbol = document.getElementById('savings-plan-symbol').value
+    const amount = document.getElementById('savings-plan-amount').value
+    const day = document.getElementById('savings-plan-day').value
+
+    if (amount === '' || isNaN(amount) || parseFloat(amount) <= 0) {
+        showToast('Bitte einen gültigen Betrag größer 0 angeben!', 'error')
+        return
+    }
+    if (day === '' || isNaN(day) || parseInt(day) < 1 || parseInt(day) > 28) {
+        showToast('Bitte einen Tag zwischen 1 und 28 angeben!', 'error')
+        return
+    }
+
+    // Asset suchen oder automatisch erstellen, gleiche Logik wie bei addPosition
+    const searchResponse = await fetch(`/assets/search?query=${symbol}`)
+    const asset = await searchResponse.json()
+
+    if (!searchResponse.ok) {
+        showToast('Asset nicht gefunden!', 'error')
+        return
+    }
+
+    const response = await fetch(`/users/${userId}/savings-plans`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            asset_id: asset.id,
+            amount: amount,
+            day_of_month: parseInt(day)
+        })
+    })
+
+    if (response.ok) {
+        showToast('Sparplan angelegt!')
+        hideAddSavingsPlan()
+        loadSavingsPlans()
+    } else {
+        showToast('Fehler beim Anlegen des Sparplans!', 'error')
+    }
+}
+
+
+async function executeSavingsPlan(planId) {
+    const response = await fetch(`/savings-plans/${planId}/execute`, {
+        method: 'POST'
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+        showToast(`Sparplan ausgeführt: ${data.quantity} Stück zu ${data.price} €`)
+        loadSavingsPlans()
+        loadPortfolio()  // Positionstabelle aktualisieren, da sich die Menge geändert hat
+    } else {
+        showToast(data.error || 'Fehler beim Ausführen!', 'error')
+    }
+}
+
+
+async function deleteSavingsPlan(planId) {
+    const response = await fetch(`/savings-plans/${planId}`, {
+        method: 'DELETE'
+    })
+
+    if (response.ok) {
+        showToast('Sparplan gelöscht!')
+        loadSavingsPlans()
+    } else {
+        showToast('Fehler beim Löschen!', 'error')
+    }
 }
