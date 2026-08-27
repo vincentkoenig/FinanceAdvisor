@@ -43,12 +43,10 @@ def calculate_shares_held_at(user_id, asset_id, target_date):
 
 def process_dividends_for_user(user_id):
     holdings = UserAsset.query.filter_by(user_id=user_id).filter(UserAsset.quantity > 0).all()
-    print(f"Prüfe Dividenden für {len(holdings)} gehaltene Assets")
 
     dividend_category = Category.query.filter_by(user_id=user_id, name="Dividenden").first()
 
     if not dividend_category:
-        print("Keine Dividenden-Kategorie gefunden - breche ab")
         return
 
     for holding in holdings:
@@ -56,17 +54,14 @@ def process_dividends_for_user(user_id):
         if not asset:
             continue
 
-        print(f"\nPrüfe {asset.name} ({asset.symbol})...")
 
         last_dividend = Dividend.query.filter_by(
             user_id=user_id, asset_id=asset.id
         ).order_by(Dividend.ex_dividend_date.desc()).first()
 
         since_date = last_dividend.ex_dividend_date if last_dividend else datetime(datetime.now().year - 1, 1, 1)
-        print(f"  Suche Dividenden seit {since_date}")
 
         new_dividends = get_dividends_since(asset.symbol, since_date)
-        print(f"  Gefundene neue Dividenden: {new_dividends}")
 
         if not new_dividends:
             continue
@@ -78,14 +73,11 @@ def process_dividends_for_user(user_id):
             amount_per_share = entry['amount_per_share'] * rate
 
             shares_held = calculate_shares_held_at(user_id, asset.id, dividend_date)
-            print(f"    Am {dividend_date.date()}: {shares_held} Stück gehalten")
 
             if shares_held <= 0:
-                print(f"    -> übersprungen, keine Stücke gehalten")
                 continue
 
             total_amount = round(amount_per_share * shares_held, 2)
-            print(f"    -> verbuche {total_amount} EUR")
 
             # Transaction im Haushaltsbuch anlegen
             transaction = Transaction(
