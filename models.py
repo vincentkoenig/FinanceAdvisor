@@ -196,6 +196,8 @@ class Transaction(db.Model):
     gespeichert - date ist dann das Startdatum, end_date optional das Ende.
     Sie werden für jeden Monat dazwischen automatisch mitgezählt,
     ohne dass für jeden Monat ein eigener Eintrag existiert.
+    is_paused erlaubt es, eine wiederkehrende Buchung vorübergehend
+    auszusetzen, ohne sie zu löschen oder ein festes end_date zu setzen.
     """
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
@@ -205,6 +207,7 @@ class Transaction(db.Model):
     date = db.Column(db.DateTime, default=db.func.now())
     is_recurring = db.Column(db.Boolean, default=False)
     end_date = db.Column(db.DateTime)
+    is_paused = db.Column(db.Boolean, default=False)
 
 
 # ─── PYDANTIC SCHEMAS ─────────────────────────────────────────────────────────
