@@ -185,7 +185,6 @@ function renderTransactionsList(transactions) {
         return
     }
 
-    // Nach Datum absteigend sortieren, neueste zuerst
     const sorted = [...transactions].sort((a, b) => b.date.localeCompare(a.date))
 
     tableBody.innerHTML = sorted.map(transaction => {
@@ -196,20 +195,47 @@ function renderTransactionsList(transactions) {
             ? '<i class="fa-solid fa-rotate" title="Wiederkehrend" style="margin-left: 6px; color: var(--text-secondary); font-size: 12px;"></i>'
             : ''
 
+        // Pausieren/Fortsetzen-Button nur bei wiederkehrenden Buchungen anzeigen
+        const pauseButton = transaction.is_recurring
+            ? `<button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 13px;" onclick="toggleTransactionPause(${transaction.id})" title="${transaction.is_paused ? 'Fortsetzen' : 'Pausieren'}">
+                   <i class="fa-solid ${transaction.is_paused ? 'fa-play' : 'fa-pause'}"></i>
+               </button>`
+            : ''
+
+        // Optische Kennzeichnung pausierter Buchungen
+        const pausedStyle = transaction.is_paused ? 'opacity: 0.5;' : ''
+
         return `
-            <tr>
+            <tr style="${pausedStyle}">
                 <td data-label="Datum">${formatDate(transaction.date)}</td>
                 <td data-label="Kategorie">${transaction.category_name}${recurringIcon}</td>
-                <td data-label="Beschreibung">${transaction.description || '-'}</td>
+                <td data-label="Beschreibung">${transaction.description || '-'}${transaction.is_paused ? ' <small style="color: var(--text-secondary);">(pausiert)</small>' : ''}</td>
                 <td data-label="Betrag" style="color: ${amountColor}">${amountPrefix}${formatCurrency(transaction.amount)} €</td>
                 <td data-label="">
-                    <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 13px;" onclick="deleteTransaction(${transaction.id})">
+                    ${pauseButton}
+                    <button class="btn-secondary" style="width: auto; padding: 6px 12px; font-size: 13px; margin-left: 6px;" onclick="deleteTransaction(${transaction.id})">
                         <i class="fa-solid fa-trash"></i>
                     </button>
                 </td>
             </tr>
         `
     }).join('')
+}
+
+
+async function toggleTransactionPause(transactionId) {
+    const response = await fetch(`/transactions/${transactionId}/toggle-pause`, {
+        method: 'PUT'
+    })
+
+    const data = await response.json()
+
+    if (response.ok) {
+        showToast(data.message)
+        loadBudget()
+    } else {
+        showToast(data.error || 'Fehler beim Pausieren!', 'error')
+    }
 }
 
 // Datum im deutschen Format formatieren z.B. 05.07.2026

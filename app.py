@@ -1029,7 +1029,11 @@ def get_transactions(user_id):
     Wiederkehrende Buchungen werden automatisch für jeden Monat
     mitgezählt, der zwischen ihrem Start- und optionalem Enddatum liegt,
     auch wenn dafür kein eigener Eintrag in der DB existiert. Pausierte
-    Buchungen werden ab ihrem Pausierungszeitpunkt nicht mehr mitgezählt.
+    Buchungen werden hier weiterhin mit angezeigt (mit is_paused
+    gekennzeichnet), damit sie in der Liste sichtbar und über den
+    Pausieren/Fortsetzen-Button wieder aktivierbar bleiben - nur bei
+    der Saldo-Berechnung in budget_logic.py werden sie tatsächlich
+    aus der Summe herausgerechnet.
     """
     month = request.args.get('month')
 
@@ -1044,18 +1048,10 @@ def get_transactions(user_id):
         one_time = Transaction.query.filter_by(user_id=user_id, is_recurring=False) \
             .filter(Transaction.date >= month_start, Transaction.date < month_end).all()
 
-        recurring_candidates = Transaction.query.filter_by(user_id=user_id, is_recurring=True) \
+        recurring = Transaction.query.filter_by(user_id=user_id, is_recurring=True) \
             .filter(Transaction.date < month_end) \
             .filter(db.or_(Transaction.end_date.is_(None), Transaction.end_date >= month_start)) \
             .all()
-
-        # Pausierte Buchungen ausschließen, deren Pause bereits vor
-        # Ende dieses Monats begonnen hat - gleiche Logik wie in
-        # budget_logic.py, damit Übersicht und Liste konsistent sind
-        recurring = [
-            t for t in recurring_candidates
-            if not t.is_paused or (t.paused_at is not None and t.paused_at >= month_end)
-        ]
 
         transactions = one_time + recurring
     else:
