@@ -1124,6 +1124,31 @@ def delete_transaction(transaction_id):
     return jsonify({"message": "Transaction successfully deleted"}), 200
 
 
+@app.route('/transactions/<transaction_id>/toggle-pause', methods=['PUT'])
+def toggle_transaction_pause(transaction_id):
+    """
+    Pausiert eine wiederkehrende Buchung, oder setzt sie fort, falls
+    sie bereits pausiert war. Beim Pausieren wird paused_at auf den
+    aktuellen Zeitpunkt gesetzt, damit vergangene Monate bei der
+    Budget-Berechnung unverändert korrekt bleiben.
+    """
+    transaction = db.session.get(Transaction, transaction_id)
+
+    if not transaction:
+        return jsonify({"error": "Transaction not found"}), 404
+
+    if not transaction.is_recurring:
+        return jsonify({"error": "Nur wiederkehrende Buchungen können pausiert werden"}), 400
+
+    transaction.is_paused = not transaction.is_paused
+    transaction.paused_at = datetime.now() if transaction.is_paused else None
+
+    db.session.commit()
+
+    status = "pausiert" if transaction.is_paused else "fortgesetzt"
+    return jsonify({"message": f"Buchung {status}", "is_paused": transaction.is_paused}), 200
+
+
 @app.route('/users/<user_id>/budget/summary', methods=['GET'])
 def get_budget_summary(user_id):
     """
