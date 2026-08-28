@@ -1021,7 +1021,6 @@ def init_default_categories(user_id):
 
 # ─── HAUSHALTSBUCH: TRANSAKTIONEN ENDPOINTS ───────────────────────────────────
 
-@app.route('/users/<user_id>/transactions', methods=['GET'])
 def get_transactions(user_id):
     """
     Alle Buchungen eines Nutzers abrufen, mit Kategoriename und -typ.
@@ -1029,12 +1028,12 @@ def get_transactions(user_id):
     z.B. /users/1/transactions?month=2026-07
     Wiederkehrende Buchungen werden automatisch für jeden Monat
     mitgezählt, der zwischen ihrem Start- und optionalem Enddatum liegt,
-    auch wenn dafür kein eigener Eintrag in der DB existiert.
+    auch wenn dafür kein eigener Eintrag in der DB existiert. Pausierte
+    Buchungen werden ab ihrem Pausierungszeitpunkt nicht mehr mitgezählt.
     """
     month = request.args.get('month')
 
     if month:
-        # Anfang und Ende des abgefragten Monats bestimmen
         year, month_num = map(int, month.split('-'))
         month_start = datetime(year, month_num, 1)
         if month_num == 12:
@@ -1042,16 +1041,21 @@ def get_transactions(user_id):
         else:
             month_end = datetime(year, month_num + 1, 1)
 
-        # Einmalige Buchungen die genau in diesem Monat liegen
         one_time = Transaction.query.filter_by(user_id=user_id, is_recurring=False) \
             .filter(Transaction.date >= month_start, Transaction.date < month_end).all()
 
-        # Wiederkehrende Buchungen deren Zeitraum diesen Monat abdeckt:
-        # Startdatum liegt vor Monatsende UND (kein Enddatum ODER Enddatum liegt nach Monatsanfang)
-        recurring = Transaction.query.filter_by(user_id=user_id, is_recurring=True) \
+        recurring_candidates = Transaction.query.filter_by(user_id=user_id, is_recurring=True) \
             .filter(Transaction.date < month_end) \
             .filter(db.or_(Transaction.end_date.is_(None), Transaction.end_date >= month_start)) \
             .all()
+
+        # Pausierte Buchungen ausschließen, deren Pause bereits vor
+        # Ende dieses Monats begonnen hat - gleiche Logik wie in
+        # budget_logic.py, damit Übersicht und Liste konsistent sind
+        recurring = [
+            t for t in recurring_candidates
+            if not t.is_paused or (t.paused_at is not None and t.paused_at >= month_end)
+        ]
 
         transactions = one_time + recurring
     else:
@@ -1068,6 +1072,7 @@ def get_transactions(user_id):
             "date": transaction.date.strftime('%Y-%m-%d'),
             "end_date": transaction.end_date.strftime('%Y-%m-%d') if transaction.end_date else None,
             "is_recurring": transaction.is_recurring,
+            "is_paused": transaction.is_paused,
             "category_id": transaction.category_id,
             "category_name": category.name if category else None,
             "category_type": category.type if category else None
