@@ -1020,7 +1020,7 @@ def init_default_categories(user_id):
     return jsonify({"message": "Default categories created"}), 201
 
 # ─── HAUSHALTSBUCH: TRANSAKTIONEN ENDPOINTS ───────────────────────────────────
-
+@app.route('/users/<user_id>/transactions', methods=['GET'])
 def get_transactions(user_id):
     """
     Alle Buchungen eines Nutzers abrufen, mit Kategoriename und -typ.
