@@ -208,6 +208,7 @@ class Transaction(db.Model):
     is_recurring = db.Column(db.Boolean, default=False)
     end_date = db.Column(db.DateTime)
     is_paused = db.Column(db.Boolean, default=False)
+    paused_at = db.Column(db.DateTime)
 
 
 # ─── PYDANTIC SCHEMAS ─────────────────────────────────────────────────────────
