@@ -68,7 +68,15 @@ def calculate_budget_summary(user_id):
         for transaction in recurring_transactions:
             starts_before_month_end = transaction.date < month_end
             no_end_or_ends_after_month_start = transaction.end_date is None or transaction.end_date >= month_start
-            if starts_before_month_end and no_end_or_ends_after_month_start:
+
+            # Pausierte Buchungen werden ab dem Monat, in dem pausiert
+            # wurde, nicht mehr mitgezählt - vergangene Monate (vor der
+            # Pause) bleiben unverändert korrekt
+            not_paused_this_month = not transaction.is_paused or (
+                    transaction.paused_at is not None and transaction.paused_at >= month_end
+            )
+
+            if starts_before_month_end and no_end_or_ends_after_month_start and not_paused_this_month:
                 all_relevant_transactions.append(transaction)
 
         for transaction in all_relevant_transactions:
