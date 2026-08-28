@@ -18,11 +18,50 @@ import requests
 import yfinance as yf
 from dotenv import load_dotenv
 from langchain_tavily import TavilySearch
+from functools import wraps
+from time import time
 
 # .env Datei laden - API Keys sicher aus .env holen
 load_dotenv()
 
+# Einfacher In-Memory-Cache für Live-Preise, um wiederholte API-Calls
+# innerhalb kurzer Zeit zu vermeiden (z.B. beim mehrfachen Laden der
+# Portfolio-Seite). Läuft im laufenden Server-Prozess, kein externer
+# Dienst nötig - passend zu einem einzelnen Gunicorn-Worker.
+_price_cache = {}
+CACHE_DURATION_SECONDS = 120  # 2 Minuten
 
+
+def cached_price(func):
+    """
+    Decorator, der das Ergebnis einer Preis-Funktion für
+    CACHE_DURATION_SECONDS zwischenspeichert, getrennt pro
+    Funktionsname und übergebenem Symbol/Coin-ID.
+    """
+    @wraps(func)
+    def wrapper(identifier):
+        cache_key = (func.__name__, identifier)
+        now = time()
+
+        if cache_key in _price_cache:
+            cached_value, cached_at = _price_cache[cache_key]
+            if now - cached_at < CACHE_DURATION_SECONDS:
+                return cached_value
+
+        result = func(identifier)
+
+        # Nur erfolgreiche Ergebnisse cachen - ein None (Fehler)
+        # soll beim nächsten Aufruf sofort erneut versucht werden,
+        # statt 2 Minuten lang "None" zurückzugeben
+        if result is not None:
+            _price_cache[cache_key] = (result, now)
+
+        return result
+
+    return wrapper
+
+
+@cached_price
 def get_crypto_price(coin_id):
     """
     Ruft den aktuellen Preis einer Kryptowährung ab.
@@ -49,6 +88,7 @@ def get_crypto_price(coin_id):
         return None
 
 
+@cached_price
 def get_stock_price(symbol):
     """
     Ruft den aktuellen Preis einer Aktie oder eines ETFs ab.
@@ -69,6 +109,7 @@ def get_stock_price(symbol):
         return None
 
 
+@cached_price
 def get_metal_price(symbol):
     """
     Ruft den aktuellen Preis eines Edelmetalls ab.
