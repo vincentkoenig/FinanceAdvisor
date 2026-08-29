@@ -1268,6 +1268,8 @@ def chat():
                 result = get_metal_price(function_args['symbol'])
             elif function_name == "search_web":
                 result = search_web(function_args['query'])
+            elif function_name == "get_budget_status":
+                result = calculate_budget_summary(user_id)
             else:
                 result = None
 
