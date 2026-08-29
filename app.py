@@ -1409,6 +1409,18 @@ def manual_check_dividends():
     return jsonify({"message": "Dividends checked and booked successfully"}), 200
 
 
+# ─── Insights ────────────────────────────────────────────────────────────────────
+@app.route('/generate-insights', methods=['POST'])
+def manual_generate_insights():
+    """
+    Manuelle Insight-Generierung - nützlich zum Testen, ohne bis
+    zum geplanten Scheduler-Zeitpunkt warten zu müssen.
+    """
+    from insight_logic import generate_insights_for_all_users
+    generate_insights_for_all_users(client)
+    return jsonify({"message": "Insights generated successfully"}), 200
+
+
 # ─── START ────────────────────────────────────────────────────────────────────
 
 # Scheduler starten - aktualisiert Preise automatisch
