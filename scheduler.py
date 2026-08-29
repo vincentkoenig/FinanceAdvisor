@@ -114,6 +114,19 @@ def update_prices(flask_app):
         print(f"Prices updated successfully at {datetime.now()}")
 
 
+def check_dividends(flask_app):
+    """
+    Prüft für alle Nutzer, ob es neue Dividendenausschüttungen gibt,
+    und verbucht sie automatisch als Einnahme im Haushaltsbuch.
+    Läuft separat vom Preis-Update, da Dividenden deutlich seltener
+    anfallen als tägliche Kursänderungen.
+    """
+    with flask_app.app_context():
+        from dividend_logic import process_dividends_for_all_users
+        process_dividends_for_all_users()
+        print(f"Dividends checked and booked at {datetime.now()}")
+
+
 def generate_daily_insights(flask_app, openai_client):
     """
     Generiert für alle Nutzer einen neuen, proaktiven täglichen
