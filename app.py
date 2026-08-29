@@ -17,7 +17,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from api_services import get_crypto_price, get_stock_price, get_metal_price, get_historical_prices, search_web
 from models import (db, User, Asset, UserAsset, PriceHistory,
                     Watchlist, ChatHistory, PortfolioAnalysis, PortfolioAnalysisSchema,
-                    Category, Transaction, AssetTransaction, SavingsPlan, Dividend)
+                    Category, Transaction, AssetTransaction, SavingsPlan, Dividend, DailyInsight)
 from scheduler import start_scheduler
 from tools import tools
 from budget_logic import calculate_budget_summary
@@ -1419,6 +1419,21 @@ def manual_generate_insights():
     from insight_logic import generate_insights_for_all_users
     generate_insights_for_all_users(client)
     return jsonify({"message": "Insights generated successfully"}), 200
+
+
+@app.route('/users/<user_id>/insight', methods=['GET'])
+def get_latest_insight(user_id):
+    """Gibt den zuletzt generierten täglichen Insight eines Nutzers zurück."""
+    insight = DailyInsight.query.filter_by(user_id=user_id) \
+        .order_by(DailyInsight.created_at.desc()).first()
+
+    if not insight:
+        return jsonify({"content": None}), 200
+
+    return jsonify({
+        "content": insight.content,
+        "created_at": insight.created_at.strftime('%Y-%m-%d %H:%M')
+    }), 200
 
 
 # ─── START ────────────────────────────────────────────────────────────────────
