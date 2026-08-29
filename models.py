@@ -116,6 +116,21 @@ class Dividend(db.Model):
     booked_at = db.Column(db.DateTime, default=db.func.now())
 
 
+class DailyInsight(db.Model):
+    """
+    DailyInsight Tabelle - speichert einen täglich automatisch
+    generierten, kompakten KI-Text mit den wichtigsten Kennzahlen
+    und Entwicklungen des Nutzers (Portfolio + Haushaltsbuch).
+    Wird vom Scheduler einmal täglich erzeugt und auf der Home-Seite
+    angezeigt, damit die App proaktiv Erkenntnisse liefert statt nur
+    auf Anfragen zu reagieren.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+
 class PriceHistory(db.Model):
     """
     PriceHistory Tabelle - speichert täglich die Preise aller Assets.
