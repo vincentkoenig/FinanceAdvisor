@@ -605,6 +605,28 @@ def get_portfolio_history(user_id):
     return jsonify(result), 200
 
 
+def calculate_diversification_score(asset_values, total_value):
+    """
+    Berechnet einen Diversifikationsscore von 1-10 basierend auf dem
+    Herfindahl-Hirschman-Index (HHI) - einem Standardmaß für
+    Portfolio-Konzentration. Ein Portfolio mit einem einzigen Asset
+    hat einen HHI von 1.0 (maximale Konzentration), ein Portfolio mit
+    vielen gleichgewichteten Assets nähert sich 0 an. Der HHI wird
+    hier auf eine 1-10-Skala umgerechnet, wobei 10 = maximal
+    diversifiziert und 1 = maximal konzentriert bedeutet.
+    """
+    if total_value == 0 or not asset_values:
+        return 1
+
+    hhi = sum((value / total_value) ** 2 for value in asset_values)
+
+    # HHI liegt zwischen 1/n (perfekt gleichverteilt) und 1 (ein Asset).
+    # Wir invertieren und skalieren linear auf 1-10, wobei hhi=1 -> Score 1
+    # und hhi nahe 0 -> Score nahe 10 ergibt.
+    score = round(10 - (hhi * 9))
+    return max(1, min(10, score))
+
+
 @app.route('/portfolio/analyze', methods=['POST'])
 def analyze_portfolio():
     """
@@ -633,14 +655,13 @@ def analyze_portfolio():
     investment_horizon = user.investment_horizon if user.investment_horizon else "not specified"
 
     # Portfolio-Kontext aufbauen
-    # Das LLM bekommt alle Assets mit Menge, Kaufpreis und aktuellem Preis
     portfolio_context = ""
-    total_value = 0  # Gesamtwert selbst berechnen statt dem LLM zu überlassen
+    total_value = 0
+    asset_values = []  # Einzelwerte für die Diversifikations-Berechnung sammeln
 
     for user_asset in user_assets:
         asset = db.session.get(Asset, user_asset.asset_id)
 
-        # Aktuellen Preis je nach Asset-Typ holen
         if asset.asset_type in ("stock", "etf"):
             current_price = get_stock_price(asset.symbol)
         elif asset.asset_type == "crypto":
@@ -652,6 +673,7 @@ def analyze_portfolio():
 
         current_value = user_asset.quantity * current_price
         total_value += current_value
+        asset_values.append(current_value)
 
         portfolio_context += (
             f"\n- {asset.name}: {user_asset.quantity} units"
@@ -700,22 +722,30 @@ def analyze_portfolio():
     # Vom LLM berechneten Gesamtwert durch den exakten Backend-Wert ersetzen
     analysis.total_value = round(total_value, 2)
 
+    # Diversifikationsscore objektiv über HHI berechnen - ist kein
+    # Teil des Pydantic-Schemas, wird separat hinzugefügt
+    diversification_score = calculate_diversification_score(asset_values, total_value)
+
     # Analyse in DB speichern
     new_analysis = PortfolioAnalysis(
         user_id=user_id,
         total_value=analysis.total_value,
         risk_assessment=analysis.risk_assessment,
-        diversification_score=analysis.diversification_score,
+        diversification_score=diversification_score,
         summary=analysis.summary,
-        recommendations=str(analysis.recommendations),  # Liste als Text speichern
-        allocation=str(analysis.allocation)              # Pydantic Objekte als Text speichern
+        recommendations=str(analysis.recommendations),
+        allocation=str(analysis.allocation)
     )
 
     db.session.add(new_analysis)
     db.session.commit()
 
-    # model_dump() wandelt Pydantic Objekt in Dictionary um das jsonify verarbeiten kann
-    return jsonify(analysis.model_dump()), 200
+    # model_dump() enthält den Score nicht mehr (kein Pydantic-Feld) -
+    # wird der Antwort manuell hinzugefügt
+    result = analysis.model_dump()
+    result['diversification_score'] = diversification_score
+
+    return jsonify(result), 200
 
 
 @app.route('/users/<user_id>/portfolio/analyses', methods=['GET'])

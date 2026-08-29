@@ -228,12 +228,14 @@ class PortfolioAnalysisSchema(PydanticBaseModel):
     Pydantic Schema für die komplette Portfolio-Analyse.
     Definiert das exakte Format, das das LLM zurückgeben muss.
     Wird als response_format an OpenAI übergeben.
+    diversification_score ist bewusst NICHT Teil dieses Schemas -
+    er wird serverseitig über den Herfindahl-Hirschman-Index objektiv
+    berechnet, statt vom LLM geschätzt zu werden (siehe app.py).
     """
     total_value: float
     currency: str
     allocation: List[AllocationItem]
     risk_assessment: str
-    diversification_score: int
     summary: str
     recommendations: list[str]
-    disclaimer: str                  
+    disclaimer: str
