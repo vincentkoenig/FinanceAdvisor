@@ -114,27 +114,28 @@ def update_prices(flask_app):
         print(f"Prices updated successfully at {datetime.now()}")
 
 
-def check_dividends(flask_app):
+def generate_daily_insights(flask_app, openai_client):
     """
-    Prüft für alle Nutzer, ob es neue Dividendenausschüttungen gibt,
-    und verbucht sie automatisch als Einnahme im Haushaltsbuch.
-    Läuft separat vom Preis-Update, da Dividenden deutlich seltener
-    anfallen als tägliche Kursänderungen.
+    Generiert für alle Nutzer einen neuen, proaktiven täglichen
+    KI-Insight (Portfolio-Entwicklung + Budget-Status). Läuft nach
+    dem Dividenden-Check, damit alle Zahlen für den Tag aktuell sind.
     """
     with flask_app.app_context():
-        from dividend_logic import process_dividends_for_all_users
-        process_dividends_for_all_users()
-        print(f"Dividends checked and booked at {datetime.now()}")
+        from insight_logic import generate_insights_for_all_users
+        generate_insights_for_all_users(openai_client)
+        print(f"Daily insights generated at {datetime.now()}")
 
 
-def start_scheduler(flask_app):
+def start_scheduler(flask_app, openai_client):
     """
     Startet den Scheduler:
     - aktualisiert die Preise täglich um 18:00 Uhr
     - prüft Dividenden täglich um 19:00 Uhr (nach dem Preis-Update)
+    - generiert tägliche Insights um 20:00 Uhr (nach dem Dividenden-Check)
     """
     scheduler = BackgroundScheduler()
     scheduler.add_job(update_prices, 'cron', hour=18, minute=0, args=[flask_app])
     scheduler.add_job(check_dividends, 'cron', hour=19, minute=0, args=[flask_app])
+    scheduler.add_job(generate_daily_insights, 'cron', hour=20, minute=0, args=[flask_app, openai_client])
     scheduler.start()
-    print("Scheduler started - prices update at 18:00, dividends checked at 19:00")
+    print("Scheduler started - prices 18:00, dividends 19:00, insights 20:00")

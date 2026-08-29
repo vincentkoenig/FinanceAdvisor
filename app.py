@@ -1414,7 +1414,7 @@ def manual_check_dividends():
 # Scheduler starten - aktualisiert Preise automatisch
 # Läuft sowohl beim lokalen Start (python app.py) als auch
 # wenn Gunicorn die App importiert (auf Render)
-start_scheduler(app)
+start_scheduler(app, client)
 
 if __name__ == '__main__':
     # debug=True nur lokal - auf Render läuft die App über Gunicorn,
