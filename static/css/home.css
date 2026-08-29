@@ -44,6 +44,29 @@
     max-width: 500px;
 }
 
+.daily-insight-card {
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 20px;
+    margin-bottom: 20px;
+}
+
+.daily-insight-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.daily-insight-label i {
+    color: var(--accent-blue);
+}
+
+#daily-insight-text {
+    color: var(--text-primary);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
 
 @media (max-width: 768px) {
     .home-overview {

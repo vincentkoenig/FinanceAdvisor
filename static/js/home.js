@@ -39,6 +39,15 @@ async function loadHomeOverview() {
 
     document.getElementById('home-total-net-worth').innerHTML = `${formatCurrency(totalNetWorth)} €`
 
+        // Täglichen KI-Insight laden und anzeigen
+        const insightResponse = await fetch(`/users/${userId}/insight`)
+        const insight = await insightResponse.json()
+
+        if (insight.content) {
+            document.getElementById('daily-insight-text').innerHTML = insight.content
+            document.getElementById('daily-insight-card').style.display = 'block'
+        }
+
         // Fällige Sparpläne prüfen und als Hinweis anzeigen
         const savingsPlansResponse = await fetch(`/users/${userId}/savings-plans`)
         const savingsPlans = await savingsPlansResponse.json()
