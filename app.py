@@ -1192,6 +1192,8 @@ def chat():
     monthly_budget = user.monthly_budget if user.monthly_budget else "not specified"
     investment_horizon = user.investment_horizon if user.investment_horizon else "not specified"
 
+    current_year = datetime.now().year
+
     # System Prompt als erstes Element der messages Liste
     # Definiert die Rolle und das Verhalten des LLM
     messages = [
@@ -1214,6 +1216,9 @@ def chat():
                 f"NEVER end your response with '💡 Beispiel' or '❓ Interessiert Sie auch'. "
                 f"Only add examples or follow-up questions when they are naturally part of the explanation. "
                 f"NEVER use numbered lists (1. 2. 3.). Use natural paragraphs or bullet points with '-' instead. "
+                f"When using the search_web tool for news or current events, always include "
+                f"the current year ({current_year}) or a recency term like 'aktuell' / 'latest' "
+                f"in your search query, to avoid retrieving outdated results. "
                 f"\n\nUser profile:"
                 f"\n- Risk profile: {risk_profile}"
                 f"\n- Investment experience: {investment_experience}"
