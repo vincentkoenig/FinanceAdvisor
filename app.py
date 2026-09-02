@@ -216,27 +216,29 @@ def register():
 def login():
     """
     Nutzer einloggen.
-    Email und Passwort werden überprüft.
+    Email und Passwort werden überprüft. Ein Login ist nur möglich,
+    wenn die Email zuvor per Verifizierungscode bestätigt wurde.
     Gibt user_id zurück damit Frontend sie im localStorage speichern kann.
     """
     data = request.json
     email = data['email']
     password = data['password']
 
-    # Nutzer in der Datenbank anhand der Email suchen
-    # .first() gibt den ersten Treffer zurück oder None
     user = User.query.filter_by(email=email).first()
 
-    # Wenn Nutzer nicht gefunden → 404 Not Found
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    # Passwort überprüfen - vergleicht eingegebenes Passwort mit gespeichertem Hash
-    # Passwort wird nie entschlüsselt - nur die Hashes werden verglichen!
     if not check_password_hash(user.password, password):
-        return jsonify({"error": "Wrong password"}), 401  # 401 = Unauthorized
+        return jsonify({"error": "Wrong password"}), 401
 
-    # Wenn alles stimmt → 200 OK
+    if not user.is_verified:
+        return jsonify({
+            "error": "Bitte bestätige zuerst deine Email-Adresse",
+            "needs_verification": True,
+            "user_id": user.id
+        }), 403
+
     return jsonify({"message": "Login successful", "user_id": user.id}), 200
 
 
