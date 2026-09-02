@@ -69,7 +69,6 @@ def get_crypto_price(coin_id):
     Parameter: coin_id → z.B. "bitcoin", "ethereum", "solana"
     Gibt den Preis in EUR zurück oder None bei Fehler.
     """
-    import requests
 
     url = "https://api.coingecko.com/api/v3/simple/price"
     params = {
