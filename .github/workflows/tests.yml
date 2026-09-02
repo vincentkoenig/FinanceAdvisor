@@ -25,4 +25,8 @@ jobs:
           pip install -r requirements-dev.txt
 
       - name: Tests ausführen
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
         run: pytest --cov=app --cov=budget_logic --cov=api_services --cov-report=term-missing
