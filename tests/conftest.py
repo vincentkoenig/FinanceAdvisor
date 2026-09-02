@@ -1,34 +1,47 @@
 """
 conftest.py - Gemeinsame pytest-Fixtures für alle Tests.
 Stellt eine isolierte, In-Memory-Testdatenbank bereit, damit Tests
-nicht gegen die echte lokale Datenbank laufen.
+niemals gegen die echte lokale Datenbank laufen.
 """
 
 import sys
 import os
-from datetime import datetime
-
-import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app import app as flask_app
+import pytest
+from flask import Flask
+
 from models import db, User, Category, Transaction
 
 
 @pytest.fixture
 def app():
     """
-    Stellt die Flask-App mit einer In-Memory-SQLite-Datenbank bereit,
-    statt der echten Datei-Datenbank. Jeder Test bekommt eine frische,
-    leere Datenbank.
+    Erstellt eine komplett eigene, separate Flask-App-Instanz nur für
+    Tests, mit einer In-Memory-SQLite-Datenbank. Nutzt bewusst NICHT
+    die App-Instanz aus app.py, da diese beim Import bereits fest an
+    die echte Datei-Datenbank gebunden wird und sich nachträglich
+    nicht zuverlässig umkonfigurieren lässt.
     """
-    flask_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    flask_app.config['TESTING'] = True
+    test_app = Flask(__name__)
+    test_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+    test_app.config['TESTING'] = True
 
-    with flask_app.app_context():
+    db.init_app(test_app)
+
+    with test_app.app_context():
+        # Sicherheitsnetz: Testlauf sofort abbrechen, falls die
+        # tatsächlich genutzte DB-URI aus irgendeinem Grund NICHT auf
+        # die In-Memory-Datenbank zeigt.
+        actual_uri = str(db.engine.url)
+        assert 'memory' in actual_uri, (
+            f"SICHERHEITSABBRUCH: Tests würden gegen '{actual_uri}' laufen, "
+            f"nicht gegen die In-Memory-Testdatenbank!"
+        )
+
         db.create_all()
-        yield flask_app
+        yield test_app
         db.session.remove()
         db.drop_all()
 
