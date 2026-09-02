@@ -9,28 +9,25 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import pytest
-from flask import Flask
+# WICHTIG: Muss VOR dem Import von app.py gesetzt werden, damit app.py
+# beim Initialisieren die In-Memory-Testdatenbank statt der echten
+# lokalen Datenbank nutzt.
+os.environ['TESTING'] = '1'
 
+import pytest
+
+from app import app as flask_app
 from models import db, User, Category, Transaction
 
 
 @pytest.fixture
 def app():
     """
-    Erstellt eine komplett eigene, separate Flask-App-Instanz nur für
-    Tests, mit einer In-Memory-SQLite-Datenbank. Nutzt bewusst NICHT
-    die App-Instanz aus app.py, da diese beim Import bereits fest an
-    die echte Datei-Datenbank gebunden wird und sich nachträglich
-    nicht zuverlässig umkonfigurieren lässt.
+    Stellt die echte Flask-App (mit allen registrierten Routen) bereit,
+    die dank TESTING=1 bereits beim Import an eine In-Memory-Datenbank
+    gebunden wurde.
     """
-    test_app = Flask(__name__)
-    test_app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    test_app.config['TESTING'] = True
-
-    db.init_app(test_app)
-
-    with test_app.app_context():
+    with flask_app.app_context():
         # Sicherheitsnetz: Testlauf sofort abbrechen, falls die
         # tatsächlich genutzte DB-URI aus irgendeinem Grund NICHT auf
         # die In-Memory-Datenbank zeigt.
@@ -41,7 +38,7 @@ def app():
         )
 
         db.create_all()
-        yield test_app
+        yield flask_app
         db.session.remove()
         db.drop_all()
 

@@ -39,10 +39,15 @@ MAX_CHAT_HISTORY = 20
 app = Flask(__name__)
 
 # Datenbank konfigurieren - nutzt Postgres auf Render (über DATABASE_URL),
-# fällt lokal automatisch auf SQLite zurück, falls DATABASE_URL nicht gesetzt ist
+# eine In-Memory-Testdatenbank wenn TESTING gesetzt ist, und fällt
+# ansonsten lokal automatisch auf SQLite zurück
 database_url = os.getenv('DATABASE_URL')
 
-if database_url:
+if os.getenv('TESTING') == '1':
+    # Tests laufen immer gegen eine isolierte In-Memory-Datenbank,
+    # niemals gegen die echte lokale oder Produktions-Datenbank
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+elif database_url:
     # Render liefert die URL im Format 'postgres://...', SQLAlchemy braucht
     # aber 'postgresql://...' - deshalb hier korrigieren
     if database_url.startswith('postgres://'):
