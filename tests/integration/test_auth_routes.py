@@ -1,7 +1,7 @@
 """
 test_auth_routes.py - Integration Tests für die Auth-Endpoints
-(/register, /login). Testet den kompletten Request-Response-Zyklus
-über den Flask Test-Client, statt einzelne Funktionen isoliert.
+(/register, /login, /verify-email). Testet den kompletten
+Request-Response-Zyklus über den Flask Test-Client.
 """
 
 import sys
@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from models import User
+from models import User, db
 
 
 class TestRegisterRoute:
@@ -56,22 +56,63 @@ class TestRegisterRoute:
 
         assert response.status_code == 400
 
+    def test_register_rejects_duplicate_email(self, app):
+        """Eine bereits registrierte Email kann nicht erneut genutzt werden"""
+        client = app.test_client()
+
+        client.post('/register', json={
+            'email': 'doppelt@test.com',
+            'password': 'erstespasswort'
+        })
+
+        response = client.post('/register', json={
+            'email': 'doppelt@test.com',
+            'password': 'zweitespasswort'
+        })
+
+        assert response.status_code == 400
+
 
 class TestLoginRoute:
     """Integration Tests für POST /login"""
 
-    def test_login_with_correct_credentials(self, app):
-        """Ein Login mit korrekten Zugangsdaten gelingt nach vorheriger
-        Registrierung"""
+    def test_login_blocked_for_unverified_account(self, app):
+        """Ein frisch registrierter, noch nicht verifizierter Account
+        kann sich nicht einloggen"""
         client = app.test_client()
 
         client.post('/register', json={
-            'email': 'login@test.com',
+            'email': 'unverifiziert@test.com',
             'password': 'meinpasswort'
         })
 
         response = client.post('/login', json={
-            'email': 'login@test.com',
+            'email': 'unverifiziert@test.com',
+            'password': 'meinpasswort'
+        })
+
+        assert response.status_code == 403
+        assert response.get_json()['needs_verification'] is True
+
+    def test_login_succeeds_after_verification(self, app):
+        """Nach manueller Verifizierung (is_verified=True) gelingt der
+        Login mit korrekten Zugangsdaten"""
+        client = app.test_client()
+
+        client.post('/register', json={
+            'email': 'verifiziert@test.com',
+            'password': 'meinpasswort'
+        })
+
+        # Verifizierung direkt in der DB simulieren, statt den echten
+        # Email-Versand zu testen (das übernehmen die Unit-Tests für
+        # email_service.py)
+        user = User.query.filter_by(email='verifiziert@test.com').first()
+        user.is_verified = True
+        db.session.commit()
+
+        response = client.post('/login', json={
+            'email': 'verifiziert@test.com',
             'password': 'meinpasswort'
         })
 
