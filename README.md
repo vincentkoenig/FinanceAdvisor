@@ -1,6 +1,7 @@
 # FinTrack (ehemals FinanceAdvisor) 💹
 
 ![Coverage](https://img.shields.io/badge/coverage-35%25-yellow)
+![Tests](https://github.com/vincentkoenig/FinanceAdvisor/actions/workflows/tests.yml/badge.svg)
 
 Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwalte dein Investment-Portfolio, führe ein Haushaltsbuch, chatte mit einem KI-Finanzberater und lass dir strukturierte Portfolio-Analysen erstellen — installierbar als mobile App (PWA), live deployed auf Render, und über einen eigenen MCP-Server auch für Claude Desktop nutzbar.
 
