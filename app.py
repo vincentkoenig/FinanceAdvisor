@@ -5,6 +5,7 @@ import json
 import os       # Operating System: Gibt Zugriff auf Funktionen des Betriebssystems
 import re       # Regular Expressions (kurz: Regex) sind Muster um Text zu durchsuchen und zu validieren
 from datetime import datetime
+from email_service import generate_verification_code, send_verification_email
 
 # Third Party
 import yfinance as yf
@@ -156,32 +157,59 @@ def register():
     """
     Neuen Nutzer registrieren.
     Email wird validiert und Username automatisch aus Email abgeleitet.
-    Passwort wird gehasht gespeichert.
+    Passwort wird gehasht gespeichert. Nach der Registrierung wird ein
+    6-stelliger Verifizierungscode generiert und per E-Mail verschickt -
+    der Account ist erst nach Eingabe des Codes vollständig nutzbar.
     """
     data = request.json
     email = data['email']
     password = data['password']
 
-    # Email Validierung mit Regex
     if not re.match(r'^[^@]+@[^@]+\.[^@]+$', email):
         return jsonify({"error": "Bitte eine gültige Email eingeben"}), 400
 
-    # Username automatisch aus Email ableiten z.B. vincent@test.com → vincent
-    username = email.split('@')[0]
+    # Prüfen ob diese Email bereits registriert ist
+    existing_user = User.query.filter_by(email=email).first()
+    if existing_user:
+        return jsonify({"error": "Diese Email ist bereits registriert"}), 400
 
-    # Passwort hashen - niemals als reinen Text speichern!
+    username = email.split('@')[0]
     hashed_password = generate_password_hash(password)
 
-    # Neuen Nutzer erstellen und in der Datenbank speichern
-    new_user = User(username=username, email=email, password=hashed_password)
+    # Verifizierungscode generieren, 15 Minuten gültig
+    verification_code = generate_verification_code()
+    code_expires = datetime.now() + timedelta(minutes=15)
+
+    new_user = User(
+        username=username,
+        email=email,
+        password=hashed_password,
+        is_verified=False,
+        verification_code=verification_code,
+        verification_code_expires=code_expires
+    )
     db.session.add(new_user)
     db.session.commit()
 
-    # Standardkategorien fürs Haushaltsbuch anlegen
     create_default_categories(new_user.id)
 
-    # 201 = Created - Nutzer wurde erfolgreich erstellt
-    return jsonify({"message": "User registered successfully", "user_id": new_user.id}), 201
+    # Verifizierungs-E-Mail verschicken
+    email_sent = send_verification_email(email, verification_code)
+
+    if not email_sent:
+        # Nutzer ist trotzdem angelegt, aber ohne verschickte Mail -
+        # das teilen wir dem Frontend mit, damit es reagieren kann
+        return jsonify({
+            "message": "User registered, but verification email could not be sent",
+            "user_id": new_user.id,
+            "email_sent": False
+        }), 201
+
+    return jsonify({
+        "message": "User registered successfully, verification email sent",
+        "user_id": new_user.id,
+        "email_sent": True
+    }), 201
 
 
 @app.route('/login', methods=['POST'])
