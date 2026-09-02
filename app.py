@@ -4,7 +4,7 @@
 import json
 import os       # Operating System: Gibt Zugriff auf Funktionen des Betriebssystems
 import re       # Regular Expressions (kurz: Regex) sind Muster um Text zu durchsuchen und zu validieren
-from datetime import datetime
+from datetime import datetime, timedelta
 from email_service import generate_verification_code, send_verification_email
 
 # Third Party
@@ -238,6 +238,66 @@ def login():
 
     # Wenn alles stimmt → 200 OK
     return jsonify({"message": "Login successful", "user_id": user.id}), 200
+
+
+@app.route('/verify-email', methods=['POST'])
+def verify_email():
+    """
+    Prüft den vom Nutzer eingegebenen Verifizierungscode. Bei Erfolg
+    wird der Account als verifiziert markiert und der Code gelöscht.
+    """
+    data = request.json
+    user_id = data['user_id']
+    code = data['code']
+
+    user = db.session.get(User, user_id)
+
+    if not user:
+        return jsonify({"error": "Nutzer nicht gefunden"}), 404
+
+    if user.is_verified:
+        return jsonify({"message": "Account bereits verifiziert"}), 200
+
+    if not user.verification_code or user.verification_code != code:
+        return jsonify({"error": "Ungültiger Code"}), 400
+
+    if user.verification_code_expires and datetime.now() > user.verification_code_expires:
+        return jsonify({"error": "Der Code ist abgelaufen. Bitte fordere einen neuen an."}), 400
+
+    user.is_verified = True
+    user.verification_code = None
+    user.verification_code_expires = None
+    db.session.commit()
+
+    return jsonify({"message": "Email erfolgreich verifiziert"}), 200
+
+
+@app.route('/resend-verification', methods=['POST'])
+def resend_verification():
+    """Fordert einen neuen Verifizierungscode an, falls der alte
+    abgelaufen ist oder die E-Mail nicht ankam."""
+    data = request.json
+    user_id = data['user_id']
+
+    user = db.session.get(User, user_id)
+
+    if not user:
+        return jsonify({"error": "Nutzer nicht gefunden"}), 404
+
+    if user.is_verified:
+        return jsonify({"message": "Account bereits verifiziert"}), 200
+
+    new_code = generate_verification_code()
+    user.verification_code = new_code
+    user.verification_code_expires = datetime.now() + timedelta(minutes=15)
+    db.session.commit()
+
+    email_sent = send_verification_email(user.email, new_code)
+
+    if not email_sent:
+        return jsonify({"error": "Email konnte nicht verschickt werden"}), 500
+
+    return jsonify({"message": "Neuer Code verschickt"}), 200
 
 
 # ─── USER ENDPOINTS ───────────────────────────────────────────────────────────
