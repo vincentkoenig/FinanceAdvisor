@@ -20,6 +20,11 @@ class User(db.Model):
     """
     User Tabelle - speichert alle registrierten Nutzer.
     Zentrale Tabelle zu der alle anderen Tabellen eine Verbindung haben.
+    is_verified: ob die E-Mail-Adresse per Code bestätigt wurde.
+    verification_code: der aktuell gültige 6-stellige Code, wird nach
+    erfolgreicher Verifizierung wieder auf None gesetzt.
+    verification_code_expires: Ablaufzeitpunkt des Codes, damit alte
+    Codes nicht unbegrenzt gültig bleiben.
     """
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String, nullable=False)
@@ -32,6 +37,9 @@ class User(db.Model):
     monthly_budget = db.Column(db.Float)
     investment_horizon = db.Column(db.String)
     created_at = db.Column(db.DateTime, default=db.func.now())
+    is_verified = db.Column(db.Boolean, default=False)
+    verification_code = db.Column(db.String)
+    verification_code_expires = db.Column(db.DateTime)
 
 
 class Asset(db.Model):
