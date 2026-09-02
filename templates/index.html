@@ -20,6 +20,20 @@
         </div>
     </div>
 
+    <!-- Modal: Email-Verifizierung -->
+    <div id="verification-modal" style="display:none;">
+        <div class="modal-overlay"></div>
+        <div class="modal">
+            <h3>Email bestätigen</h3>
+            <p style="color: var(--text-secondary); font-size: 14px;">
+                Wir haben dir einen 6-stelligen Code an deine Email-Adresse geschickt.
+            </p>
+            <input type="text" id="verification-code" placeholder="Code eingeben" maxlength="6">
+            <button class="btn-primary" onclick="verifyEmail()">Bestätigen</button>
+            <button class="btn-secondary" onclick="resendVerificationCode()">Code erneut senden</button>
+        </div>
+    </div>
+
     <script src="/static/js/toast.js"></script>
     <script src="/static/js/main.js"></script>
     <script>
