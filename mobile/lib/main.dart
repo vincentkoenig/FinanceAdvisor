@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'home_screen.dart';
 
 // Basis-URL eures Flask-Backends - lokale Netzwerk-IP für den
 // Entwicklungstest, später bei Bedarf zur Render-URL wechselbar
@@ -58,13 +59,13 @@ class _LoginScreenState extends State<LoginScreen> {
       final data = jsonDecode(response.body);
 
       if (response.statusCode == 200) {
-        // Erfolgreich eingeloggt - user_id ist da
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Eingeloggt! User ID: ${data['user_id']}')),
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (context) => HomeScreen(userId: data['user_id']),
+            ),
           );
         }
-        // TODO: Zur Home-Ansicht weiterleiten, sobald sie existiert
       } else {
         setState(() {
           _errorMessage = data['error'] ?? 'Login fehlgeschlagen';
