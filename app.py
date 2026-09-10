@@ -1540,5 +1540,7 @@ start_scheduler(app, client)
 
 if __name__ == '__main__':
     # debug=True nur lokal - auf Render läuft die App über Gunicorn,
-    # das diesen Block gar nicht ausführt
-    app.run(debug=True)
+    # das diesen Block gar nicht ausführt.
+    # host='0.0.0.0' macht den Server im lokalen Netzwerk erreichbar
+    # (z.B. vom Handy aus über die lokale IP), nicht nur von diesem PC
+    app.run(debug=True, host='0.0.0.0')
