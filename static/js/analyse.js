@@ -31,15 +31,15 @@ async function analysePortfolio() {
     // Ergebnis anzeigen
     result.innerHTML = `
         <div class="analyse-card glass-card">
-            <h3>Gesamtwert: ${data.total_value} ${data.currency}</h3>
-            <p>${data.summary}</p>
+            <h3>Gesamtwert: ${escapeHtml(data.total_value)} ${escapeHtml(data.currency)}</h3>
+            <p>${escapeHtml(data.summary)}</p>
             <h4>Risikobewertung:</h4>
-            <p>${data.risk_assessment}</p>
+            <p>${escapeHtml(data.risk_assessment)}</p>
             <h4>Empfehlungen:</h4>
             <ul>
-                ${data.recommendations.map(r => `<li>${r}</li>`).join('')}
+                ${data.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('')}
             </ul>
-            <p><small>${data.disclaimer}</small></p>
+            <p><small>${escapeHtml(data.disclaimer)}</small></p>
         </div>
     `
 }
@@ -62,7 +62,7 @@ async function loadPreviousAnalyses() {
                     <span>${analysis.created_at}</span>
                     <span>${analysis.total_value.toLocaleString('de-DE', {minimumFractionDigits: 2})} €</span>
                 </div>
-                <p>${analysis.summary.substring(0, 100)}...</p>
+                <p>${escapeHtml(analysis.summary.substring(0, 100))}...</p>
             </div>
         `
     })
@@ -78,11 +78,11 @@ async function showAnalysis(analysisId) {
     result.innerHTML = `
         <div class="analyse-card glass-card">
             <h3>Gesamtwert: ${analysis.total_value.toLocaleString('de-DE', {minimumFractionDigits: 2})} €</h3>
-            <p>${analysis.summary}</p>
+            <p>${escapeHtml(analysis.summary)}</p>
             <h4>Risikobewertung:</h4>
-            <p>${analysis.risk_assessment}</p>
+            <p>${escapeHtml(analysis.risk_assessment)}</p>
             <h4>Empfehlungen:</h4>
-            <ul>${JSON.parse(analysis.recommendations.replace(/'/g, '"')).map(r => `<li>${r}</li>`).join('')}</ul>
+            <ul>${JSON.parse(analysis.recommendations.replace(/'/g, '"')).map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
             <p><small>${analysis.created_at}</small></p>
         </div>
     `

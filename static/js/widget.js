@@ -22,7 +22,7 @@ async function loadWidgetHistory() {
     data.forEach(entry => {
         messages.innerHTML += `
             <div class="message ${entry.role === 'user' ? 'user-message' : 'assistant-message'}">
-                ${entry.role === 'user' ? entry.message : marked.parse(entry.message)}
+                ${entry.role === 'user' ? escapeHtml(entry.message) : renderMarkdown(entry.message)}
             </div>
         `
     })
@@ -41,7 +41,7 @@ async function sendWidgetMessage() {
 
     // Nutzer Nachricht anzeigen
     messages.innerHTML += `
-        <div class="message user-message">${message}</div>
+        <div class="message user-message">${escapeHtml(message)}</div>
     `
     input.value = ''
 
@@ -56,7 +56,7 @@ async function sendWidgetMessage() {
 
     // Antwort anzeigen
     messages.innerHTML += `
-        <div class="message assistant-message">${marked.parse(data.reply)}</div>
+        <div class="message assistant-message">${renderMarkdown(data.reply)}</div>
     `
 
     // Nach unten scrollen

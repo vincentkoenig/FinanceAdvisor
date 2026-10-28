@@ -207,6 +207,19 @@ TAVILY_API_KEY=dein_tavily_api_key
 >
 > `DATABASE_URL` ist optional — ist sie nicht gesetzt, nutzt die App automatisch eine lokale SQLite-Datenbank.
 
+Optionale Variablen:
+
+| Variable | Zweck |
+|---|---|
+| `ADMIN_API_KEY` | Schlüssel für `/update-prices`, `/check-dividends` und `/generate-insights` (Header `X-Admin-Key`). Ohne ihn sind diese Endpoints gesperrt. |
+| `FLASK_DEBUG=1` | Debug-Modus beim lokalen Start mit `python app.py`. Wird automatisch abgeschaltet, wenn der Server im Netzwerk erreichbar ist. |
+| `FLASK_HOST=0.0.0.0` | Server im lokalen Netzwerk erreichbar machen, z.B. für Tests vom Handy. Standard ist nur dieser PC (`127.0.0.1`). |
+
+Einen manuellen Job startest du dann so:
+```bash
+curl -X POST -H "X-Admin-Key: dein_schluessel" http://localhost:5000/update-prices
+```
+
 **4. App starten**
 ```bash
 python app.py

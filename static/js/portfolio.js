@@ -135,8 +135,8 @@ function renderTable(assets) {
             : ''
 
         tableBody.innerHTML += `
-            <tr onclick="showAssetDetail(${asset.asset_id}, '${asset.name}')" style="cursor: pointer;">
-                <td data-label="Titel"><strong>${asset.name}</strong>${savingsPlanBadge}<br><small>${asset.quantity}x</small></td>
+            <tr onclick="showAssetDetail(${asset.asset_id}, ${jsArg(asset.name)})" style="cursor: pointer;">
+                <td data-label="Titel"><strong>${escapeHtml(asset.name)}</strong>${savingsPlanBadge}<br><small>${asset.quantity}x</small></td>
                 <td data-label="Kaufpreis">${formatCurrency(kaufpreisGesamt)} €<br><small>${formatCurrency(asset.avg_buy_price)} €</small></td>
                 <td data-label="Position">${formatCurrency(positionGesamt)} €<br><small>${formatCurrency(asset.current_price)} €</small></td>
                 <td data-label="P/L" style="color: ${rowPlColor}">${formatCurrency(plEur)} €<br><small>${plProzent}%</small></td>
@@ -400,7 +400,7 @@ let selectedAssetId = null
 // Asset Detail Modal anzeigen
 function showAssetDetail(assetId, assetName) {
     selectedAssetId = assetId
-    document.getElementById('modal-asset-name').innerHTML = assetName
+    document.getElementById('modal-asset-name').textContent = assetName
     document.getElementById('buy-fields').style.display = 'none'
     document.getElementById('sell-fields').style.display = 'none'
     document.getElementById('asset-detail-modal').style.display = 'block'
@@ -623,9 +623,9 @@ function renderWatchlist(data) {
         const changeSign = change >= 0 ? '+' : ''
 
         tableBody.innerHTML += `
-            <tr onclick="showWatchlistDetail(${item.asset_id}, '${item.name}')" style="cursor: pointer;">
-                <td data-label="Titel"><strong>${item.name}</strong></td>
-                <td data-label="Symbol">${item.symbol}</td>
+            <tr onclick="showWatchlistDetail(${item.asset_id}, ${jsArg(item.name)})" style="cursor: pointer;">
+                <td data-label="Titel"><strong>${escapeHtml(item.name)}</strong></td>
+                <td data-label="Symbol">${escapeHtml(item.symbol)}</td>
                 <td data-label="Aktueller Preis">${item.current_price} €</td>
                 <td data-label="Preis beim Hinzufügen">${item.price_added ? item.price_added + ' €' : '-'}</td>
                 <td data-label="Veränderung" style="color: ${changeColor}">
@@ -685,7 +685,7 @@ function sortWatchlist(column) {
 
 function showWatchlistDetail(assetId, assetName) {
     selectedWatchlistAssetId = assetId
-    document.getElementById('watchlist-modal-asset-name').innerHTML = assetName
+    document.getElementById('watchlist-modal-asset-name').textContent = assetName
     document.getElementById('watchlist-detail-modal').style.display = 'block'
 }
 
@@ -782,7 +782,7 @@ function renderAssetTransactions(transactions) {
         return `
             <tr>
                 <td data-label="Datum">${formatDate(t.date)}</td>
-                <td data-label="Titel"><strong>${t.asset_name}</strong></td>
+                <td data-label="Titel"><strong>${escapeHtml(t.asset_name)}</strong></td>
                 <td data-label="Typ" style="color: ${typeColor}">${typeLabel}</td>
                 <td data-label="Menge">${t.quantity}</td>
                 <td data-label="Preis">${formatCurrency(t.price)} €</td>
@@ -819,7 +819,7 @@ function renderSavingsPlans(plans) {
 
         return `
             <tr>
-                <td data-label="Titel"><strong>${plan.asset_name}</strong></td>
+                <td data-label="Titel"><strong>${escapeHtml(plan.asset_name)}</strong></td>
                 <td data-label="Betrag">${formatCurrency(plan.amount)} €</td>
                 <td data-label="Fällig am">${dueLabel}</td>
                 <td data-label="Zuletzt ausgeführt">${plan.last_executed ? formatDate(plan.last_executed) : '-'}</td>
@@ -938,7 +938,7 @@ function renderDividends(dividends) {
     tableBody.innerHTML = dividends.map(d => `
         <tr>
             <td data-label="Datum">${formatDate(d.ex_dividend_date)}</td>
-            <td data-label="Titel"><strong>${d.asset_name}</strong></td>
+            <td data-label="Titel"><strong>${escapeHtml(d.asset_name)}</strong></td>
             <td data-label="Pro Aktie">${formatCurrency(d.amount_per_share)} €</td>
             <td data-label="Stück">${d.shares_held}</td>
             <td data-label="Gesamt" style="color: #2ea043;">+${formatCurrency(d.total_amount)} €</td>

@@ -44,7 +44,9 @@ async function loadHomeOverview() {
         const insight = await insightResponse.json()
 
         if (insight.content) {
-            document.getElementById('daily-insight-text').innerHTML = insight.content
+            // Reiner Text vom LLM - textContent statt innerHTML, damit
+            // darin enthaltenes HTML nie ausgeführt wird
+            document.getElementById('daily-insight-text').textContent = insight.content
             document.getElementById('daily-insight-card').style.display = 'block'
         }
 
@@ -58,7 +60,7 @@ async function loadHomeOverview() {
         if (duePlans.length > 0) {
             const planRows = duePlans.map(plan => `
                 <div class="due-plan-row">
-                    <span>${plan.asset_name} <small style="color: var(--text-secondary);">(${formatCurrency(plan.amount)} €)</small></span>
+                    <span>${escapeHtml(plan.asset_name)} <small style="color: var(--text-secondary);">(${formatCurrency(plan.amount)} €)</small></span>
                     <button class="btn-primary" style="width: auto; padding: 8px 16px; font-size: 13px;" onclick="executeSavingsPlanFromHome(${plan.id})">Sparplan ausführen</button>
                 </div>
             `).join('')
