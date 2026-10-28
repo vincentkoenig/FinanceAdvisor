@@ -10,6 +10,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    # Echte PostgreSQL-Datenbank (gleiche Hauptversion wie Neon), damit die
+    # Migrationstests nicht nur gegen SQLite laufen
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: fintrack_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
     steps:
       - name: Code auschecken
         uses: actions/checkout@v4
@@ -29,4 +45,5 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           COINGECKO_API_KEY: ${{ secrets.COINGECKO_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          TEST_POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/fintrack_test
         run: pytest --cov=fintrack --cov=app --cov-report=term-missing

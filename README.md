@@ -229,13 +229,18 @@ Einen manuellen Job startest du dann so:
 curl -X POST -H "X-Admin-Key: dein_schluessel" http://localhost:5000/update-prices
 ```
 
-**4. App starten**
+**4. Datenbank anlegen und App starten**
 ```bash
+python -m flask --app "fintrack:create_app()" upgrade-db
 python app.py
 ```
-Alternativ unter Windows: Doppelklick auf `start.bat`, um den Server zu starten und automatisch im Browser zu öffnen.
+`upgrade-db` legt die lokale SQLite-Datenbank im `instance/`-Ordner an bzw. bringt sie per Migration auf den neuesten Stand. Alternativ unter Windows: Doppelklick auf `start.bat` — das erledigt beides und öffnet den Browser. Der Preis-Scheduler startet im Hintergrund.
 
-Die SQLite-Datenbank wird beim ersten Start automatisch im `instance/`-Ordner angelegt. Der Preis-Scheduler startet im Hintergrund.
+**Schema ändern:** Nach einer Änderung in `fintrack/models.py` eine Migration erzeugen, prüfen und mit committen:
+```bash
+python -m flask --app "fintrack:create_app()" db migrate -m "kurze Beschreibung"
+```
+`upgrade-db` bricht ab, wenn Datenbank und Modelle nach der Migration nicht übereinstimmen — eine vergessene Migration fällt so beim Start auf, statt still Fehler zu verursachen.
 
 **5. Im Browser öffnen**
 ```
@@ -250,7 +255,7 @@ Die komplette Anleitung dazu findet sich in [`mcp_server/`](./mcp_server) — ku
 ## Deployment
 
 Die App läuft live auf [Render](https://render.com):
-- **Web Service** mit `gunicorn app:app --workers=1` (ein einzelner Worker ist nötig, damit der Preis-Update-Scheduler nicht mehrfach parallel läuft)
+- **Web Service** mit dem Startbefehl `python -m flask --app "fintrack:create_app()" upgrade-db && gunicorn app:app --workers=1` — erst werden ausstehende Datenbank-Migrationen ausgeführt, dann startet der Server (ein einzelner Worker ist nötig, damit der Preis-Update-Scheduler nicht mehrfach parallel läuft)
 - **PostgreSQL**-Datenbank bei [Neon](https://neon.tech) (kostenloser Tarif, läuft im Gegensatz zur kostenlosen Render-Datenbank nicht ab), verbunden über die Umgebungsvariable `DATABASE_URL`
 - Umgebungsvariablen (`OPENAI_API_KEY`, `COINGECKO_API_KEY`, `TAVILY_API_KEY`, `DATABASE_URL`) direkt im Render-Dashboard hinterlegt, nie im Repository gespeichert
 - Nächtliches, verschlüsseltes Datenbank-Backup mit automatischem Wiederherstellungstest über GitHub Actions — Einrichtung und Wiederherstellung siehe [`docs/BACKUP.md`](./docs/BACKUP.md)
