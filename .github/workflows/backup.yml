@@ -1,0 +1,129 @@
+name: Datenbank-Backup
+
+# Sichert jede Nacht die komplette Produktionsdatenbank (Neon), verschlüsselt
+# die Sicherung und legt sie 90 Tage als Artefakt ab. Danach wird die
+# Sicherung probeweise in eine leere Datenbank eingespielt und die Zahl der
+# Einträge pro Tabelle verglichen - ein Backup zählt erst, wenn es sich auch
+# wiederherstellen lässt. Anleitung zur Wiederherstellung: docs/BACKUP.md
+
+on:
+  schedule:
+    - cron: '30 1 * * *'  # täglich 01:30 UTC (02:30 / 03:30 deutscher Zeit)
+  workflow_dispatch:       # manuell starten: Actions -> Datenbank-Backup -> Run workflow
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+
+    steps:
+      - name: Secrets prüfen
+        run: |
+          if [ -z "$DATABASE_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::error::BACKUP_DATABASE_URL oder BACKUP_PASSPHRASE fehlt (Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
+
+      - name: Aktuelle PostgreSQL-Tools installieren
+        # pg_dump muss mindestens so neu sein wie der Datenbankserver,
+        # deshalb aus dem offiziellen PostgreSQL-Paketarchiv statt aus Ubuntu
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client > /dev/null
+          PGBIN=$(ls -d /usr/lib/postgresql/*/bin | sort -V | tail -1)
+          echo "$PGBIN" >> "$GITHUB_PATH"
+          "$PGBIN/pg_dump" --version
+
+      - name: Versionen abgleichen
+        run: |
+          SERVER_MAJOR=$(psql "$DATABASE_URL" -Atc "SELECT current_setting('server_version_num')::int / 10000")
+          CLIENT_MAJOR=$(pg_dump --version | grep -oE '[0-9]+' | head -1)
+          echo "Server: PostgreSQL $SERVER_MAJOR, Werkzeuge: PostgreSQL $CLIENT_MAJOR"
+          if [ "$CLIENT_MAJOR" -lt "$SERVER_MAJOR" ]; then
+            echo "::error::pg_dump ($CLIENT_MAJOR) ist älter als der Server ($SERVER_MAJOR)."
+            exit 1
+          fi
+          echo "PG_MAJOR=$CLIENT_MAJOR" >> "$GITHUB_ENV"
+          echo "STAMP=$(date -u +%Y-%m-%d_%H%M)" >> "$GITHUB_ENV"
+
+      - name: Datenbank sichern
+        run: |
+          pg_dump --format=custom --no-owner --no-privileges \
+            --dbname="$DATABASE_URL" --file=fintrack.dump
+
+          # Exakte Zeilenzahl pro Tabelle als Referenz für den Wiederherstellungstest
+          cat > count_rows.sql <<'SQL'
+          SELECT table_name || '=' || (xpath('/row/c/text()',
+                   query_to_xml(format('SELECT count(*) AS c FROM %I.%I', table_schema, table_name),
+                                false, true, '')))[1]::text
+          FROM information_schema.tables
+          WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+          ORDER BY table_name;
+          SQL
+          psql "$DATABASE_URL" -At -f count_rows.sql > source_counts.txt
+          echo "Gesichert: $(wc -l < source_counts.txt) Tabellen, $(du -h fintrack.dump | cut -f1)"
+
+      - name: Sicherung verschlüsseln
+        # Das Repository ist öffentlich - ohne Verschlüsselung könnte jeder
+        # angemeldete GitHub-Nutzer die Artefakte herunterladen
+        run: |
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --symmetric --cipher-algo AES256 \
+            --output "fintrack-$STAMP.dump.gpg" fintrack.dump
+          rm fintrack.dump
+
+      - name: Verschlüsselte Sicherung ablegen
+        uses: actions/upload-artifact@v4
+        with:
+          name: fintrack-backup-${{ env.STAMP }}
+          path: fintrack-${{ env.STAMP }}.dump.gpg
+          retention-days: 90
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Wiederherstellung testen
+        # Entschlüsselt die abgelegte Datei (prüft damit auch das Passwort),
+        # spielt sie in eine leere Datenbank ein und vergleicht die Zeilenzahlen
+        run: |
+          printf '%s' "$BACKUP_PASSPHRASE" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --decrypt --output restored.dump "fintrack-$STAMP.dump.gpg"
+
+          docker run -d --name restore-test -e POSTGRES_PASSWORD=restoretest \
+            -p 5433:5432 "postgres:$PG_MAJOR" > /dev/null
+          for i in $(seq 1 30); do
+            pg_isready -h localhost -p 5433 -q && break
+            sleep 2
+          done
+
+          TEST_URL="postgresql://postgres:restoretest@localhost:5433/postgres"
+          pg_restore --no-owner --no-privileges --exit-on-error \
+            --dbname="$TEST_URL" restored.dump
+          psql "$TEST_URL" -At -f count_rows.sql > restored_counts.txt
+
+          if diff -q source_counts.txt restored_counts.txt > /dev/null; then
+            echo "Wiederherstellung OK: alle $(wc -l < source_counts.txt) Tabellen vollständig."
+          else
+            # Nur Tabellennamen ausgeben, keine Zahlen - die Logs sind öffentlich
+            echo "::error::Wiederherstellung unvollständig. Abweichende Tabellen:"
+            diff source_counts.txt restored_counts.txt | grep -E '^[<>]' | sed -E 's/^[<>] ([^=]+)=.*/\1/' | sort -u
+            exit 1
+          fi
+
+      - name: Klartext-Dateien löschen
+        if: always()
+        run: rm -f fintrack.dump restored.dump source_counts.txt restored_counts.txt

@@ -242,8 +242,9 @@ Die komplette Anleitung dazu findet sich in [`mcp_server/`](./mcp_server) — ku
 
 Die App läuft live auf [Render](https://render.com):
 - **Web Service** mit `gunicorn app:app --workers=1` (ein einzelner Worker ist nötig, damit der Preis-Update-Scheduler nicht mehrfach parallel läuft)
-- **PostgreSQL**-Datenbank (kostenloser Tarif), verbunden über die Umgebungsvariable `DATABASE_URL`
+- **PostgreSQL**-Datenbank bei [Neon](https://neon.tech) (kostenloser Tarif, läuft im Gegensatz zur kostenlosen Render-Datenbank nicht ab), verbunden über die Umgebungsvariable `DATABASE_URL`
 - Umgebungsvariablen (`OPENAI_API_KEY`, `COINGECKO_API_KEY`, `TAVILY_API_KEY`, `DATABASE_URL`) direkt im Render-Dashboard hinterlegt, nie im Repository gespeichert
+- Nächtliches, verschlüsseltes Datenbank-Backup mit automatischem Wiederherstellungstest über GitHub Actions — Einrichtung und Wiederherstellung siehe [`docs/BACKUP.md`](./docs/BACKUP.md)
 
 ## Was ich dabei gelernt habe
 
