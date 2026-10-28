@@ -1,4 +1,4 @@
-const widgetUserId = localStorage.getItem('user_id')
+const widgetUserId = currentUserId()
 
 // Chat Widget öffnen/schließen
 function toggleChat() {
@@ -49,7 +49,7 @@ async function sendWidgetMessage() {
     const response = await fetch('/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({user_id: widgetUserId, message: message})
+        body: JSON.stringify({message: message})
     })
 
     const data = await response.json()

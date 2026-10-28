@@ -22,6 +22,32 @@ from fintrack.extensions import db
 # Einführung von Alembic abbildet (migrations/versions/0001_baseline.py)
 BASELINE_REVISION = '0001_baseline'
 
+# Fester Abdruck der Tabellen und Spalten aus 0001_baseline. Damit wird eine
+# Datenbank aus der Zeit vor Alembic geprüft, bevor sie übernommen wird -
+# unabhängig davon, wie sich die Modelle seitdem weiterentwickelt haben.
+# Darf nicht geändert werden, solange es die Basis-Migration gibt.
+BASELINE_SCHEMA = {
+    'asset': {'id', 'name', 'symbol', 'asset_type', 'currency'},
+    'asset_transaction': {'id', 'user_id', 'asset_id', 'type', 'quantity', 'price', 'date'},
+    'category': {'id', 'user_id', 'name', 'type', 'parent_id'},
+    'chat_history': {'id', 'user_id', 'message', 'role', 'created_at'},
+    'daily_insight': {'id', 'user_id', 'content', 'created_at'},
+    'dividend': {'id', 'user_id', 'asset_id', 'ex_dividend_date', 'amount_per_share', 'shares_held',
+                 'total_amount', 'transaction_id', 'booked_at'},
+    'portfolio_analysis': {'id', 'user_id', 'total_value', 'risk_assessment', 'diversification_score',
+                           'summary', 'recommendations', 'allocation', 'created_at'},
+    'price_history': {'id', 'asset_id', 'date', 'price', 'currency'},
+    'savings_plan': {'id', 'user_id', 'asset_id', 'amount', 'day_of_month', 'start_date',
+                     'last_executed', 'active'},
+    'transaction': {'id', 'user_id', 'category_id', 'amount', 'description', 'date', 'is_recurring',
+                    'end_date', 'is_paused', 'paused_at'},
+    'user': {'id', 'username', 'email', 'password', 'age', 'gender', 'risk_profile',
+             'investment_experience', 'monthly_budget', 'investment_horizon', 'created_at',
+             'is_verified', 'verification_code', 'verification_code_expires'},
+    'user_asset': {'id', 'user_id', 'asset_id', 'quantity', 'avg_buy_price', 'bought_at', 'status'},
+    'watchlist': {'id', 'user_id', 'asset_id', 'added_at', 'price_added'},
+}
+
 
 class SchemaMismatchError(RuntimeError):
     """Die Tabellen in der Datenbank passen nicht zu den Modellen."""
@@ -57,6 +83,24 @@ def describe_differences(differences):
     return '; '.join(lines)
 
 
+def baseline_differences():
+    """
+    Vergleicht Tabellen und Spalten der Datenbank mit dem Abdruck der
+    Basis-Migration. Gibt eine lesbare Beschreibung der Unterschiede
+    zurück (leer = passt). Typen prüft danach schema_differences(),
+    sobald die Datenbank auf dem neuesten Stand ist.
+    """
+    inspector = inspect(db.engine)
+    tables = set(inspector.get_table_names()) - {'alembic_version'}
+    lines = [f'Tabelle fehlt: {t}' for t in sorted(set(BASELINE_SCHEMA) - tables)]
+    lines += [f'Tabelle zu viel: {t}' for t in sorted(tables - set(BASELINE_SCHEMA))]
+    for table in sorted(tables & set(BASELINE_SCHEMA)):
+        columns = {c['name'] for c in inspector.get_columns(table)}
+        lines += [f'Spalte fehlt: {table}.{c}' for c in sorted(BASELINE_SCHEMA[table] - columns)]
+        lines += [f'Spalte zu viel: {table}.{c}' for c in sorted(columns - BASELINE_SCHEMA[table])]
+    return '; '.join(lines)
+
+
 def schema_differences():
     """
     Vergleicht die Tabellen in der Datenbank mit den SQLAlchemy-Modellen.
@@ -85,15 +129,13 @@ def upgrade_database():
 
     if 'alembic_version' not in existing_tables and existing_tables & app_tables:
         # Bestehende Datenbank aus der Zeit vor Alembic: nur übernehmen,
-        # wenn sie exakt dem Schema der Modelle entspricht. Das ist nur für
-        # die Umstellung auf Alembic gedacht, solange die Modelle noch der
-        # Basis-Migration entsprechen - danach legt create_all() keine
-        # Datenbanken mehr an, und der Fall tritt nicht mehr auf.
-        differences = schema_differences()
+        # wenn Tabellen und Spalten exakt der Basis-Migration entsprechen.
+        # Danach laufen die späteren Migrationen ganz normal darauf.
+        differences = baseline_differences()
         if differences:
             raise SchemaMismatchError(
                 'Die bestehende Datenbank weicht vom erwarteten Schema ab, '
-                f'es wurde nichts verändert. {describe_differences(differences)}')
+                f'es wurde nichts verändert. {differences}')
         stamp(revision=BASELINE_REVISION)
         action = 'adopted'
     elif 'alembic_version' not in existing_tables:

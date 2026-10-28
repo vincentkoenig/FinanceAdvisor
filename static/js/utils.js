@@ -1,3 +1,22 @@
+// ID des angemeldeten Nutzers. Der Server schreibt sie beim Ausliefern
+// der Seite in <meta name="user-id"> - welche Daten zurückkommen,
+// entscheidet aber immer der Server anhand des Session-Cookies.
+function currentUserId() {
+    const meta = document.querySelector('meta[name="user-id"]')
+    return meta ? meta.content : null
+}
+
+// Läuft die Anmeldung während der Nutzung ab, antwortet der Server mit
+// 401. Statt leerer Seiten geht es dann zurück zur Anmeldung.
+const originalFetch = window.fetch.bind(window)
+window.fetch = async (...args) => {
+    const response = await originalFetch(...args)
+    if (response.status === 401) {
+        window.location.href = '/'
+    }
+    return response
+}
+
 // Maskiert Text, bevor er per innerHTML in die Seite eingefügt wird.
 // Ohne das würde z.B. ein Kategoriename wie <img src=x onerror=...>
 // als echtes HTML ausgeführt (XSS). Für alle Werte nutzen, die vom

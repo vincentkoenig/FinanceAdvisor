@@ -3,6 +3,9 @@ flask-sqlalchemy==3.1.1
 sqlalchemy==2.0.50
 flask-migrate==4.1.0
 alembic==1.20.0
+flask-login==0.6.3
+flask-limiter==4.1.1
+limits==5.8.0
 openai==2.40.0
 pydantic==2.13.4
 apscheduler==3.11.2

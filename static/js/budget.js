@@ -1,5 +1,5 @@
-// User ID aus localStorage holen
-const userId = localStorage.getItem('user_id')
+// User ID des angemeldeten Nutzers (vom Server in die Seite geschrieben)
+const userId = currentUserId()
 
 // Aktuell angezeigter Monat - startet mit dem heutigen Monat
 let currentMonthDate = new Date()

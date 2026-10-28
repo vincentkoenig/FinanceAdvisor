@@ -1,6 +1,6 @@
 async function analysePortfolio() {
     // Werte aus den Input Feldern holen
-    const userId = localStorage.getItem('user_id')
+    const userId = currentUserId()
 
     // Spinner anzeigen während die Analyse läuft
     const result = document.getElementById('analyse-result')
@@ -19,7 +19,7 @@ async function analysePortfolio() {
     const response = await fetch('/portfolio/analyze', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({user_id: userId,})
+        body: JSON.stringify({})
     });
 
     // Auf die JSON Antwort warten und in data speichern
@@ -45,7 +45,7 @@ async function analysePortfolio() {
 }
 
 
-const userId = localStorage.getItem('user_id')
+const userId = currentUserId()
 
 // Vorherige Analysen laden
 async function loadPreviousAnalyses() {

@@ -10,11 +10,14 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 
 # Lokale Imports
+from fintrack.auth.session import get_own, protect_blueprint
 from fintrack.budget.service import calculate_budget_summary, create_default_categories
 from fintrack.extensions import db
 from fintrack.models import Category, Transaction
 
 bp = Blueprint('budget', __name__)
+# Nur mit Anmeldung, und nur Zugriff auf die eigenen Daten
+protect_blueprint(bp)
 
 
 @bp.route('/users/<user_id>/categories', methods=['GET'])
@@ -45,6 +48,10 @@ def add_category(user_id):
     category_type = data['type']
     parent_id = data.get('parent_id')  # optional, deshalb .get() statt ['parent_id']
 
+    # Unterkategorien nur unter eigenen Hauptkategorien
+    if parent_id is not None and not get_own(Category, parent_id):
+        return jsonify({"error": "Category not found"}), 404
+
     new_category = Category(user_id=user_id, name=name, type=category_type, parent_id=parent_id)
     db.session.add(new_category)
     db.session.commit()
@@ -59,7 +66,7 @@ def delete_category(category_id):
     Falls es eine Hauptkategorie mit Unterkategorien ist, werden diese
     ebenfalls gelöscht, um verwaiste Unterkategorien zu vermeiden.
     """
-    category = db.session.get(Category, category_id)
+    category = get_own(Category, category_id)
 
     if not category:
         return jsonify({"error": "Category not found"}), 404
@@ -164,6 +171,10 @@ def add_transaction(user_id):
     date = datetime.strptime(data['date'], '%Y-%m-%d')
     is_recurring = data.get('is_recurring', False)
 
+    # Buchungen nur in eigenen Kategorien
+    if not get_own(Category, category_id):
+        return jsonify({"error": "Category not found"}), 404
+
     end_date = None
     if data.get('end_date'):
         end_date = datetime.strptime(data['end_date'], '%Y-%m-%d')
@@ -185,8 +196,8 @@ def add_transaction(user_id):
 
 @bp.route('/transactions/<transaction_id>', methods=['DELETE'])
 def delete_transaction(transaction_id):
-    """Buchung löschen"""
-    transaction = db.session.get(Transaction, transaction_id)
+    """Eigene Buchung löschen"""
+    transaction = get_own(Transaction, transaction_id)
 
     if not transaction:
         return jsonify({"error": "Transaction not found"}), 404
@@ -205,7 +216,7 @@ def toggle_transaction_pause(transaction_id):
     aktuellen Zeitpunkt gesetzt, damit vergangene Monate bei der
     Budget-Berechnung unverändert korrekt bleiben.
     """
-    transaction = db.session.get(Transaction, transaction_id)
+    transaction = get_own(Transaction, transaction_id)
 
     if not transaction:
         return jsonify({"error": "Transaction not found"}), 404

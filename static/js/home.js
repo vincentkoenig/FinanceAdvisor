@@ -1,5 +1,5 @@
-// User ID aus localStorage holen
-const userId = localStorage.getItem('user_id')
+// User ID des angemeldeten Nutzers (vom Server in die Seite geschrieben)
+const userId = currentUserId()
 
 // Zahl im deutschen Format formatieren z.B. 1.234,50
 function formatCurrency(value) {

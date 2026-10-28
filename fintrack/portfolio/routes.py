@@ -11,6 +11,7 @@ import yfinance as yf
 from flask import Blueprint, request, jsonify
 
 # Lokale Imports
+from fintrack.auth.session import get_own, protect_blueprint
 from fintrack.extensions import db
 from fintrack.market.data import get_historical_prices
 from fintrack.market.prices import get_current_price
@@ -18,6 +19,8 @@ from fintrack.models import (Asset, AssetTransaction, Dividend, PriceHistory,
                              SavingsPlan, UserAsset, Watchlist)
 
 bp = Blueprint('portfolio', __name__)
+# Nur mit Anmeldung, und nur Zugriff auf die eigenen Daten
+protect_blueprint(bp)
 
 
 @bp.route('/assets/<asset_id>', methods=['GET'])
@@ -115,21 +118,6 @@ def search_asset():
         "asset_type": asset.asset_type
     }), 200
 
-
-@bp.route('/assets/<asset_id>/prices', methods=['POST'])
-def add_prices(asset_id):
-    """Neuen Preis für ein Asset hinzufügen"""
-    data = request.json
-    # Datum von String in Python datetime Objekt umwandeln
-    date = datetime.strptime(data['date'], '%Y-%m-%d')
-    price = data['price']
-    currency = data['currency']
-
-    new_price = PriceHistory(asset_id=asset_id, date=date, price=price, currency=currency)
-    db.session.add(new_price)
-    db.session.commit()
-
-    return jsonify({"message": "Price successfully added"}), 201
 
 
 @bp.route('/users/<user_id>/assets/transactions', methods=['GET'])
@@ -454,8 +442,8 @@ def get_savings_plans(user_id):
 
 @bp.route('/savings-plans/<plan_id>', methods=['DELETE'])
 def delete_savings_plan(plan_id):
-    """Sparplan löschen"""
-    plan = db.session.get(SavingsPlan, plan_id)
+    """Eigenen Sparplan löschen"""
+    plan = get_own(SavingsPlan, plan_id)
 
     if not plan:
         return jsonify({"error": "Sparplan nicht gefunden"}), 404
@@ -474,7 +462,7 @@ def execute_savings_plan(plan_id):
     Kauf-Transaktion an (inkl. UserAsset-Aktualisierung) und schreibt
     last_executed fort.
     """
-    plan = db.session.get(SavingsPlan, plan_id)
+    plan = get_own(SavingsPlan, plan_id)
 
     if not plan:
         return jsonify({"error": "Sparplan nicht gefunden"}), 404

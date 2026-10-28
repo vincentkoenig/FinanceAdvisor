@@ -47,7 +47,10 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 - Alle vorherigen Analysen werden gespeichert und können auf der Analyse-Seite eingesehen werden
 
 ### 👤 Nutzerverwaltung
-- Registrierung und Login mit E-Mail und gehashtem Passwort (`werkzeug.security`)
+- Registrierung und Login mit E-Mail und gehashtem Passwort (`werkzeug.security`), Anmeldung über ein sicheres Session-Cookie (Flask-Login: HttpOnly, SameSite, in Produktion nur über HTTPS, 30 Tage gültig)
+- Jeder Nutzer sieht und ändert nur seine eigenen Daten — automatisch für jede Route geprüft
+- Schutz gegen Durchprobieren: Begrenzung der Login-, Registrierungs- und Code-Versuche (Flask-Limiter), Verifizierungscode nach 5 Fehlversuchen gesperrt, einheitliche Fehlermeldung bei falscher E-Mail oder falschem Passwort
+- Registrierung abschaltbar (`ALLOW_REGISTRATION`), Konten und Passwörter alternativ per Kommandozeile
 - Persönliche Einstellungen: Risikoprofil, Anlageerfahrung, monatliches Budget, Anlagehorizont
 - Nutzerprofil-Daten fließen in jeden System-Prompt der KI ein, für personalisierte Beratung
 - Dark-/Light-Mode-Umschalter, seiten- und sitzungsübergreifend gespeichert
@@ -220,6 +223,8 @@ Optionale Variablen:
 
 | Variable | Zweck |
 |---|---|
+| `SECRET_KEY` | Signiert die Anmelde-Cookies. **In Produktion Pflicht** (sonst startet die App nicht). Lokal empfohlen, sonst ist man nach jedem Neustart abgemeldet. Erzeugen mit `python -c "import secrets; print(secrets.token_hex(32))"` |
+| `ALLOW_REGISTRATION=1` | Erlaubt neue Konten über die Startseite. Standard: geschlossen — Konten dann per `create-user` anlegen (siehe unten). |
 | `ADMIN_API_KEY` | Schlüssel für `/update-prices`, `/check-dividends` und `/generate-insights` (Header `X-Admin-Key`). Ohne ihn sind diese Endpoints gesperrt. |
 | `FLASK_DEBUG=1` | Debug-Modus beim lokalen Start mit `python app.py`. Wird automatisch abgeschaltet, wenn der Server im Netzwerk erreichbar ist. |
 | `FLASK_HOST=0.0.0.0` | Server im lokalen Netzwerk erreichbar machen, z.B. für Tests vom Handy. Standard ist nur dieser PC (`127.0.0.1`). |
@@ -241,6 +246,12 @@ python app.py
 python -m flask --app "fintrack:create_app()" db migrate -m "kurze Beschreibung"
 ```
 `upgrade-db` bricht ab, wenn Datenbank und Modelle nach der Migration nicht übereinstimmen — eine vergessene Migration fällt so beim Start auf, statt still Fehler zu verursachen.
+
+**Konto anlegen bzw. Passwort zurücksetzen** (solange die Registrierung geschlossen ist). Das Passwort wird verdeckt abgefragt; `set-password` meldet das Konto zusätzlich auf allen Geräten ab:
+```bash
+python -m flask --app "fintrack:create_app()" create-user deine@email.de
+python -m flask --app "fintrack:create_app()" set-password deine@email.de
+```
 
 **5. Im Browser öffnen**
 ```

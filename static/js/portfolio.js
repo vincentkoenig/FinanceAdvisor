@@ -19,8 +19,8 @@ let assetTransactionsData = []
 let assetIdsWithSavingsPlan = []
 let dividendsData = []
 
-// User ID aus localStorage holen
-const userId = localStorage.getItem('user_id')
+// User ID des angemeldeten Nutzers (vom Server in die Seite geschrieben)
+const userId = currentUserId()
 
 // Zahl im deutschen Format formatieren z.B. 30.502,50
 function formatCurrency(value) {
@@ -331,7 +331,7 @@ function hideAddPosition() {
 
 
 async function addPosition() {
-    const userId = localStorage.getItem('user_id')
+    const userId = currentUserId()
 
     // Werte aus dem Modal holen
     const symbol = document.getElementById('position-symbol').value
@@ -425,7 +425,7 @@ function showSell() {
 
 
 async function addBuy() {
-    const userId = localStorage.getItem('user_id')
+    const userId = currentUserId()
     const quantity = document.getElementById('buy-quantity').value
     const price = document.getElementById('buy-price').value
 
@@ -458,7 +458,7 @@ async function addBuy() {
 
 
 async function addSell() {
-    const userId = localStorage.getItem('user_id')
+    const userId = currentUserId()
     const quantity = document.getElementById('sell-quantity').value
     const price = document.getElementById('sell-price').value
 
