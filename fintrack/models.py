@@ -4,7 +4,11 @@ Enthält alle SQLAlchemy Modelle für die Datenbank
 sowie Pydantic Schemas für das Structured Output des LLMs.
 """
 
+# Standard Library
+import secrets
+
 # Third Party
+from flask_login import UserMixin
 from pydantic import BaseModel as PydanticBaseModel
 from typing import List
 
@@ -16,7 +20,7 @@ from fintrack.extensions import db
 
 # ─── SQLALCHEMY MODELLE ───────────────────────────────────────────────────────
 
-class User(db.Model):
+class User(UserMixin, db.Model):
     """
     User Tabelle - speichert alle registrierten Nutzer.
     Zentrale Tabelle zu der alle anderen Tabellen eine Verbindung haben.
@@ -25,6 +29,11 @@ class User(db.Model):
     erfolgreicher Verifizierung wieder auf None gesetzt.
     verification_code_expires: Ablaufzeitpunkt des Codes, damit alte
     Codes nicht unbegrenzt gültig bleiben.
+    verification_attempts: Fehlversuche für den aktuellen Code - nach
+    zu vielen Versuchen muss ein neuer Code angefordert werden.
+    session_token: steckt in jedem Anmelde-Cookie. Wird er erneuert
+    (z.B. beim Ändern des Passworts), sind alle bestehenden Anmeldungen
+    auf allen Geräten sofort ungültig.
     """
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String, nullable=False)
@@ -40,6 +49,22 @@ class User(db.Model):
     is_verified = db.Column(db.Boolean, default=False)
     verification_code = db.Column(db.String)
     verification_code_expires = db.Column(db.DateTime)
+    verification_attempts = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    session_token = db.Column(db.String)
+
+    def get_id(self):
+        """
+        Kennung für das Anmelde-Cookie: User-ID plus session_token.
+        Flask-Login speichert diesen Wert im Cookie und gibt ihn beim
+        nächsten Request an load_user() zurück.
+        """
+        if not self.session_token:
+            self.rotate_session_token()
+        return f'{self.id}:{self.session_token}'
+
+    def rotate_session_token(self):
+        """Erzeugt ein neues session_token und meldet damit alle Geräte ab."""
+        self.session_token = secrets.token_urlsafe(32)
 
 
 class Asset(db.Model):

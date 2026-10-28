@@ -4,14 +4,18 @@ Output und objektivem Diversifikationsscore (Herfindahl-Hirschman-Index).
 """
 
 # Third Party
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
+from flask_login import current_user
 
 # Lokale Imports
-from fintrack.extensions import db, get_openai_client
+from fintrack.auth.session import current_user_key, protect_blueprint
+from fintrack.extensions import db, get_openai_client, limiter
 from fintrack.market.prices import get_current_price
-from fintrack.models import Asset, PortfolioAnalysis, PortfolioAnalysisSchema, User, UserAsset
+from fintrack.models import Asset, PortfolioAnalysis, PortfolioAnalysisSchema, UserAsset
 
 bp = Blueprint('analysis', __name__)
+# Nur mit Anmeldung, und nur Zugriff auf die eigenen Daten
+protect_blueprint(bp)
 
 
 def calculate_diversification_score(asset_values, total_value):
@@ -37,6 +41,7 @@ def calculate_diversification_score(asset_values, total_value):
 
 
 @bp.route('/portfolio/analyze', methods=['POST'])
+@limiter.limit("10 per hour", key_func=current_user_key)
 def analyze_portfolio():
     """
     KI-gestützte Portfolio-Analyse mit Pydantic Structured Output.
@@ -46,13 +51,9 @@ def analyze_portfolio():
     Zahlen unzuverlässig sind.
     Ergebnis wird in der DB gespeichert.
     """
-    data = request.json
-    user_id = data['user_id']
-
-    user = db.session.get(User, user_id)
-
-    if not user:
-        return jsonify({"error": "User not found"}), 404
+    # Immer der angemeldete Nutzer - eine user_id im Body wird ignoriert
+    user = current_user
+    user_id = user.id
 
     # Alle Assets des Nutzers aus der DB holen
     user_assets = UserAsset.query.filter_by(user_id=user_id).all()

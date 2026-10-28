@@ -1,16 +1,30 @@
 """
 pages.py - Routen, die HTML-Seiten ausliefern. Die Daten holen sich die
 Seiten anschließend per JavaScript über die API-Routen der anderen Bereiche.
+Alle Seiten außer der Anmeldung setzen ein Login voraus.
 """
 
-from flask import Blueprint, render_template
+from flask import Blueprint, redirect, render_template, request
+from flask_login import current_user
+
+from fintrack.auth.session import unauthorized
 
 bp = Blueprint('pages', __name__)
 
 
+@bp.before_request
+def require_login_for_pages():
+    """Ohne Anmeldung führen alle Seiten außer der Startseite zum Login."""
+    if request.endpoint != 'pages.home' and not current_user.is_authenticated:
+        return unauthorized()
+    return None
+
+
 @bp.route('/')
 def home():
-    """Startseite - Login/Register Seite"""
+    """Startseite - Login/Register Seite. Bereits Angemeldete landen direkt auf Home."""
+    if current_user.is_authenticated:
+        return redirect('/home-page')
     return render_template('index.html')
 
 

@@ -1,6 +1,6 @@
 async function saveSettings() {
     // Werte aus den Input Feldern holen
-    const userId = localStorage.getItem('user_id')
+    const userId = currentUserId()
     const risk_profile = document.getElementById('risk_profile').value
     const investment_experience = document.getElementById('investment_experience').value
     const monthly_budget = document.getElementById('monthly_budget').value
@@ -17,7 +17,7 @@ async function saveSettings() {
     const response = await fetch(`/users/${userId}/settings`, {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'}, // sagt Flask: ich schicke JSON
-        body: JSON.stringify({user_id: userId, risk_profile: risk_profile, investment_experience: investment_experience, monthly_budget: monthly_budget, investment_horizon: investment_horizon})      // message als JSON
+        body: JSON.stringify({risk_profile: risk_profile, investment_experience: investment_experience, monthly_budget: monthly_budget, investment_horizon: investment_horizon})      // message als JSON
     });
 
     // Auf die JSON Antwort warten und in data speichern

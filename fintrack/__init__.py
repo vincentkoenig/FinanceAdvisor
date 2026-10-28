@@ -7,11 +7,12 @@ verbinden und die Blueprints der einzelnen Bereiche registrieren.
 import os
 
 import click
-from flask import Flask
+from flask import Flask, g, jsonify
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # config zuerst importieren, damit load_dotenv() vor allen anderen Modulen läuft
 from fintrack.config import get_config
-from fintrack.extensions import db, migrate
+from fintrack.extensions import db, limiter, login_manager, migrate
 
 # templates/, static/ und migrations/ liegen im Projektordner, nicht im Paket
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -38,9 +39,38 @@ def create_app(config_name=None, config_overrides=None):
     app.config.from_object(get_config(config_name))
     app.config.update(config_overrides or {})
 
-    # SQLAlchemy und Alembic mit der Flask App verbinden
+    # Hinter dem Render-Proxy: echte Client-IP und HTTPS aus den
+    # X-Forwarded-Headern übernehmen (genau ein Proxy davor)
+    if app.config.get('TRUST_PROXY'):
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
+
+    # SQLAlchemy, Alembic, Anmeldung und Begrenzung mit der App verbinden
     db.init_app(app)
     migrate.init_app(app, db, directory=os.path.join(PROJECT_ROOT, 'migrations'))
+    login_manager.init_app(app)
+    limiter.init_app(app)
+
+    from fintrack.auth.session import reject_cross_site_requests
+
+    @app.before_request
+    def load_user_fresh_per_request():
+        """
+        Flask-Login merkt sich den angemeldeten Nutzer in g. Normalerweise
+        hat jeder Request ein eigenes g - läuft aber ein App-Kontext über
+        mehrere Requests weiter (z.B. in Tests), würde sonst ein alter
+        Nutzer weiterverwendet, obwohl sein Cookie längst ungültig ist.
+        """
+        g.pop('_login_user', None)
+
+    app.before_request(reject_cross_site_requests)
+
+    @app.errorhandler(429)
+    def too_many_requests(error):
+        """Begrenzung erreicht - als JSON, damit das Frontend es anzeigen kann."""
+        return jsonify({"error": "Zu viele Anfragen. Bitte warte etwas und versuche es dann erneut."}), 429
+
+    from fintrack.auth.cli import register_commands
+    register_commands(app)
 
     @app.cli.command('upgrade-db')
     def upgrade_db_command():
@@ -62,6 +92,9 @@ def create_app(config_name=None, config_overrides=None):
     from fintrack.insights import routes as insights_routes
     from fintrack.portfolio import analysis, routes as portfolio_routes
 
+    # Jeder Blueprint schützt sich selbst: Bereiche mit Nutzerdaten über
+    # protect_blueprint() (Anmeldung + nur eigene Daten), Seiten über eine
+    # Login-Umleitung, Auth über owner_required, Admin über den X-Admin-Key
     for blueprint in (pages.bp, auth_routes.bp, portfolio_routes.bp, analysis.bp,
                       budget_routes.bp, chat_routes.bp, insights_routes.bp, admin_routes.bp):
         app.register_blueprint(blueprint)

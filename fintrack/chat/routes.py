@@ -9,21 +9,26 @@ from datetime import datetime
 
 # Third Party
 from flask import Blueprint, request, jsonify
+from flask_login import current_user
 
 # Lokale Imports
+from fintrack.auth.session import current_user_key, protect_blueprint
 from fintrack.budget.service import calculate_budget_summary
 from fintrack.chat.tools import tools
-from fintrack.extensions import db, get_openai_client
+from fintrack.extensions import db, get_openai_client, limiter
 from fintrack.market.data import get_crypto_price, get_metal_price, get_stock_price, search_web
-from fintrack.models import ChatHistory, User
+from fintrack.models import ChatHistory
 
 bp = Blueprint('chat', __name__)
+# Nur mit Anmeldung, und nur Zugriff auf die eigenen Daten
+protect_blueprint(bp)
 
 # Wie viele Chat-Nachrichten maximal als Kontext ans LLM geschickt werden (Sliding Window)
 MAX_CHAT_HISTORY = 20
 
 
 @bp.route('/chat', methods=['POST'])
+@limiter.limit("20 per minute; 300 per day", key_func=current_user_key)
 def chat():
     """
     Chat mit dem KI-Finanzberater.
@@ -31,11 +36,11 @@ def chat():
     Chatverlauf wird in der DB gespeichert für Kontext bei nächster Nachricht.
     """
     data = request.json
-    user_id = data['user_id']
     message = data['message']
 
-    # Nutzer aus DB holen um Profildaten zu erhalten
-    user = db.session.get(User, user_id)
+    # Immer der angemeldete Nutzer - eine user_id im Body wird ignoriert
+    user = current_user
+    user_id = user.id
 
     # Bisherigen Chatverlauf aus DB holen
     # Wird ans LLM geschickt damit es den Kontext versteht

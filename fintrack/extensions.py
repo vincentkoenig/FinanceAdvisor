@@ -8,6 +8,9 @@ die App selbst zu importieren (vermeidet zirkuläre Importe).
 import os
 from functools import lru_cache
 
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from openai import OpenAI
@@ -31,6 +34,14 @@ db = SQLAlchemy(metadata=MetaData(naming_convention=NAMING_CONVENTION))
 # Datenbank-Migrationen (Alembic). render_as_batch ist nötig, damit
 # Spaltenänderungen auch in der lokalen SQLite-Datenbank funktionieren.
 migrate = Migrate(render_as_batch=True)
+
+# Anmeldung über ein signiertes Session-Cookie (Flask-Login)
+login_manager = LoginManager()
+
+# Begrenzung der Anfragen pro IP-Adresse, z.B. gegen das Durchprobieren
+# von Passwörtern oder Verifizierungscodes. Grenzen werden direkt an den
+# jeweiligen Routen gesetzt, es gibt kein globales Limit.
+limiter = Limiter(key_func=get_remote_address)
 
 
 @lru_cache(maxsize=1)

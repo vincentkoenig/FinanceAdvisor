@@ -19,6 +19,8 @@ from sqlalchemy import MetaData, inspect, text
 
 from fintrack import create_app
 from fintrack.config import normalize_database_url
+from flask_migrate import upgrade
+
 from fintrack.database import BASELINE_REVISION, SchemaMismatchError, schema_differences, upgrade_database
 from fintrack.extensions import db
 from fintrack.models import User
@@ -60,6 +62,25 @@ def current_revision():
         return connection.execute(text('SELECT version_num FROM alembic_version')).scalar()
 
 
+def head_revision():
+    """Neueste Migration laut migrations/versions"""
+    from alembic.script import ScriptDirectory
+    from flask import current_app
+    config = current_app.extensions['migrate'].migrate.get_config()
+    return ScriptDirectory.from_config(config).get_current_head()
+
+
+def create_pre_alembic_database():
+    """
+    Baut eine Datenbank wie aus der Zeit vor Alembic nach: Schema der
+    Basis-Migration, aber ohne Versionstabelle (so hat create_all() sie
+    damals angelegt).
+    """
+    upgrade(revision=BASELINE_REVISION)
+    with db.engine.begin() as connection:
+        connection.execute(text('DROP TABLE alembic_version'))
+
+
 class TestUpgradeDatabase:
     """Tests für upgrade_database() bzw. "flask upgrade-db" """
 
@@ -69,7 +90,7 @@ class TestUpgradeDatabase:
         assert upgrade_database() == 'created'
 
         assert schema_differences() == []
-        assert current_revision() == BASELINE_REVISION
+        assert current_revision() == head_revision()
 
     def test_second_run_changes_nothing(self, migration_app):
         """Ein zweiter Lauf erkennt den aktuellen Stand und ändert nichts"""
@@ -80,15 +101,19 @@ class TestUpgradeDatabase:
 
     def test_adopts_existing_database_and_keeps_data(self, migration_app):
         """Eine früher über create_all() angelegte Datenbank wird übernommen,
-        ohne Tabellen neu anzulegen - vorhandene Daten bleiben erhalten"""
-        db.create_all()
-        db.session.add(User(username='bestand', email='bestand@test.com', password='x'))
-        db.session.commit()
+        ohne Tabellen neu anzulegen, und danach auf den neuesten Stand
+        migriert - vorhandene Daten bleiben erhalten"""
+        create_pre_alembic_database()
+        with db.engine.begin() as connection:
+            connection.execute(text(
+                "INSERT INTO \"user\" (username, email, password) VALUES ('bestand', 'bestand@test.com', 'x')"))
 
         assert upgrade_database() == 'adopted'
 
-        assert current_revision() == BASELINE_REVISION
-        assert User.query.filter_by(email='bestand@test.com').count() == 1
+        assert current_revision() == head_revision()
+        bestand = User.query.filter_by(email='bestand@test.com').one()
+        # Spalte aus Migration 0002: bestehende Nutzer starten mit 0 Fehlversuchen
+        assert bestand.verification_attempts == 0
         assert schema_differences() == []
 
     def test_rejects_database_with_different_schema(self, migration_app):

@@ -27,7 +27,8 @@ class TestRegisterRoute:
 
         assert response.status_code == 201
         data = response.get_json()
-        assert 'user_id' in data
+        assert data['email'] == 'neu@test.com'
+        assert 'user_id' not in data  # IDs werden nicht mehr nach außen gegeben
 
     def test_register_creates_default_categories(self, app):
         """Nach der Registrierung hat der neue Nutzer automatisch
@@ -35,13 +36,13 @@ class TestRegisterRoute:
         from fintrack.models import Category
 
         client = app.test_client()
-        response = client.post('/register', json={
+        client.post('/register', json={
             'email': 'kategorien@test.com',
             'password': 'passwort123'
         })
 
-        user_id = response.get_json()['user_id']
-        categories = Category.query.filter_by(user_id=user_id).all()
+        user = User.query.filter_by(email='kategorien@test.com').one()
+        categories = Category.query.filter_by(user_id=user.id).all()
 
         assert len(categories) > 0
 

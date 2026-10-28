@@ -6,15 +6,17 @@ Dividenden, Insights) manuell anzustoßen. Nur mit X-Admin-Key aufrufbar.
 # Standard Library
 import hmac     # Zeitkonstanter Vergleich von Schlüsseln (gegen Timing-Angriffe)
 import os
+from datetime import datetime
 from functools import wraps
 
 # Third Party
 from flask import Blueprint, current_app, request, jsonify
 
 # Lokale Imports
-from fintrack.extensions import get_openai_client
+from fintrack.extensions import db, get_openai_client
 from fintrack.insights.service import generate_insights_for_all_users
 from fintrack.jobs import update_prices
+from fintrack.models import PriceHistory
 from fintrack.portfolio.dividends import process_dividends_for_all_users
 
 bp = Blueprint('admin', __name__)
@@ -73,3 +75,23 @@ def manual_generate_insights():
     """
     generate_insights_for_all_users(get_openai_client())
     return jsonify({"message": "Insights generated successfully"}), 200
+
+
+@bp.route('/assets/<asset_id>/prices', methods=['POST'])
+@require_admin_key
+def add_prices(asset_id):
+    """
+    Manuell einen historischen Preis für ein Asset eintragen. Die
+    Preistabelle gilt für alle Nutzer, deshalb nur mit X-Admin-Key.
+    """
+    data = request.json
+    # Datum von String in Python datetime Objekt umwandeln
+    date = datetime.strptime(data['date'], '%Y-%m-%d')
+    price = data['price']
+    currency = data['currency']
+
+    new_price = PriceHistory(asset_id=asset_id, date=date, price=price, currency=currency)
+    db.session.add(new_price)
+    db.session.commit()
+
+    return jsonify({"message": "Price successfully added"}), 201

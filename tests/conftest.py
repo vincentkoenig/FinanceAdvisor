@@ -46,6 +46,51 @@ def app():
         db.drop_all()
 
 
+@pytest.fixture(autouse=True)
+def no_real_emails(mocker):
+    """Verhindert in allen Tests den echten Versand über Resend."""
+    return mocker.patch('fintrack.auth.routes.send_verification_email', return_value=True)
+
+
+TEST_PASSWORD = 'sicheres-test-passwort'
+
+
+@pytest.fixture
+def make_user(app):
+    """
+    Legt einen bestätigten Nutzer mit echtem Passwort-Hash an.
+    Aufruf: make_user('a@test.com') -> User
+    """
+    from werkzeug.security import generate_password_hash
+
+    def _make_user(email, password=TEST_PASSWORD):
+        # Schnelles Hash-Verfahren nur für Tests - die App selbst nutzt den
+        # sicheren (absichtlich langsamen) Standard von werkzeug
+        user = User(username=email.split('@')[0], email=email,
+                    password=generate_password_hash(password, method='pbkdf2:sha256:1000'),
+                    is_verified=True)
+        db.session.add(user)
+        db.session.commit()
+        return user
+
+    return _make_user
+
+
+@pytest.fixture
+def login_client(app):
+    """
+    Liefert einen Test-Client, der als der angegebene Nutzer angemeldet ist.
+    Aufruf: login_client('a@test.com') -> FlaskClient
+    """
+    def _login_client(email, password=TEST_PASSWORD):
+        client = app.test_client()
+        response = client.post('/login', json={'email': email, 'password': password})
+        assert response.status_code == 200, response.get_json()
+        return client
+
+    return _login_client
+
+
 @pytest.fixture
 def test_user(app):
     """Legt einen einfachen Test-Nutzer an."""

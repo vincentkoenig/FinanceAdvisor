@@ -4,9 +4,12 @@ insights/routes.py - Liefert den zuletzt generierten täglichen KI-Insight.
 
 from flask import Blueprint, jsonify
 
+from fintrack.auth.session import protect_blueprint
 from fintrack.models import DailyInsight
 
 bp = Blueprint('insights', __name__)
+# Nur mit Anmeldung, und nur Zugriff auf die eigenen Daten
+protect_blueprint(bp)
 
 
 @bp.route('/users/<user_id>/insight', methods=['GET'])

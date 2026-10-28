@@ -1,5 +1,5 @@
 async function sendMessage() {
-    const userId = localStorage.getItem('user_id')
+    const userId = currentUserId()
     const input = document.getElementById('chat-input')
     const message = input.value
     if (!message) return
@@ -29,7 +29,7 @@ async function sendMessage() {
     const response = await fetch('/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({user_id: userId, message: message})
+        body: JSON.stringify({message: message})
     })
 
     const data = await response.json()
@@ -43,7 +43,7 @@ async function sendMessage() {
 
 // Chatverlauf beim Laden der Seite holen
 async function loadChatHistory() {
-    const userId = localStorage.getItem('user_id')
+    const userId = currentUserId()
 
     const response = await fetch(`/chat/history/${userId}`, {
         method: 'GET'
