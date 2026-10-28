@@ -5,13 +5,13 @@ sowie Pydantic Schemas für das Structured Output des LLMs.
 """
 
 # Third Party
-from flask_sqlalchemy import SQLAlchemy
 from pydantic import BaseModel as PydanticBaseModel
 from typing import List
 
-
-# SQLAlchemy Objekt erstellen - wird später mit der Flask App verbunden
-db = SQLAlchemy()
+# Lokale Imports
+# db wird in extensions.py angelegt und hier re-exportiert, damit
+# bestehende Importe wie "from fintrack.models import db" weiter funktionieren
+from fintrack.extensions import db
 
 
 # ─── SQLALCHEMY MODELLE ───────────────────────────────────────────────────────

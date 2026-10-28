@@ -9,7 +9,7 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from models import User, db
+from fintrack.models import User, db
 
 
 class TestRegisterRoute:
@@ -32,7 +32,7 @@ class TestRegisterRoute:
     def test_register_creates_default_categories(self, app):
         """Nach der Registrierung hat der neue Nutzer automatisch
         Standard-Budgetkategorien"""
-        from models import Category
+        from fintrack.models import Category
 
         client = app.test_client()
         response = client.post('/register', json={

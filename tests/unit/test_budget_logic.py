@@ -10,8 +10,8 @@ from datetime import datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from models import db, Transaction
-from budget_logic import calculate_budget_summary
+from fintrack.models import db, Transaction
+from fintrack.budget.service import calculate_budget_summary
 
 
 class TestCalculateBudgetSummary:

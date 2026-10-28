@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-import api_services
+from fintrack.market import data as api_services
 
 
 class TestGetStockPrice:
@@ -20,8 +20,8 @@ class TestGetStockPrice:
         """Cache vor jedem Test leeren, damit Tests sich nicht gegenseitig beeinflussen"""
         api_services._price_cache.clear()
 
-    @patch('api_services.get_exchange_rate')
-    @patch('api_services.yf.Ticker')
+    @patch('fintrack.market.data.get_exchange_rate')
+    @patch('fintrack.market.data.yf.Ticker')
     def test_returns_price_converted_to_eur(self, mock_ticker_class, mock_exchange_rate):
         """Ein USD-Preis wird korrekt in EUR umgerechnet"""
         # yfinance-Antwort simulieren: Ticker mit fast_info['lastPrice']
@@ -37,8 +37,8 @@ class TestGetStockPrice:
         assert result == 90.0
         mock_ticker_class.assert_called_once_with("AAPL")
 
-    @patch('api_services.get_exchange_rate')
-    @patch('api_services.yf.Ticker')
+    @patch('fintrack.market.data.get_exchange_rate')
+    @patch('fintrack.market.data.yf.Ticker')
     def test_returns_none_on_error(self, mock_ticker_class, mock_exchange_rate):
         """Bei einem Fehler beim externen API-Aufruf wird None zurückgegeben,
         statt dass die Funktion mit einer Exception abbricht"""
@@ -55,7 +55,7 @@ class TestGetCryptoPrice:
     def setup_method(self):
         api_services._price_cache.clear()
 
-    @patch('api_services.requests.get')
+    @patch('fintrack.market.data.requests.get')
     def test_returns_price_in_eur(self, mock_get):
         """Der Preis einer Kryptowährung wird korrekt aus der
         CoinGecko-Antwort extrahiert"""
@@ -67,7 +67,7 @@ class TestGetCryptoPrice:
 
         assert result == 55000.0
 
-    @patch('api_services.requests.get')
+    @patch('fintrack.market.data.requests.get')
     def test_returns_none_on_error(self, mock_get):
         """Bei einem Fehler beim externen API-Aufruf wird None zurückgegeben"""
         mock_get.side_effect = Exception("Verbindungsfehler")
@@ -83,8 +83,8 @@ class TestGetMetalPrice:
     def setup_method(self):
         api_services._price_cache.clear()
 
-    @patch('api_services.get_exchange_rate')
-    @patch('api_services.yf.Ticker')
+    @patch('fintrack.market.data.get_exchange_rate')
+    @patch('fintrack.market.data.yf.Ticker')
     def test_gold_price_converted_to_eur(self, mock_ticker_class, mock_exchange_rate):
         """Der Goldpreis wird korrekt über das yfinance-Symbol GC=F
         abgerufen und in EUR umgerechnet"""
@@ -98,8 +98,8 @@ class TestGetMetalPrice:
         assert result == 1800.0
         mock_ticker_class.assert_called_once_with("GC=F")
 
-    @patch('api_services.get_exchange_rate')
-    @patch('api_services.yf.Ticker')
+    @patch('fintrack.market.data.get_exchange_rate')
+    @patch('fintrack.market.data.yf.Ticker')
     def test_silver_price_converted_to_eur(self, mock_ticker_class, mock_exchange_rate):
         """Der Silberpreis wird korrekt über das yfinance-Symbol SI=F
         abgerufen und in EUR umgerechnet"""

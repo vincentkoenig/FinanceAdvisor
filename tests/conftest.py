@@ -9,15 +9,18 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# WICHTIG: Muss VOR dem Import von app.py gesetzt werden, damit app.py
-# beim Initialisieren die In-Memory-Testdatenbank statt der echten
-# lokalen Datenbank nutzt.
+# Zusätzliches Sicherheitsnetz: Auch Code, der die Konfiguration selbst
+# über get_config() wählt, landet so in der Testkonfiguration.
 os.environ['TESTING'] = '1'
 
 import pytest
 
-from app import app as flask_app
-from models import db, User, Category, Transaction
+from fintrack import create_app
+from fintrack.models import db, User, Category, Transaction
+
+# Die App wird direkt über die Factory gebaut (nicht über app.py), damit
+# in den Tests kein Scheduler mit Hintergrundjobs startet.
+flask_app = create_app('testing')
 
 
 @pytest.fixture

@@ -20,9 +20,9 @@ ADMIN_ROUTES = ['/update-prices', '/check-dividends', '/generate-insights']
 def mock_admin_jobs(mocker):
     """Ersetzt die eigentlichen Jobs durch Mocks, damit die Tests
     keine echten Kurs-APIs oder OpenAI aufrufen."""
-    mocker.patch('scheduler.update_prices')
-    mocker.patch('dividend_logic.process_dividends_for_all_users')
-    mocker.patch('insight_logic.generate_insights_for_all_users')
+    mocker.patch('fintrack.admin.routes.update_prices')
+    mocker.patch('fintrack.admin.routes.process_dividends_for_all_users')
+    mocker.patch('fintrack.admin.routes.generate_insights_for_all_users')
 
 
 class TestAdminRoutes:
@@ -75,7 +75,7 @@ class TestVerificationCode:
 
     def test_code_has_six_digits(self):
         """Der Code ist immer genau 6 Ziffern lang, auch über viele Durchläufe"""
-        from email_service import generate_verification_code
+        from fintrack.auth.email import generate_verification_code
 
         for _ in range(500):
             code = generate_verification_code()

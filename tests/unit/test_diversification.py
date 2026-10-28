@@ -9,7 +9,7 @@ import os
 # Projekt-Root zum Python-Pfad hinzufügen, damit app.py importierbar ist
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from app import calculate_diversification_score
+from fintrack.portfolio.analysis import calculate_diversification_score
 
 
 class TestCalculateDiversificationScore:
