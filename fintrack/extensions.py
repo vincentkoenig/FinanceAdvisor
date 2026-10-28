@@ -1,18 +1,36 @@
 """
 extensions.py - Gemeinsam genutzte Objekte, die von mehreren Bereichen
-der App gebraucht werden (Datenbank, OpenAI-Client). Liegen hier statt in
-der App-Factory, damit Module sie importieren können, ohne die App selbst
-zu importieren (vermeidet zirkuläre Importe).
+der App gebraucht werden (Datenbank, Migrationen, OpenAI-Client). Liegen
+hier statt in der App-Factory, damit Module sie importieren können, ohne
+die App selbst zu importieren (vermeidet zirkuläre Importe).
 """
 
 import os
 from functools import lru_cache
 
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from openai import OpenAI
+from sqlalchemy import MetaData
+
+# Feste Namensregeln für Constraints und Indizes. Die Muster entsprechen
+# den Standardnamen von PostgreSQL (z.B. "user_asset_user_id_fkey"), damit
+# die Namen in Migrationen mit der bestehenden Produktionsdatenbank
+# übereinstimmen und spätere Migrationen Constraints gezielt ändern können.
+NAMING_CONVENTION = {
+    "ix": "ix_%(column_0_label)s",
+    "uq": "%(table_name)s_%(column_0_name)s_key",
+    "ck": "%(table_name)s_%(constraint_name)s_check",
+    "fk": "%(table_name)s_%(column_0_name)s_fkey",
+    "pk": "%(table_name)s_pkey",
+}
 
 # SQLAlchemy Objekt - wird in create_app() mit der Flask App verbunden
-db = SQLAlchemy()
+db = SQLAlchemy(metadata=MetaData(naming_convention=NAMING_CONVENTION))
+
+# Datenbank-Migrationen (Alembic). render_as_batch ist nötig, damit
+# Spaltenänderungen auch in der lokalen SQLite-Datenbank funktionieren.
+migrate = Migrate(render_as_batch=True)
 
 
 @lru_cache(maxsize=1)
