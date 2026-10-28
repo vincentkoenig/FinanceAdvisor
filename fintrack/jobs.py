@@ -1,5 +1,5 @@
 """
-scheduler.py - Automatische Preisaktualisierung
+jobs.py - Hintergrundjobs (Preise, Dividenden, Insights) und Scheduler.
 Aktualisiert regelmäßig die Preise aller Assets und schließt dabei
 automatisch Lücken in der price_history - falls z.B. mehrere Tage
 nicht aktualisiert wurde, werden alle fehlenden Tage nachgeladen.
@@ -12,11 +12,12 @@ from datetime import datetime, timedelta
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from api_services import (
-    get_stock_price, get_crypto_price, get_metal_price,
-    get_stock_historical_range, get_crypto_historical_range
-)
-from models import db, Asset, PriceHistory
+from fintrack.extensions import get_openai_client
+from fintrack.insights.service import generate_insights_for_all_users
+from fintrack.market.data import get_stock_historical_range, get_crypto_historical_range
+from fintrack.market.prices import get_current_price
+from fintrack.models import db, Asset, PriceHistory
+from fintrack.portfolio.dividends import process_dividends_for_all_users
 
 # yfinance Symbole für Edelmetalle
 METAL_SYMBOLS = {
@@ -86,14 +87,7 @@ def update_prices(flask_app):
                         ))
 
             # ─── Heutigen Preis über die Live-Funktion setzen ───
-            if asset.asset_type in ("stock", "etf"):
-                current_price = get_stock_price(asset.symbol)
-            elif asset.asset_type == "crypto":
-                current_price = get_crypto_price(asset.symbol)
-            elif asset.asset_type == "metal":
-                current_price = get_metal_price(asset.symbol)
-            else:
-                current_price = None
+            current_price = get_current_price(asset)
 
             if current_price is not None:
                 today_entry = PriceHistory.query.filter_by(
@@ -122,24 +116,22 @@ def check_dividends(flask_app):
     anfallen als tägliche Kursänderungen.
     """
     with flask_app.app_context():
-        from dividend_logic import process_dividends_for_all_users
         process_dividends_for_all_users()
         print(f"Dividends checked and booked at {datetime.now()}")
 
 
-def generate_daily_insights(flask_app, openai_client):
+def generate_daily_insights(flask_app):
     """
     Generiert für alle Nutzer einen neuen, proaktiven täglichen
     KI-Insight (Portfolio-Entwicklung + Budget-Status). Läuft nach
     dem Dividenden-Check, damit alle Zahlen für den Tag aktuell sind.
     """
     with flask_app.app_context():
-        from insight_logic import generate_insights_for_all_users
-        generate_insights_for_all_users(openai_client)
+        generate_insights_for_all_users(get_openai_client())
         print(f"Daily insights generated at {datetime.now()}")
 
 
-def start_scheduler(flask_app, openai_client):
+def start_scheduler(flask_app):
     """
     Startet den Scheduler:
     - aktualisiert die Preise täglich um 18:00 Uhr
@@ -149,6 +141,6 @@ def start_scheduler(flask_app, openai_client):
     scheduler = BackgroundScheduler()
     scheduler.add_job(update_prices, 'cron', hour=18, minute=0, args=[flask_app])
     scheduler.add_job(check_dividends, 'cron', hour=19, minute=0, args=[flask_app])
-    scheduler.add_job(generate_daily_insights, 'cron', hour=20, minute=0, args=[flask_app, openai_client])
+    scheduler.add_job(generate_daily_insights, 'cron', hour=20, minute=0, args=[flask_app])
     scheduler.start()
     print("Scheduler started - prices 18:00, dividends 19:00, insights 20:00")

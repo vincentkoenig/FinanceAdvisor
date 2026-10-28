@@ -6,7 +6,7 @@ genutzt, damit die Berechnung nur an einer Stelle existiert.
 
 from datetime import datetime
 
-from models import db, Transaction, Category
+from fintrack.models import db, Transaction, Category
 
 
 def is_income(transaction):
@@ -109,3 +109,48 @@ def calculate_budget_summary(user_id):
         "current_month_fixed": round(current_month_fixed, 2),
         "current_month_variable": round(current_month_variable, 2)
     }
+
+def create_default_categories(user_id):
+    """
+    Legt für einen neuen Nutzer die Standardkategorien fürs Haushaltsbuch an.
+    Struktur: Einkommen, Fixkosten, Variable Ausgaben - jeweils mit
+    Hauptkategorien und passenden Unterkategorien.
+    Der Nutzer kann diese später beliebig anpassen oder löschen.
+    """
+    categories = {
+        "income": {
+            "Einkommen": ["Gehalt", "Kindergeld", "Arbeitslosengeld", "Dividenden", "Sonstige Einnahmen"]
+        },
+        "fixed_expense": {
+            "Wohnen": ["Miete", "Strom", "Nebenkosten"],
+            "Versicherungen": ["Haftpflicht", "KFZ", "Sonstige Versicherungen"],
+            "Investments": ["Sparplan", "Sonstige Investments"],
+            "Mobilität": ["Auto/Leasing", "ÖPNV-Abo"],
+            "Sonstige Verträge": ["Handy/Internet", "Streaming/Abos"]
+        },
+        "variable_expense": {
+            "Lebenshaltung": ["Lebensmittel", "Kleidung", "Drogerie"],
+            "Mobilität": ["Sprit", "Taxi/Fahrdienst"],
+            "Entertainment & Interessen": ["Kino", "Hobbys"],
+            "Sonstiges": ["Geschenke", "Spenden"]
+        }
+    }
+
+    for category_type, main_categories in categories.items():
+        for main_name, sub_names in main_categories.items():
+            # Hauptkategorie anlegen
+            main_category = Category(user_id=user_id, name=main_name, type=category_type)
+            db.session.add(main_category)
+            db.session.flush()  # damit main_category.id sofort verfügbar ist
+
+            # Unterkategorien anlegen, verweisen auf die Hauptkategorie
+            for sub_name in sub_names:
+                sub_category = Category(
+                    user_id=user_id,
+                    name=sub_name,
+                    type=category_type,
+                    parent_id=main_category.id
+                )
+                db.session.add(sub_category)
+
+    db.session.commit()

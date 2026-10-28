@@ -106,12 +106,21 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 
 ```
 FinTrack/
-├── app.py                    # Alle Flask-Routen
-├── models.py                  # SQLAlchemy-Modelle + Pydantic-Schemas für Structured Output
-├── budget_logic.py             # Gemeinsame Haushaltsbuch-Berechnungslogik (genutzt von app.py und mcp_server)
-├── api_services.py             # Live-Preisabruf (Aktien, Krypto, Edelmetalle, Wechselkurs, Websuche)
-├── scheduler.py                 # APScheduler — tägliche Preis-Snapshots mit Lückenfüllung
-├── tools.py                     # OpenAI Function-Calling-Tool-Definitionen
+├── app.py                    # Einstiegspunkt für Gunicorn/lokal: baut die App und startet den Scheduler
+├── fintrack/                  # Die eigentliche App als Paket
+│   ├── __init__.py             # create_app(): Konfiguration, Datenbank, Blueprints
+│   ├── config.py               # Einstellungen aus Umgebungsvariablen, Datenbank-URL
+│   ├── extensions.py           # Gemeinsame Objekte: Datenbank, OpenAI-Client
+│   ├── models.py               # SQLAlchemy-Modelle + Pydantic-Schemas für Structured Output
+│   ├── jobs.py                 # APScheduler — Preise, Dividenden und Insights täglich
+│   ├── pages.py                # Routen, die die HTML-Seiten ausliefern
+│   ├── auth/                   # Registrierung, Login, Verifizierungs-E-Mail, Profil
+│   ├── portfolio/              # Assets, Positionen, Watchlist, Sparpläne, Dividenden, KI-Analyse
+│   ├── budget/                 # Haushaltsbuch: Routen + Berechnungslogik (auch vom MCP-Server genutzt)
+│   ├── chat/                   # KI-Chat mit Function-Calling-Tools
+│   ├── insights/               # Täglicher KI-Insight
+│   ├── admin/                  # Geschützte Endpoints zum manuellen Anstoßen der Jobs
+│   └── market/                 # Marktdaten (yfinance, CoinGecko, Tavily) + zentraler Preis-Service
 ├── requirements.txt              # Abhängigkeiten der Haupt-App (Flask, gunicorn, psycopg2-binary, etc.)
 ├── start.bat                     # Windows-Starter — startet den Server und öffnet den Browser
 ├── mcp_server/

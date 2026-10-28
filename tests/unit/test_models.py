@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import pytest
 from sqlalchemy.exc import IntegrityError
 
-from models import db, User, Category, Transaction, UserAsset, Asset
+from fintrack.models import db, User, Category, Transaction, UserAsset, Asset
 
 
 class TestUserModel:

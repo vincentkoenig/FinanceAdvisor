@@ -8,10 +8,8 @@ gespeichert, damit die Home-Seite sie anzeigen kann.
 
 from datetime import datetime, timedelta
 
-from openai import OpenAI
-
-from models import db, User, UserAsset, Asset, PriceHistory, DailyInsight
-from budget_logic import calculate_budget_summary
+from fintrack.models import db, User, UserAsset, PriceHistory, DailyInsight
+from fintrack.budget.service import calculate_budget_summary
 
 
 def calculate_portfolio_value_at(user_id, target_date):

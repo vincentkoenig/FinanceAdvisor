@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import pytest
 from sqlalchemy.engine import make_url
 
-from app import normalize_database_url
+from fintrack.config import normalize_database_url
 
 
 NEON_REST = 'nutzer:geheim@ep-abc-123.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'

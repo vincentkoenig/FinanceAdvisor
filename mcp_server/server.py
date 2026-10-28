@@ -10,8 +10,8 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
 from flask import Flask
-from models import db, User, Asset, UserAsset, Category, Transaction
-from budget_logic import calculate_budget_summary
+from fintrack.models import db, User, Asset, UserAsset, Category, Transaction
+from fintrack.budget.service import calculate_budget_summary
 from datetime import datetime
 
 # Absoluter Pfad zur Datenbank-Datei, damit es unabhängig vom

@@ -8,8 +8,8 @@ sowie eine passende Transaction im Haushaltsbuch an.
 
 from datetime import datetime
 
-from models import db, User, Asset, UserAsset, AssetTransaction, Dividend, Category, Transaction
-from api_services import get_dividends_since, get_exchange_rate
+from fintrack.models import db, User, Asset, UserAsset, AssetTransaction, Dividend, Category, Transaction
+from fintrack.market.data import get_dividends_since, get_exchange_rate
 
 
 def calculate_shares_held_at(user_id, asset_id, target_date):
