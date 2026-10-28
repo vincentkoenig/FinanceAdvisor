@@ -40,7 +40,22 @@ MAX_CHAT_HISTORY = 20
 # Flask App erstellen
 app = Flask(__name__)
 
-# Datenbank konfigurieren - nutzt Postgres auf Render (über DATABASE_URL),
+def normalize_database_url(url):
+    """
+    Bringt eine Postgres-URL in das Format, das zu unserem installierten
+    Treiber passt. Anbieter liefern unterschiedliche Schreibweisen
+    ('postgres://...', 'postgresql://...' oder 'postgresql+psycopg://...').
+    Ohne ausdrücklichen Treiber wählt SQLAlchemy selbst einen aus - seit
+    Version 2.1 psycopg 3 statt psycopg2. Deshalb wird der Treiber hier
+    fest auf psycopg2 gesetzt. Andere URLs (z.B. SQLite) bleiben unverändert.
+    """
+    scheme, separator, rest = url.partition('://')
+    if scheme in ('postgres', 'postgresql') or scheme.startswith('postgresql+'):
+        return f'postgresql+psycopg2://{rest}'
+    return url
+
+
+# Datenbank konfigurieren - nutzt Postgres in Produktion (über DATABASE_URL),
 # eine In-Memory-Testdatenbank wenn TESTING gesetzt ist, und fällt
 # ansonsten lokal automatisch auf SQLite zurück
 database_url = os.getenv('DATABASE_URL')
@@ -50,13 +65,15 @@ if os.getenv('TESTING') == '1':
     # niemals gegen die echte lokale oder Produktions-Datenbank
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
 elif database_url:
-    # Render liefert die URL im Format 'postgres://...', SQLAlchemy braucht
-    # aber 'postgresql://...' - deshalb hier korrigieren
-    if database_url.startswith('postgres://'):
-        database_url = database_url.replace('postgres://', 'postgresql://', 1)
-    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+    app.config['SQLALCHEMY_DATABASE_URI'] = normalize_database_url(database_url)
 else:
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///finance_advisor.db'
+
+# Neon pausiert die Datenbank nach einigen Minuten ohne Zugriff und
+# trennt dabei offene Verbindungen. pool_pre_ping prüft jede Verbindung
+# kurz vor der Nutzung und baut bei Bedarf eine neue auf, statt mit
+# "SSL connection has been closed unexpectedly" abzubrechen.
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
 
 # SQLAlchemy mit der Flask App verbinden
 db.init_app(app)
