@@ -1,10 +1,12 @@
 # ─── IMPORTS ──────────────────────────────────────────────────────────────────
 
 # Standard Library
+import hmac     # Zeitkonstanter Vergleich von Schlüsseln (gegen Timing-Angriffe)
 import json
 import os       # Operating System: Gibt Zugriff auf Funktionen des Betriebssystems
 import re       # Regular Expressions (kurz: Regex) sind Muster um Text zu durchsuchen und zu validieren
 from datetime import datetime, timedelta
+from functools import wraps
 from email_service import generate_verification_code, send_verification_email
 
 # Third Party
@@ -58,6 +60,28 @@ else:
 
 # SQLAlchemy mit der Flask App verbinden
 db.init_app(app)
+
+
+def require_admin_key(view):
+    """
+    Schützt interne Endpoints (Preise, Dividenden, Insights manuell
+    anstoßen), die sonst jeder aufrufen und damit z.B. OpenAI-Kosten
+    für alle Nutzer auslösen könnte. Der Aufrufer muss den Schlüssel
+    aus der Umgebungsvariable ADMIN_API_KEY im Header X-Admin-Key
+    mitschicken. Ist ADMIN_API_KEY nicht gesetzt, sind die Endpoints
+    komplett gesperrt.
+    """
+    @wraps(view)
+    def wrapper(*args, **kwargs):
+        expected_key = os.getenv('ADMIN_API_KEY')
+        provided_key = request.headers.get('X-Admin-Key', '')
+
+        if not expected_key or not hmac.compare_digest(provided_key, expected_key):
+            return jsonify({"error": "Nicht erlaubt"}), 403
+
+        return view(*args, **kwargs)
+
+    return wrapper
 
 # Tabellen erstellen wenn sie noch nicht existieren
 # app_context() sagt Flask welche App gerade aktiv ist
@@ -1454,6 +1478,7 @@ def get_chat_history(user_id):
 # ─── PREIS ENDPOINTS ──────────────────────────────────────────────────────────
 
 @app.route('/update-prices', methods=['POST'])
+@require_admin_key
 def manual_update_prices():
     """
     Manuelle Preisaktualisierung - nützlich wenn Scheduler nicht gelaufen ist.
@@ -1494,6 +1519,7 @@ def get_dividends(user_id):
 
 
 @app.route('/check-dividends', methods=['POST'])
+@require_admin_key
 def manual_check_dividends():
     """
     Manuelle Dividendenprüfung - nützlich zum Testen, ohne bis zum
@@ -1506,6 +1532,7 @@ def manual_check_dividends():
 
 # ─── Insights ────────────────────────────────────────────────────────────────────
 @app.route('/generate-insights', methods=['POST'])
+@require_admin_key
 def manual_generate_insights():
     """
     Manuelle Insight-Generierung - nützlich zum Testen, ohne bis
@@ -1539,8 +1566,18 @@ def get_latest_insight(user_id):
 start_scheduler(app, client)
 
 if __name__ == '__main__':
-    # debug=True nur lokal - auf Render läuft die App über Gunicorn,
-    # das diesen Block gar nicht ausführt.
-    # host='0.0.0.0' macht den Server im lokalen Netzwerk erreichbar
-    # (z.B. vom Handy aus über die lokale IP), nicht nur von diesem PC
-    app.run(debug=True, host='0.0.0.0')
+    # Auf Render läuft die App über Gunicorn, das diesen Block gar nicht
+    # ausführt. Lokal steuern zwei Umgebungsvariablen den Start:
+    # - FLASK_DEBUG=1 aktiviert den Debug-Modus (inkl. Werkzeug-Debugger)
+    # - FLASK_HOST=0.0.0.0 macht den Server im lokalen Netzwerk erreichbar
+    #   (z.B. vom Handy aus über die lokale IP), Standard ist nur dieser PC
+    debug = os.getenv('FLASK_DEBUG') == '1'
+    host = os.getenv('FLASK_HOST', '127.0.0.1')
+
+    # Der Werkzeug-Debugger erlaubt das Ausführen von beliebigem Python-Code
+    # im Browser - er darf deshalb nie im Netzwerk erreichbar sein
+    if debug and host not in ('127.0.0.1', 'localhost'):
+        print(f"WARNUNG: Debug-Modus wird deaktiviert, weil FLASK_HOST={host} nicht nur lokal ist.")
+        debug = False
+
+    app.run(debug=debug, host=host)

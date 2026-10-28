@@ -7,15 +7,19 @@ Adresse verschickt werden.
 """
 
 import os
-import random
+import secrets
 import resend
 
 resend.api_key = os.getenv("RESEND_API_KEY")
 
 
 def generate_verification_code():
-    """Generiert einen 6-stelligen, numerischen Verifizierungscode"""
-    return str(random.randint(100000, 999999))
+    """
+    Generiert einen 6-stelligen, numerischen Verifizierungscode.
+    Nutzt secrets statt random, weil random vorhersagbar ist und
+    nicht für Sicherheitscodes gedacht ist.
+    """
+    return str(secrets.randbelow(900000) + 100000)
 
 
 def send_verification_email(to_email, code):

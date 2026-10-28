@@ -118,7 +118,7 @@ function renderBreakdown(containerId, type, mainCategoryTotals, blockTotal) {
 
         html += `
             <div class="breakdown-row">
-                <span class="breakdown-row-name">${category.name}</span>
+                <span class="breakdown-row-name">${escapeHtml(category.name)}</span>
                 <div class="breakdown-row-values">
                     <div class="breakdown-row-amount">${formatCurrency(amount)} €</div>
                     <div class="breakdown-row-percent">${percent}%</div>
@@ -208,8 +208,8 @@ function renderTransactionsList(transactions) {
         return `
             <tr style="${pausedStyle}">
                 <td data-label="Datum">${formatDate(transaction.date)}</td>
-                <td data-label="Kategorie">${transaction.category_name}${recurringIcon}</td>
-                <td data-label="Beschreibung">${transaction.description || '-'}${transaction.is_paused ? ' <small style="color: var(--text-secondary);">(pausiert)</small>' : ''}</td>
+                <td data-label="Kategorie">${escapeHtml(transaction.category_name)}${recurringIcon}</td>
+                <td data-label="Beschreibung">${escapeHtml(transaction.description || '-')}${transaction.is_paused ? ' <small style="color: var(--text-secondary);">(pausiert)</small>' : ''}</td>
                 <td data-label="Betrag" style="color: ${amountColor}">${amountPrefix}${formatCurrency(transaction.amount)} €</td>
                 <td data-label="">
                     ${pauseButton}
@@ -278,7 +278,7 @@ function loadMainCategoryOptions() {
     const mainCategories = allCategories.filter(c => c.type === type && c.parent_id === null)
 
     mainCategorySelect.innerHTML = mainCategories
-        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`)
         .join('')
 
     // Direkt im Anschluss die passenden Unterkategorien laden
@@ -293,7 +293,7 @@ function loadSubCategoryOptions() {
     const subCategories = allCategories.filter(c => c.parent_id === mainCategoryId)
 
     subCategorySelect.innerHTML = subCategories
-        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .map(c => `<option value="${c.id}">${escapeHtml(c.name)}</option>`)
         .join('')
 }
 

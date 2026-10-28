@@ -8,7 +8,7 @@ async function sendMessage() {
 
     // Nutzer Nachricht sofort anzeigen
     messages.innerHTML += `
-        <div class="message user-message">${message}</div>
+        <div class="message user-message">${escapeHtml(message)}</div>
     `
 
     // Eingabefeld leeren
@@ -35,7 +35,7 @@ async function sendMessage() {
     const data = await response.json()
 
     // Loading ersetzen mit echter Antwort
-    document.getElementById(loadingId).innerHTML = marked.parse(data.reply)
+    document.getElementById(loadingId).innerHTML = renderMarkdown(data.reply)
 
     // Nach unten scrollen
     messages.scrollTop = messages.scrollHeight
@@ -55,11 +55,11 @@ async function loadChatHistory() {
     data.forEach(entry => {
         if (entry.role === 'user') {
             chatMessages.innerHTML += `
-                <div class="message user-message">${entry.message}</div>
+                <div class="message user-message">${escapeHtml(entry.message)}</div>
             `
         } else {
             chatMessages.innerHTML += `
-                <div class="message assistant-message">${marked.parse(entry.message)}</div>
+                <div class="message assistant-message">${renderMarkdown(entry.message)}</div>
             `
         }
     })
