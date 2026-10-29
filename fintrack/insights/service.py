@@ -8,7 +8,8 @@ gespeichert, damit die Home-Seite sie anzeigen kann.
 
 from datetime import datetime, timedelta
 
-from fintrack.models import db, User, UserAsset, PriceHistory, DailyInsight
+from fintrack.market.service import price_in_eur_on
+from fintrack.models import db, Asset, User, UserAsset, DailyInsight
 from fintrack.budget.service import calculate_budget_summary
 
 
@@ -17,32 +18,34 @@ def calculate_portfolio_value_at(user_id, target_date):
     Berechnet den ungefähren Portfolio-Gesamtwert eines Nutzers an
     einem bestimmten Datum, basierend auf den zu diesem Zeitpunkt
     gehaltenen Mengen (aktueller Stand, keine historische Mengen-
-    Rekonstruktion) und den historischen Preisen aus PriceHistory.
+    Rekonstruktion) und den historischen Schlusskursen in Euro.
     """
     holdings = UserAsset.query.filter_by(user_id=user_id).filter(UserAsset.quantity > 0).all()
 
     total = 0
     for holding in holdings:
-        price_entry = PriceHistory.query.filter_by(asset_id=holding.asset_id) \
-            .filter(PriceHistory.date <= target_date) \
-            .filter(PriceHistory.price.isnot(None)) \
-            .order_by(PriceHistory.date.desc()).first()
-
-        if price_entry:
-            total += holding.quantity * price_entry.price
+        price = price_in_eur_on(db.session.get(Asset, holding.asset_id), target_date.date())
+        if price is not None:
+            total += holding.quantity * price
 
     return total
 
 
 def generate_insight_for_user(user_id, openai_client):
     """
-    Generiert und speichert einen neuen DailyInsight für einen Nutzer.
+    Generiert und speichert einen neuen DailyInsight für einen Nutzer -
+    höchstens einen pro Tag, auch wenn der Lauf mehrmals gestartet wird
+    (Scheduler und GitHub Actions). Gibt True zurück, wenn einer entstand.
     """
     user = db.session.get(User, user_id)
     if not user:
-        return
+        return False
 
     today = datetime.now()
+    start_of_day = datetime.combine(today.date(), datetime.min.time())
+    if DailyInsight.query.filter(DailyInsight.user_id == user_id,
+                                 DailyInsight.created_at >= start_of_day).first():
+        return False
     week_ago = today - timedelta(days=7)
 
     current_value = calculate_portfolio_value_at(user_id, today)
@@ -90,13 +93,18 @@ def generate_insight_for_user(user_id, openai_client):
 
     insight_text = response.choices[0].message.content
 
-    new_insight = DailyInsight(user_id=user_id, content=insight_text)
+    # Zeitpunkt ausdrücklich setzen, damit die Prüfung "heute schon einer?"
+    # dieselbe Uhr nutzt wie hier (nicht die der Datenbank)
+    new_insight = DailyInsight(user_id=user_id, content=insight_text, created_at=today)
     db.session.add(new_insight)
     db.session.commit()
+    return True
 
 
 def generate_insights_for_all_users(openai_client):
-    """Generiert einen neuen Insight für jeden Nutzer der App."""
-    users = User.query.all()
-    for user in users:
-        generate_insight_for_user(user.id, openai_client)
+    """Generiert den heutigen Insight für jeden Nutzer und gibt die Anzahl neuer zurück."""
+    created = 0
+    for user in User.query.all():
+        if generate_insight_for_user(user.id, openai_client):
+            created += 1
+    return created

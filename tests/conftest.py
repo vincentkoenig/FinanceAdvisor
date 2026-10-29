@@ -116,3 +116,49 @@ def expense_category(app, test_user):
     db.session.add(category)
     db.session.commit()
     return category
+
+class FakeYahoo:
+    """
+    Ersetzt market/yahoo.py in allen Tests, damit nie echte Kurse aus dem
+    Netz geladen werden. Tests legen fest, was "yfinance" kennt:
+        fake_yahoo.metadata['SAP.DE'] = {...}
+        fake_yahoo.closes['SAP.DE'] = [(date, close, 'EUR'), ...]
+    """
+
+    def __init__(self):
+        self.metadata = {}
+        self.last_prices = {}
+        self.closes = {}
+        self.dividends = {}
+        self.calls = []
+
+    def add_stock(self, symbol, currency='EUR', asset_type='stock', exchange='GER'):
+        self.metadata[symbol] = {'currency': currency, 'raw_currency': currency,
+                                 'asset_type': asset_type, 'exchange': exchange}
+
+    def fetch_metadata(self, symbol):
+        return self.metadata.get(symbol)
+
+    def fetch_last_price(self, symbol):
+        return self.last_prices.get(symbol)
+
+    def fetch_daily_closes(self, symbol, start, end=None):
+        self.calls.append((symbol, start, end))
+        return [row for row in self.closes.get(symbol, [])
+                if row[0] >= start and (end is None or row[0] <= end)]
+
+    def fetch_dividends(self, symbol, since):
+        return [row for row in self.dividends.get(symbol, []) if row[0] > since]
+
+
+@pytest.fixture(autouse=True)
+def fake_yahoo(monkeypatch):
+    """Alle yfinance-Abfragen laufen gegen FakeYahoo; der Live-Preis-Cache startet leer."""
+    from fintrack.market import prices, yahoo
+
+    fake = FakeYahoo()
+    for name in ('fetch_metadata', 'fetch_last_price', 'fetch_daily_closes', 'fetch_dividends'):
+        monkeypatch.setattr(yahoo, name, getattr(fake, name))
+    prices.clear_cache()
+    yield fake
+    prices.clear_cache()

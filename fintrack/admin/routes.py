@@ -13,11 +13,9 @@ from functools import wraps
 from flask import Blueprint, current_app, request, jsonify
 
 # Lokale Imports
-from fintrack.extensions import db, get_openai_client
-from fintrack.insights.service import generate_insights_for_all_users
-from fintrack.jobs import update_prices
+from fintrack.extensions import db
+from fintrack.jobs import job_status, start_job
 from fintrack.models import PriceHistory
-from fintrack.portfolio.dividends import process_dividends_for_all_users
 
 bp = Blueprint('admin', __name__)
 
@@ -47,34 +45,47 @@ def require_admin_key(view):
 @bp.route('/update-prices', methods=['POST'])
 @require_admin_key
 def manual_update_prices():
-    """
-    Manuelle Preisaktualisierung - nützlich wenn Scheduler nicht gelaufen ist.
-    Ruft update_prices() aus scheduler.py auf.
-    """
-    update_prices(current_app._get_current_object())
-    return jsonify({"message": "Prices updated successfully"}), 200
+    """Kurse und Wechselkurse im Hintergrund aktualisieren."""
+    return _start('prices')
 
 
 @bp.route('/check-dividends', methods=['POST'])
 @require_admin_key
 def manual_check_dividends():
-    """
-    Manuelle Dividendenprüfung - nützlich zum Testen, ohne bis zum
-    geplanten Scheduler-Zeitpunkt warten zu müssen.
-    """
-    process_dividends_for_all_users()
-    return jsonify({"message": "Dividends checked and booked successfully"}), 200
+    """Neue Dividenden im Hintergrund verbuchen."""
+    return _start('dividends')
 
 
 @bp.route('/generate-insights', methods=['POST'])
 @require_admin_key
 def manual_generate_insights():
+    """Tägliche Insights im Hintergrund erzeugen (höchstens einer pro Nutzer und Tag)."""
+    return _start('insights')
+
+
+@bp.route('/run-daily-jobs', methods=['POST'])
+@require_admin_key
+def run_daily_jobs():
     """
-    Manuelle Insight-Generierung - nützlich zum Testen, ohne bis
-    zum geplanten Scheduler-Zeitpunkt warten zu müssen.
+    Der komplette tägliche Lauf (Kurse, Dividenden, Insights). Wird abends
+    von GitHub Actions aufgerufen, damit er auch läuft, wenn der Server
+    vorher geschlafen hat.
     """
-    generate_insights_for_all_users(get_openai_client())
-    return jsonify({"message": "Insights generated successfully"}), 200
+    return _start('daily')
+
+
+@bp.route('/jobs/status', methods=['GET'])
+@require_admin_key
+def jobs_status():
+    """Zustand und Ergebnis des letzten Laufs - für GitHub Actions und zur Fehlersuche."""
+    return jsonify(job_status()), 200
+
+
+def _start(job_name):
+    """Startet einen Job im Hintergrund; läuft schon einer, wird nichts doppelt gestartet."""
+    if not start_job(current_app._get_current_object(), job_name):
+        return jsonify({"message": "Es läuft bereits ein Job", "status": job_status()}), 409
+    return jsonify({"message": "Job gestartet", "job": job_name}), 202
 
 
 @bp.route('/assets/<int:asset_id>/prices', methods=['POST'])

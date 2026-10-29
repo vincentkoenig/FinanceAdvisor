@@ -1,15 +1,18 @@
 """
-dividend_logic.py - Automatische Erkennung und Verbuchung von
+portfolio/dividends.py - Automatische Erkennung und Verbuchung von
 Dividendenausschüttungen. Wird vom Scheduler regelmäßig aufgerufen,
 gleicht yfinance-Dividendendaten mit der Kaufhistorie (AssetTransaction)
 ab und legt bei neuen Ausschüttungen automatisch eine Dividend-Zeile
 sowie eine passende Transaction im Haushaltsbuch an.
+Beträge kommen in der Handelswährung und werden mit dem Wechselkurs des
+Ex-Tags in Euro umgerechnet - nicht mit dem von heute.
 """
 
 from datetime import datetime
 
+from fintrack.market import yahoo
+from fintrack.market.service import fx_rate_on, update_fx_rates
 from fintrack.models import db, User, Asset, UserAsset, AssetTransaction, Dividend, Category, Transaction
-from fintrack.market.data import get_dividends_since, get_exchange_rate
 
 
 def calculate_shares_held_at(user_id, asset_id, target_date):
@@ -61,16 +64,21 @@ def process_dividends_for_user(user_id):
 
         since_date = last_dividend.ex_dividend_date if last_dividend else datetime(datetime.now().year - 1, 1, 1)
 
-        new_dividends = get_dividends_since(asset.symbol, since_date)
+        new_dividends = yahoo.fetch_dividends(asset.symbol, since_date.date())
 
         if not new_dividends:
             continue
 
-        rate = get_exchange_rate("USD", "EUR")
+        currency = asset.currency or 'EUR'
+        update_fx_rates(currency)
 
-        for entry in new_dividends:
-            dividend_date = datetime.strptime(entry['date'], '%Y-%m-%d')
-            amount_per_share = entry['amount_per_share'] * rate
+        for ex_day, native_amount in new_dividends:
+            rate = fx_rate_on(currency, ex_day)
+            if rate is None:
+                # Ohne Wechselkurs lieber nichts buchen als einen falschen Betrag
+                continue
+            dividend_date = datetime.combine(ex_day, datetime.min.time())
+            amount_per_share = native_amount * rate
 
             shares_held = calculate_shares_held_at(user_id, asset.id, dividend_date)
 

@@ -26,7 +26,7 @@ from fintrack.models import (Asset, AssetTransaction, Category, ChatHistory, Dai
 @pytest.fixture(autouse=True)
 def no_price_downloads(mocker):
     """Keine echten Kursabfragen beim Import neuer Assets."""
-    return mocker.patch('fintrack.account.routes.load_price_history', return_value=0)
+    return mocker.patch('fintrack.account.routes.prepare_new_asset', return_value=0)
 
 
 @pytest.fixture

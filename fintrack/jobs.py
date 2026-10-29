@@ -1,146 +1,124 @@
 """
-jobs.py - Hintergrundjobs (Preise, Dividenden, Insights) und Scheduler.
-Aktualisiert regelmäßig die Preise aller Assets und schließt dabei
-automatisch Lücken in der price_history - falls z.B. mehrere Tage
-nicht aktualisiert wurde, werden alle fehlenden Tage nachgeladen.
-Der heutige Preis wird zusätzlich immer explizit über die Live-Preis-
-Funktionen gesetzt, da yfinance's historische Preis-Range den
-aktuellen, noch nicht abgeschlossenen Handelstag oft nicht liefert.
+jobs.py - Tägliche Hintergrundjobs und ihr Scheduler.
+
+Ein Lauf besteht aus drei Schritten in fester Reihenfolge:
+1. Kurse und Wechselkurse aktualisieren (market/service.py)
+2. neue Dividenden verbuchen (braucht aktuelle Wechselkurse)
+3. tägliche KI-Insights erzeugen (braucht aktuelle Kurse)
+
+Gestartet wird der Lauf auf zwei Wegen, die sich nicht in die Quere kommen:
+- vom Scheduler im Server, abends um 22:30 Uhr deutscher Zeit
+- von GitHub Actions über /api/v1/admin/run-daily-jobs, das den Server
+  vorher aufweckt - auf dem kostenlosen Render-Tarif schläft er sonst
+Eine Sperre sorgt dafür, dass immer nur ein Lauf gleichzeitig arbeitet.
 """
 
-from datetime import datetime, timedelta
+import logging
+import threading
+from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from fintrack.extensions import get_openai_client
 from fintrack.insights.service import generate_insights_for_all_users
-from fintrack.market.data import get_stock_historical_range, get_crypto_historical_range
-from fintrack.market.prices import get_current_price
-from fintrack.models import db, Asset, PriceHistory
+from fintrack.market.service import update_all_prices
 from fintrack.portfolio.dividends import process_dividends_for_all_users
 
-# yfinance Symbole für Edelmetalle
-METAL_SYMBOLS = {
-    "GOLD": "GC=F",
-    "SILVER": "SI=F"
-}
+logger = logging.getLogger(__name__)
+
+TIMEZONE = 'Europe/Berlin'
+
+# Zustand des letzten Laufs - liegt im Speicher des (einzigen) Workers
+_lock = threading.Lock()
+_status = {'state': 'idle', 'job': None, 'started_at': None, 'finished_at': None,
+           'result': None, 'error': None}
 
 
 def update_prices(flask_app):
-    """
-    Aktualisiert die Preise aller Assets.
-    1. Schließt Lücken zwischen dem letzten gültigen (nicht-NULL) Preis
-       und heute über die historische Preis-Range.
-    2. Setzt für heute zusätzlich immer den aktuellen Live-Preis,
-       damit der heutige Tag garantiert einen Preis hat.
-    """
     with flask_app.app_context():
-        assets = db.session.execute(db.select(Asset)).scalars().all()
-        today = datetime.now().date()
-        today_datetime = datetime.combine(today, datetime.min.time())
-
-        for asset in assets:
-            # Letzten Preis mit einem gültigen Wert holen - NULL-Einträge
-            # werden hier bewusst ausgeschlossen, damit sie nicht als
-            # aktuellster Stand gezählt werden
-            last_entry = PriceHistory.query.filter_by(asset_id=asset.id) \
-                .filter(PriceHistory.price.isnot(None)) \
-                .order_by(PriceHistory.date.desc()).first()
-
-            last_date = last_entry.date.date() if last_entry else today - timedelta(days=1)
-
-            # ─── Lücke bis heute schließen ───
-            if last_date < today:
-                start_date = last_date + timedelta(days=1)
-                historical = []
-
-                if asset.asset_type in ("stock", "etf"):
-                    historical = get_stock_historical_range(asset.symbol, start_date, today)
-                elif asset.asset_type == "metal":
-                    symbol = METAL_SYMBOLS.get(asset.symbol, asset.symbol)
-                    historical = get_stock_historical_range(symbol, start_date, today)
-                elif asset.asset_type == "crypto":
-                    from_ts = int(datetime.combine(start_date, datetime.min.time()).timestamp())
-                    to_ts = int(datetime.combine(today, datetime.min.time()).timestamp())
-                    historical = get_crypto_historical_range(asset.symbol, from_ts, to_ts)
-
-                for entry in historical:
-                    if entry.get('price') is None:
-                        continue
-
-                    entry_date = datetime.strptime(entry['date'], '%Y-%m-%d')
-                    existing = PriceHistory.query.filter_by(
-                        asset_id=asset.id, date=entry_date
-                    ).first()
-
-                    if existing:
-                        # Bestehenden Eintrag nur aktualisieren, wenn er
-                        # noch keinen Preis hat
-                        if existing.price is None:
-                            existing.price = entry['price']
-                    else:
-                        db.session.add(PriceHistory(
-                            asset_id=asset.id,
-                            date=entry_date,
-                            price=entry['price'],
-                            currency=asset.currency
-                        ))
-
-            # ─── Heutigen Preis über die Live-Funktion setzen ───
-            current_price = get_current_price(asset)
-
-            if current_price is not None:
-                today_entry = PriceHistory.query.filter_by(
-                    asset_id=asset.id, date=today_datetime
-                ).first()
-
-                if today_entry:
-                    today_entry.price = current_price
-                else:
-                    db.session.add(PriceHistory(
-                        asset_id=asset.id,
-                        date=today_datetime,
-                        price=current_price,
-                        currency=asset.currency
-                    ))
-
-        db.session.commit()
-        print(f"Prices updated successfully at {datetime.now()}")
+        summary = update_all_prices()
+        logger.info('Kurse aktualisiert: %s', summary)
+        return summary
 
 
 def check_dividends(flask_app):
-    """
-    Prüft für alle Nutzer, ob es neue Dividendenausschüttungen gibt,
-    und verbucht sie automatisch als Einnahme im Haushaltsbuch.
-    Läuft separat vom Preis-Update, da Dividenden deutlich seltener
-    anfallen als tägliche Kursänderungen.
-    """
+    """Neue Dividenden aller Nutzer erkennen und im Haushaltsbuch verbuchen."""
     with flask_app.app_context():
         process_dividends_for_all_users()
-        print(f"Dividends checked and booked at {datetime.now()}")
+        return {'dividends': 'geprüft'}
 
 
 def generate_daily_insights(flask_app):
-    """
-    Generiert für alle Nutzer einen neuen, proaktiven täglichen
-    KI-Insight (Portfolio-Entwicklung + Budget-Status). Läuft nach
-    dem Dividenden-Check, damit alle Zahlen für den Tag aktuell sind.
-    """
+    """Den täglichen KI-Insight für alle Nutzer erzeugen (höchstens einen pro Tag)."""
     with flask_app.app_context():
-        generate_insights_for_all_users(get_openai_client())
-        print(f"Daily insights generated at {datetime.now()}")
+        created = generate_insights_for_all_users(get_openai_client())
+        return {'insights': created}
+
+
+def run_daily_jobs(flask_app):
+    """Alle drei Schritte nacheinander. Ein Fehler in einem Schritt stoppt die folgenden nicht."""
+    result = {}
+    for name, job in (('prices', update_prices), ('dividends', check_dividends),
+                      ('insights', generate_daily_insights)):
+        try:
+            result[name] = job(flask_app)
+        except Exception as error:
+            logger.exception('Schritt %s des täglichen Laufs ist fehlgeschlagen', name)
+            result[name] = {'error': str(error)}
+    return result
+
+
+JOBS = {
+    'daily': run_daily_jobs,
+    'prices': update_prices,
+    'dividends': check_dividends,
+    'insights': generate_daily_insights,
+}
+
+
+def _run(flask_app, job_name):
+    try:
+        result = JOBS[job_name](flask_app)
+        failed = any(isinstance(step, dict) and step.get('error') for step in (result or {}).values()) \
+            if job_name == 'daily' else False
+        _status.update(state='failed' if failed else 'done', result=result,
+                       error='Mindestens ein Schritt ist fehlgeschlagen' if failed else None)
+    except Exception as error:
+        logger.exception('Job %s ist fehlgeschlagen', job_name)
+        _status.update(state='failed', error=str(error))
+    finally:
+        _status['finished_at'] = datetime.now().isoformat(timespec='seconds')
+        _lock.release()
+
+
+def start_job(flask_app, job_name, background=True):
+    """
+    Startet einen Job, wenn gerade keiner läuft. Gibt False zurück, wenn
+    schon ein Lauf arbeitet. Im Hintergrund, damit HTTP-Anfragen sofort
+    antworten - das erste Laden eines Jahres an Kursen dauert länger als
+    das Zeitlimit eines Requests.
+    """
+    if not _lock.acquire(blocking=False):
+        return False
+    _status.update(state='running', job=job_name, started_at=datetime.now().isoformat(timespec='seconds'),
+                   finished_at=None, result=None, error=None)
+    if background:
+        threading.Thread(target=_run, args=(flask_app, job_name), daemon=True).start()
+    else:
+        _run(flask_app, job_name)
+    return True
+
+
+def job_status():
+    return dict(_status)
 
 
 def start_scheduler(flask_app):
     """
-    Startet den Scheduler:
-    - aktualisiert die Preise täglich um 18:00 Uhr
-    - prüft Dividenden täglich um 19:00 Uhr (nach dem Preis-Update)
-    - generiert tägliche Insights um 20:00 Uhr (nach dem Dividenden-Check)
+    Startet den Scheduler: jeden Abend um 22:30 Uhr deutscher Zeit (nach
+    US-Börsenschluss) den kompletten täglichen Lauf.
     """
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(update_prices, 'cron', hour=18, minute=0, args=[flask_app])
-    scheduler.add_job(check_dividends, 'cron', hour=19, minute=0, args=[flask_app])
-    scheduler.add_job(generate_daily_insights, 'cron', hour=20, minute=0, args=[flask_app])
+    scheduler = BackgroundScheduler(timezone=TIMEZONE)
+    scheduler.add_job(start_job, 'cron', hour=22, minute=30, args=[flask_app, 'daily'])
     scheduler.start()
-    print("Scheduler started - prices 18:00, dividends 19:00, insights 20:00")
+    print(f'Scheduler started - daily jobs 22:30 {TIMEZONE}')

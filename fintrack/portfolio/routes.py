@@ -17,12 +17,14 @@ from flask_login import current_user
 from fintrack.api import ApiError, parse_body, parse_query
 from fintrack.auth.session import get_own, protect_blueprint
 from fintrack.extensions import db
+from fintrack.market import yahoo
 from fintrack.market.prices import get_current_price
-from fintrack.models import (Asset, AssetTransaction, Dividend, PriceHistory,
+from fintrack.market.service import prepare_new_asset, price_history_in_eur
+from fintrack.models import (Asset, AssetTransaction, Dividend,
                              SavingsPlan, UserAsset, Watchlist)
 from fintrack.portfolio.schemas import (AssetSearchQuery, BuyTrade, PositionCreate,
                                         SavingsPlanCreate, SellTrade, WatchlistAdd)
-from fintrack.portfolio.service import load_price_history, record_buy, record_sell
+from fintrack.portfolio.service import record_buy, record_sell
 
 bp = Blueprint('portfolio', __name__)
 # Nur mit Anmeldung
@@ -89,20 +91,23 @@ def search_asset():
             asset = Asset.query.filter_by(symbol=symbol).first()
 
             if not asset:
-                # Preis validieren um sicherzustellen dass das Asset handelbar ist
-                ticker = yf.Ticker(symbol)
-                price = ticker.fast_info['lastPrice']
+                # Handelswährung, Typ und Börse prüfen - ohne sie ist das
+                # Symbol nicht handelbar oder bei yfinance unbekannt
+                metadata = yahoo.fetch_metadata(symbol)
+                if not metadata:
+                    return jsonify({"error": f"Asset '{query}' nicht gefunden!"}), 404
 
                 asset = Asset(
                     name=name,
                     symbol=symbol,
-                    asset_type='stock',
-                    currency='EUR'
+                    asset_type=metadata['asset_type'],
+                    currency=metadata['currency'],
+                    exchange=metadata['exchange']
                 )
                 db.session.add(asset)
                 db.session.commit()
 
-                load_price_history(asset)
+                prepare_new_asset(asset)
 
         except Exception as e:
             print(f"Error searching asset: {e}")
@@ -232,18 +237,11 @@ def get_portfolio_history():
     for position in positions:
         asset = db.session.get(Asset, position.asset_id)
 
-        # Preishistorie für dieses Asset holen - älteste zuerst
-        prices = PriceHistory.query.filter_by(asset_id=position.asset_id) \
-            .order_by(PriceHistory.date.asc()).all()
-
-        # Preis × Menge = Portfoliowert für dieses Asset
+        # Schlusskurse in Euro, jeder Tag mit seinem eigenen Wechselkurs
+        # Kurs × Menge = Wert dieser Position an dem Tag
         result[asset.name] = [
-            {
-                "date": price.date.strftime('%Y-%m-%d'),
-                "price": price.price * position.quantity
-            }
-            for price in prices
-            if price.price is not None
+            {"date": day.isoformat(), "price": price_eur * position.quantity}
+            for day, price_eur in price_history_in_eur(asset)
         ]
 
     return jsonify(result), 200

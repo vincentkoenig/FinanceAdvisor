@@ -1,6 +1,6 @@
 """
 test_admin_routes.py - Integration Tests für die internen Endpoints
-(/update-prices, /check-dividends, /generate-insights). Diese dürfen
+(/update-prices, /check-dividends, /generate-insights, /run-daily-jobs). Diese dürfen
 nur mit dem richtigen Schlüssel aus ADMIN_API_KEY aufrufbar sein,
 weil sie sonst jeder auslösen und z.B. OpenAI-Kosten verursachen könnte.
 """
@@ -13,16 +13,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import pytest
 
 
-ADMIN_ROUTES = ['/api/v1/admin/update-prices', '/api/v1/admin/check-dividends', '/api/v1/admin/generate-insights']
+ADMIN_ROUTES = ['/api/v1/admin/update-prices', '/api/v1/admin/check-dividends',
+                '/api/v1/admin/generate-insights', '/api/v1/admin/run-daily-jobs']
 
 
 @pytest.fixture
 def mock_admin_jobs(mocker):
-    """Ersetzt die eigentlichen Jobs durch Mocks, damit die Tests
-    keine echten Kurs-APIs oder OpenAI aufrufen."""
-    mocker.patch('fintrack.admin.routes.update_prices')
-    mocker.patch('fintrack.admin.routes.process_dividends_for_all_users')
-    mocker.patch('fintrack.admin.routes.generate_insights_for_all_users')
+    """Ersetzt den Job-Start durch einen Mock, damit die Tests keine
+    echten Kurs-APIs oder OpenAI aufrufen."""
+    return mocker.patch('fintrack.admin.routes.start_job', return_value=True)
 
 
 class TestAdminRoutes:
@@ -61,13 +60,14 @@ class TestAdminRoutes:
 
     @pytest.mark.parametrize('route', ADMIN_ROUTES)
     def test_accepts_correct_key(self, app, mock_admin_jobs, monkeypatch, route):
-        """Mit dem richtigen Schlüssel läuft der Job und liefert 200"""
+        """Mit dem richtigen Schlüssel startet der Job im Hintergrund (202)"""
         monkeypatch.setenv('ADMIN_API_KEY', 'geheim')
         client = app.test_client()
 
         response = client.post(route, headers={'X-Admin-Key': 'geheim'})
 
-        assert response.status_code == 200
+        assert response.status_code == 202
+        mock_admin_jobs.assert_called_once()
 
 
 class TestVerificationCode:
