@@ -40,6 +40,24 @@ jobs:
           pip install -r requirements.txt
           pip install -r requirements-dev.txt
 
+      # Das React-Frontend wird im selben Job geprüft, damit der Branch-Schutz
+      # ("test" muss grün sein) es automatisch mit abdeckt
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend prüfen (Typen, Lint, Tests, Build)
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run typecheck
+          npm run lint
+          npm test
+          npx vite build
+
       - name: Tests ausführen
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

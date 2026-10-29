@@ -1,0 +1,49 @@
+/* FinTrack-Design "Tanne", übernommen aus dem abgestimmten Prototyp.
+   Mint-Papier mit tiefem Waldgrün, nachts Wald mit Jade. Die Leitkarte jeder Seite ist eine
+   grüne Farbfläche (--hero-*), je Seite ein eigener Ton (data-page). Bernstein (--signal) nur
+   für Fälliges, Gewinne in Jade, Verluste in warmem Rostrot. */
+
+:root {
+  --font: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-figure: "Barlow Semi Condensed", var(--font);
+  --fs-lead: 44px; --fs-big: 38px; --fs-title: 20px; --fs-section: 16px; --fs-kpi: 26px; --fs-body: 14px; --fs-small: 12px;
+  --col: 1152px; --gap: 16px; --pad: 24px; --card-pad: 20px;
+  --radius-card: 16px; --radius-inner: 10px;
+  --control-height: 36px;
+  --t-hover: 150ms; --t-press: 120ms;
+
+  /* hell */
+  --ground: #e4eee8; --surface: #f4faf6; --raised: #e2ece6; --active: #d4e2d9;
+  --rule: #dbe7df; --rule-strong: #cbd9d0; --control: #adbfb3;
+  --text: #0d1a13; --muted: #44564b; --faint: #53665a;
+  --accent: #0a8455; --on-accent: #ffffff;
+  --primary: #0f3d2b; --primary-ink: #ffffff;
+  --positive: #0a7a4e; --negative: #b4441c; --warning: #b86e00; --warning-ink: #7a4800;
+  --signal: #d98b00;
+  --hero-bg: #0f3d2b; --hero-text: #f2f8f4; --hero-muted: #b3cfbf; --hero-accent: #86e3b4;
+  --hero-pos: #9ceac1; --hero-neg: #ffbf9e;
+  --hero-rule: color-mix(in srgb, var(--hero-bg) 84%, #ffffff);
+  --hero-track: color-mix(in srgb, var(--hero-bg) 78%, #ffffff);
+  --hero-raised: color-mix(in srgb, var(--hero-bg) 90%, #ffffff);
+  --hero-control: color-mix(in srgb, var(--hero-bg) 70%, #ffffff);
+  --shadow-float: 0 12px 32px rgba(13, 26, 19, 0.16);
+  color-scheme: light;
+}
+:root[data-page="portfolio"] { --hero-bg: #0b4b42; }
+:root[data-page="budget"] { --hero-bg: #34501a; }
+
+:root[data-theme="dark"] {
+  --ground: #08140f; --surface: #0f2119; --raised: #172f25; --active: #1c372b;
+  --rule: #1a3127; --rule-strong: #244034; --control: #3b5a4b;
+  --text: #edf6f0; --muted: #a6bfb0; --faint: #8ea898;
+  --accent: #4fd394; --on-accent: #06140d;
+  --primary: #cdeedc; --primary-ink: #06140d;
+  --positive: #4fd394; --negative: #f2905f; --warning: #f0b43c; --warning-ink: #f0b43c;
+  --signal: #f0b43c;
+  --hero-bg: #135b40; --hero-text: #f1faf5; --hero-muted: #b7d8c6; --hero-accent: #a6f0c8;
+  --hero-pos: #b4f3d1; --hero-neg: #ffc7a8;
+  --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+:root[data-theme="dark"][data-page="portfolio"] { --hero-bg: #0f5a50; }
+:root[data-theme="dark"][data-page="budget"] { --hero-bg: #3a5a1e; }
