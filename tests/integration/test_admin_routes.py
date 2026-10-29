@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import pytest
 
 
-ADMIN_ROUTES = ['/update-prices', '/check-dividends', '/generate-insights']
+ADMIN_ROUTES = ['/api/v1/admin/update-prices', '/api/v1/admin/check-dividends', '/api/v1/admin/generate-insights']
 
 
 @pytest.fixture

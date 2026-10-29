@@ -27,26 +27,26 @@ class TestSession:
         make_user('a@test.com')
         client = app.test_client()
 
-        response = client.post('/login', json={'email': 'a@test.com', 'password': TEST_PASSWORD})
+        response = client.post('/api/v1/auth/login', json={'email': 'a@test.com', 'password': TEST_PASSWORD})
 
         cookies = ' '.join(response.headers.getlist('Set-Cookie'))
         assert 'HttpOnly' in cookies and 'SameSite=Lax' in cookies
-        assert client.get('/me').get_json()['email'] == 'a@test.com'
+        assert client.get('/api/v1/me').get_json()['email'] == 'a@test.com'
 
     def test_email_is_case_insensitive(self, app, make_user, login_client):
         make_user('a@test.com')
 
         client = login_client('  A@Test.COM ')
 
-        assert client.get('/me').status_code == 200
+        assert client.get('/api/v1/me').status_code == 200
 
     def test_logout_ends_session(self, make_user, login_client):
         make_user('a@test.com')
         client = login_client('a@test.com')
 
-        client.post('/logout')
+        client.post('/api/v1/auth/logout')
 
-        assert client.get('/me').status_code == 401
+        assert client.get('/api/v1/me').status_code == 401
 
     def test_pages_redirect_depending_on_login(self, app, make_user, login_client):
         """Ohne Login führt /home-page zum Login, mit Login führt / zu Home"""
@@ -60,8 +60,8 @@ class TestSession:
         make_user('a@test.com')
         client = app.test_client()
 
-        wrong_password = client.post('/login', json={'email': 'a@test.com', 'password': 'falsch-falsch'})
-        unknown_email = client.post('/login', json={'email': 'gibtsnicht@test.com', 'password': 'falsch-falsch'})
+        wrong_password = client.post('/api/v1/auth/login', json={'email': 'a@test.com', 'password': 'falsch-falsch'})
+        unknown_email = client.post('/api/v1/auth/login', json={'email': 'gibtsnicht@test.com', 'password': 'falsch-falsch'})
 
         assert wrong_password.status_code == unknown_email.status_code == 401
         assert wrong_password.get_json() == unknown_email.get_json() == {"error": LOGIN_FAILED_MESSAGE}
@@ -75,8 +75,8 @@ class TestSession:
             args=['set-password', 'a@test.com', '--password', 'ganz-neues-passwort'])
 
         assert result.exit_code == 0, result.output
-        assert client.get('/me').status_code == 401
-        assert login_client('a@test.com', 'ganz-neues-passwort').get('/me').status_code == 200
+        assert client.get('/api/v1/me').status_code == 401
+        assert login_client('a@test.com', 'ganz-neues-passwort').get('/api/v1/me').status_code == 200
 
 
 class TestRegistration:
@@ -84,14 +84,14 @@ class TestRegistration:
     def test_registration_closed_by_config(self, app, monkeypatch):
         monkeypatch.setitem(app.config, 'ALLOW_REGISTRATION', False)
 
-        response = app.test_client().post('/register', json={
+        response = app.test_client().post('/api/v1/auth/register', json={
             'email': 'neu@test.com', 'password': 'langes-passwort'})
 
         assert response.status_code == 403
         assert User.query.count() == 0
 
     def test_registration_requires_minimum_password_length(self, app):
-        response = app.test_client().post('/register', json={
+        response = app.test_client().post('/api/v1/auth/register', json={
             'email': 'neu@test.com', 'password': 'kurz'})
 
         assert response.status_code == 400
@@ -99,7 +99,7 @@ class TestRegistration:
 
 
 def register(client, email='neu@test.com'):
-    client.post('/register', json={'email': email, 'password': 'langes-passwort'})
+    client.post('/api/v1/auth/register', json={'email': email, 'password': 'langes-passwort'})
     return User.query.filter_by(email=email).one()
 
 
@@ -109,10 +109,10 @@ class TestVerification:
         client = app.test_client()
         user = register(client)
 
-        response = client.post('/verify-email', json={'email': 'neu@test.com', 'code': user.verification_code})
+        response = client.post('/api/v1/auth/verify-email', json={'email': 'neu@test.com', 'code': user.verification_code})
 
         assert response.status_code == 200
-        assert client.get('/me').get_json()['email'] == 'neu@test.com'
+        assert client.get('/api/v1/me').get_json()['email'] == 'neu@test.com'
 
     def test_code_locked_after_too_many_wrong_attempts(self, app):
         """Nach MAX_VERIFICATION_ATTEMPTS falschen Codes hilft auch der
@@ -123,8 +123,8 @@ class TestVerification:
         wrong_code = '000000' if correct_code != '000000' else '111111'
 
         for _ in range(MAX_VERIFICATION_ATTEMPTS):
-            client.post('/verify-email', json={'email': 'neu@test.com', 'code': wrong_code})
-        response = client.post('/verify-email', json={'email': 'neu@test.com', 'code': correct_code})
+            client.post('/api/v1/auth/verify-email', json={'email': 'neu@test.com', 'code': wrong_code})
+        response = client.post('/api/v1/auth/verify-email', json={'email': 'neu@test.com', 'code': correct_code})
 
         assert response.status_code == 429
         assert db.session.get(User, user.id).is_verified is False
@@ -133,11 +133,11 @@ class TestVerification:
         client = app.test_client()
         user = register(client)
         for _ in range(MAX_VERIFICATION_ATTEMPTS):
-            client.post('/verify-email', json={'email': 'neu@test.com', 'code': 'falsch'})
+            client.post('/api/v1/auth/verify-email', json={'email': 'neu@test.com', 'code': 'falsch'})
 
-        client.post('/resend-verification', json={'email': 'neu@test.com'})
+        client.post('/api/v1/auth/resend-verification', json={'email': 'neu@test.com'})
         db.session.refresh(user)
-        response = client.post('/verify-email', json={'email': 'neu@test.com', 'code': user.verification_code})
+        response = client.post('/api/v1/auth/verify-email', json={'email': 'neu@test.com', 'code': user.verification_code})
 
         assert response.status_code == 200
 
@@ -145,8 +145,8 @@ class TestVerification:
         client = app.test_client()
         register(client)
 
-        known = client.post('/resend-verification', json={'email': 'neu@test.com'})
-        unknown = client.post('/resend-verification', json={'email': 'gibtsnicht@test.com'})
+        known = client.post('/api/v1/auth/resend-verification', json={'email': 'neu@test.com'})
+        unknown = client.post('/api/v1/auth/resend-verification', json={'email': 'gibtsnicht@test.com'})
 
         assert known.status_code == unknown.status_code == 200
         assert known.get_json() == unknown.get_json()
@@ -163,7 +163,7 @@ class TestRequestProtection:
             with limited_app.app_context():
                 db.create_all()
                 client = limited_app.test_client()
-                statuses = [client.post('/login', json={'email': 'a@test.com', 'password': 'falsch-falsch'}).status_code
+                statuses = [client.post('/api/v1/auth/login', json={'email': 'a@test.com', 'password': 'falsch-falsch'}).status_code
                             for _ in range(11)]
                 db.session.remove()
                 db.drop_all()
@@ -176,12 +176,12 @@ class TestRequestProtection:
 
     def test_cross_site_requests_rejected(self, make_user, login_client):
         """Ändernde Anfragen mit Origin einer fremden Seite werden abgewiesen"""
-        user = make_user('a@test.com')
+        make_user('a@test.com')
         client = login_client('a@test.com')
 
-        evil = client.post(f'/users/{user.id}/categories/init-defaults',
+        evil = client.post('/api/v1/me/categories/init-defaults',
                            headers={'Origin': 'https://boese-seite.example'})
-        same_site = client.post(f'/users/{user.id}/categories/init-defaults',
+        same_site = client.post('/api/v1/me/categories/init-defaults',
                                 headers={'Origin': 'http://localhost'})
 
         assert evil.status_code == 403
@@ -218,7 +218,7 @@ class TestCli:
         assert result.exit_code == 0, result.output
         user = User.query.filter_by(email='neu@test.com').one()
         assert user.is_verified is True
-        assert login_client('neu@test.com', 'langes-passwort').get('/me').status_code == 200
+        assert login_client('neu@test.com', 'langes-passwort').get('/api/v1/me').status_code == 200
 
     def test_create_user_rejects_short_password(self, app):
         result = app.test_cli_runner().invoke(args=['create-user', 'neu@test.com', '--password', 'kurz'])

@@ -1,5 +1,3 @@
-// User ID des angemeldeten Nutzers (vom Server in die Seite geschrieben)
-const userId = currentUserId()
 
 // Zahl im deutschen Format formatieren z.B. 1.234,50
 function formatCurrency(value) {
@@ -12,7 +10,7 @@ function formatCurrency(value) {
 async function loadHomeOverview() {
     // Portfolio-Wert holen - Summe aus current_price * quantity aller Assets,
     // gleiche Berechnung wie im Portfolio-Dashboard
-    const assetsResponse = await fetch(`/users/${userId}/assets`)
+    const assetsResponse = await fetch('/api/v1/me/positions')
     const assets = await assetsResponse.json()
 
     let portfolioValue = 0
@@ -21,7 +19,7 @@ async function loadHomeOverview() {
     })
 
     // Cash-Bestand aus dem Haushaltsbuch holen
-    const budgetResponse = await fetch(`/users/${userId}/budget/summary`)
+    const budgetResponse = await fetch('/api/v1/me/budget/summary')
     const budget = await budgetResponse.json()
 
     const cashBalance = budget.cumulative_balance
@@ -40,7 +38,7 @@ async function loadHomeOverview() {
     document.getElementById('home-total-net-worth').innerHTML = `${formatCurrency(totalNetWorth)} €`
 
         // Täglichen KI-Insight laden und anzeigen
-        const insightResponse = await fetch(`/users/${userId}/insight`)
+        const insightResponse = await fetch('/api/v1/me/insight')
         const insight = await insightResponse.json()
 
         if (insight.content) {
@@ -51,7 +49,7 @@ async function loadHomeOverview() {
         }
 
         // Fällige Sparpläne prüfen und als Hinweis anzeigen
-        const savingsPlansResponse = await fetch(`/users/${userId}/savings-plans`)
+        const savingsPlansResponse = await fetch('/api/v1/me/savings-plans')
         const savingsPlans = await savingsPlansResponse.json()
         const duePlans = savingsPlans.filter(plan => plan.is_due)
 
@@ -79,7 +77,7 @@ async function loadHomeOverview() {
 
 
 async function executeSavingsPlanFromHome(planId) {
-    const response = await fetch(`/savings-plans/${planId}/execute`, {
+    const response = await fetch(`/api/v1/me/savings-plans/${planId}/execute`, {
         method: 'POST'
     })
 

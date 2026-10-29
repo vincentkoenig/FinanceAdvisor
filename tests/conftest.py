@@ -84,7 +84,7 @@ def login_client(app):
     """
     def _login_client(email, password=TEST_PASSWORD):
         client = app.test_client()
-        response = client.post('/login', json={'email': email, 'password': password})
+        response = client.post('/api/v1/auth/login', json={'email': email, 'password': password})
         assert response.status_code == 200, response.get_json()
         return client
 

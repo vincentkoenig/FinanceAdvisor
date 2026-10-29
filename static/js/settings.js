@@ -1,6 +1,19 @@
+// Gespeicherte Einstellungen beim Öffnen der Seite in die Felder laden
+async function loadSettings() {
+    const response = await fetch('/api/v1/me')
+    if (!response.ok) return
+    const me = await response.json()
+
+    for (const field of ['risk_profile', 'investment_experience', 'investment_horizon']) {
+        if (me[field]) document.getElementById(field).value = me[field]
+    }
+    if (me.monthly_budget) document.getElementById('monthly_budget').value = me.monthly_budget
+}
+
+loadSettings()
+
 async function saveSettings() {
     // Werte aus den Input Feldern holen
-    const userId = currentUserId()
     const risk_profile = document.getElementById('risk_profile').value
     const investment_experience = document.getElementById('investment_experience').value
     const monthly_budget = document.getElementById('monthly_budget').value
@@ -14,7 +27,7 @@ async function saveSettings() {
     }
 
     // POST Request an /chat schicken - wie Postman aber in JavaScript
-    const response = await fetch(`/users/${userId}/settings`, {
+    const response = await fetch('/api/v1/me/settings', {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'}, // sagt Flask: ich schicke JSON
         body: JSON.stringify({risk_profile: risk_profile, investment_experience: investment_experience, monthly_budget: monthly_budget, investment_horizon: investment_horizon})      // message als JSON

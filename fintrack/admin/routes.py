@@ -1,5 +1,5 @@
 """
-admin/routes.py - Interne Endpoints, um die Hintergrundjobs (Preise,
+admin/routes.py - Interne Endpoints unter /api/v1/admin, um die Hintergrundjobs (Preise,
 Dividenden, Insights) manuell anzustoßen. Nur mit X-Admin-Key aufrufbar.
 """
 
@@ -77,7 +77,7 @@ def manual_generate_insights():
     return jsonify({"message": "Insights generated successfully"}), 200
 
 
-@bp.route('/assets/<asset_id>/prices', methods=['POST'])
+@bp.route('/assets/<int:asset_id>/prices', methods=['POST'])
 @require_admin_key
 def add_prices(asset_id):
     """

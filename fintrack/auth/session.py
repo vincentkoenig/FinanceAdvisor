@@ -1,7 +1,7 @@
 """
 auth/session.py - Anmeldung über das Session-Cookie: Nutzer aus dem Cookie
-laden, nicht angemeldete Anfragen abweisen und sicherstellen, dass jeder
-nur auf seine eigenen Daten zugreift.
+laden, nicht angemeldete Anfragen abweisen und Datensätze nur laden, wenn
+sie dem angemeldeten Nutzer gehören.
 """
 
 from functools import wraps
@@ -45,25 +45,20 @@ def unauthorized():
     return jsonify({"error": "Bitte melde dich an"}), 401
 
 
-def require_login_and_ownership():
+def require_login():
     """
-    before_request-Hook für alle Blueprints mit Nutzerdaten:
-    1. Ohne Anmeldung -> 401
-    2. Enthält die URL eine user_id (z.B. /users/7/transactions), muss sie
-       zum angemeldeten Nutzer gehören. Fremde IDs ergeben 404, damit nicht
-       erkennbar ist, ob es den Nutzer gibt.
+    before_request-Hook für alle Blueprints mit Nutzerdaten: ohne Anmeldung
+    401. Welche Daten zurückkommen, bestimmt danach allein current_user -
+    die URLs enthalten keine User-IDs (alles unter /api/v1/me/...).
     """
     if not current_user.is_authenticated:
         return unauthorized()
-    view_args = request.view_args or {}
-    if 'user_id' in view_args and str(view_args['user_id']) != str(current_user.id):
-        return jsonify({"error": "Nicht gefunden"}), 404
     return None
 
 
 def protect_blueprint(blueprint):
-    """Hängt require_login_and_ownership() an alle Routen eines Blueprints."""
-    blueprint.before_request(require_login_and_ownership)
+    """Hängt require_login() an alle Routen eines Blueprints."""
+    blueprint.before_request(require_login)
 
 
 def current_user_key():
@@ -91,14 +86,14 @@ def get_own(model, object_id):
     return obj
 
 
-def owner_required(view):
+def login_required_api(view):
     """
     Wie protect_blueprint(), aber für einzelne Routen - für Blueprints, die
     auch öffentliche Routen haben (z.B. Login und Registrierung).
     """
     @wraps(view)
     def wrapper(*args, **kwargs):
-        denied = require_login_and_ownership()
+        denied = require_login()
         if denied is not None:
             return denied
         return view(*args, **kwargs)

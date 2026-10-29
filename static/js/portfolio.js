@@ -18,9 +18,9 @@ let selectedWatchlistAssetId = null
 let assetTransactionsData = []
 let assetIdsWithSavingsPlan = []
 let dividendsData = []
+// Donut-Chart merken, damit er beim Neuladen ersetzt statt doppelt angelegt wird
+let allocationDonutChart = null
 
-// User ID des angemeldeten Nutzers (vom Server in die Seite geschrieben)
-const userId = currentUserId()
 
 // Zahl im deutschen Format formatieren z.B. 30.502,50
 function formatCurrency(value) {
@@ -43,8 +43,8 @@ async function loadPortfolio() {
         <tr><td colspan="4" style="text-align:center; padding: 30px;"><span class="spinner"></span></td></tr>
     `
 
-    // GET Request an /users/<user_id>/assets schicken
-    const response = await fetch(`/users/${userId}/assets`, {
+    // Eigene Positionen inkl. Live-Preis laden
+    const response = await fetch('/api/v1/me/positions', {
         method: 'GET',
     })
 
@@ -56,7 +56,7 @@ async function loadPortfolio() {
 
     // Aktive Sparpläne abrufen, um in der Tabelle ein Badge bei
     // betroffenen Assets anzuzeigen
-    const savingsPlansResponse = await fetch(`/users/${userId}/savings-plans`)
+    const savingsPlansResponse = await fetch('/api/v1/me/savings-plans')
     const savingsPlans = await savingsPlansResponse.json()
     assetIdsWithSavingsPlan = savingsPlans.map(plan => plan.asset_id)
 
@@ -88,7 +88,13 @@ async function loadPortfolio() {
     const labels = data.map(asset => asset.name)
     const values = data.map(asset => asset.current_price * asset.quantity)
 
-    new Chart(document.getElementById('donutChart'), {
+    // Alten Chart entfernen - sonst wirft Chart.js nach dem ersten Kauf
+    // oder Verkauf "Canvas is already in use" und der Donut bleibt veraltet
+    if (allocationDonutChart) {
+        allocationDonutChart.destroy()
+    }
+
+    allocationDonutChart = new Chart(document.getElementById('donutChart'), {
         type: 'doughnut',
         data: {
             labels: labels,
@@ -181,7 +187,7 @@ function sortTable(column) {
 
 async function loadChart(period = '1J') {
     // Portfolio Historie holen
-    const response = await fetch(`/users/${userId}/portfolio/history`)
+    const response = await fetch('/api/v1/me/portfolio/history')
     const data = await response.json()
 
     // Alle Daten zusammenführen
@@ -331,7 +337,6 @@ function hideAddPosition() {
 
 
 async function addPosition() {
-    const userId = currentUserId()
 
     // Werte aus dem Modal holen
     const symbol = document.getElementById('position-symbol').value
@@ -359,7 +364,7 @@ async function addPosition() {
     }
 
     // Schritt 1: Asset suchen oder automatisch erstellen
-    const searchResponse = await fetch(`/assets/search?query=${symbol}`)
+    const searchResponse = await fetch(`/api/v1/assets/search?query=${encodeURIComponent(symbol)}`)
     const asset = await searchResponse.json()
 
     if (!searchResponse.ok) {
@@ -368,7 +373,7 @@ async function addPosition() {
     }
 
     // Schritt 2: Asset dem Nutzer hinzufügen
-    const response = await fetch(`/users/${userId}/assets`, {
+    const response = await fetch('/api/v1/me/positions', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -425,7 +430,6 @@ function showSell() {
 
 
 async function addBuy() {
-    const userId = currentUserId()
     const quantity = document.getElementById('buy-quantity').value
     const price = document.getElementById('buy-price').value
 
@@ -439,8 +443,8 @@ async function addBuy() {
         return
     }
 
-    const response = await fetch(`/users/${userId}/assets/${selectedAssetId}/buy`, {
-        method: 'PUT',
+    const response = await fetch(`/api/v1/me/positions/${selectedAssetId}/buy`, {
+        method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({quantity: quantity, price: price})
     })
@@ -458,7 +462,6 @@ async function addBuy() {
 
 
 async function addSell() {
-    const userId = currentUserId()
     const quantity = document.getElementById('sell-quantity').value
     const price = document.getElementById('sell-price').value
 
@@ -481,8 +484,8 @@ async function addSell() {
         return
     }
 
-    const response = await fetch(`/users/${userId}/assets/${selectedAssetId}/sell`, {
-        method: 'PUT',
+    const response = await fetch(`/api/v1/me/positions/${selectedAssetId}/sell`, {
+        method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({quantity: quantity, price: price})
     })
@@ -586,7 +589,7 @@ function switchTab(tab) {
 async function addToWatchlist() {
     const query = document.getElementById('asset-search').value
 
-    const searchResponse = await fetch(`/assets/search?query=${query}`)
+    const searchResponse = await fetch(`/api/v1/assets/search?query=${encodeURIComponent(query)}`)
     const asset = await searchResponse.json()
 
     if (!searchResponse.ok) {
@@ -594,7 +597,7 @@ async function addToWatchlist() {
         return
     }
 
-    const response = await fetch(`/users/${userId}/watchlist`, {
+    const response = await fetch('/api/v1/me/watchlist', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({asset_id: asset.id})
@@ -640,13 +643,13 @@ function renderWatchlist(data) {
 
 
 async function loadWatchlist() {
-    const response = await fetch(`/users/${userId}/watchlist`)
+    const response = await fetch('/api/v1/me/watchlist')
     const data = await response.json()
 
     watchlistData = []
 
     for (const item of data) {
-        const assetResponse = await fetch(`/assets/${item.asset_id}`)
+        const assetResponse = await fetch(`/api/v1/assets/${item.asset_id}`)
         const asset = await assetResponse.json()
 
         watchlistData.push({
@@ -716,7 +719,7 @@ async function buyFromWatchlist() {
         return
     }
 
-    const response = await fetch(`/users/${userId}/assets`, {
+    const response = await fetch('/api/v1/me/positions', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -741,7 +744,7 @@ async function buyFromWatchlist() {
 
 
 async function removeFromWatchlist(assetId) {
-    const response = await fetch(`/users/${userId}/watchlist/${assetId}`, {
+    const response = await fetch(`/api/v1/me/watchlist/${assetId}`, {
         method: 'DELETE',
         headers: {'Content-Type': 'application/json'}
     })
@@ -758,7 +761,7 @@ async function removeFromWatchlist(assetId) {
 
 
 async function loadAssetTransactions() {
-    const response = await fetch(`/users/${userId}/assets/transactions`)
+    const response = await fetch('/api/v1/me/asset-transactions')
     const data = await response.json()
 
     assetTransactionsData = data
@@ -794,7 +797,7 @@ function renderAssetTransactions(transactions) {
 
 
 async function loadSavingsPlans() {
-    const response = await fetch(`/users/${userId}/savings-plans`)
+    const response = await fetch('/api/v1/me/savings-plans')
     const data = await response.json()
     renderSavingsPlans(data)
 }
@@ -859,7 +862,7 @@ async function addSavingsPlan() {
     }
 
     // Asset suchen oder automatisch erstellen, gleiche Logik wie bei addPosition
-    const searchResponse = await fetch(`/assets/search?query=${symbol}`)
+    const searchResponse = await fetch(`/api/v1/assets/search?query=${encodeURIComponent(symbol)}`)
     const asset = await searchResponse.json()
 
     if (!searchResponse.ok) {
@@ -867,7 +870,7 @@ async function addSavingsPlan() {
         return
     }
 
-    const response = await fetch(`/users/${userId}/savings-plans`, {
+    const response = await fetch('/api/v1/me/savings-plans', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -882,13 +885,14 @@ async function addSavingsPlan() {
         hideAddSavingsPlan()
         loadSavingsPlans()
     } else {
-        showToast('Fehler beim Anlegen des Sparplans!', 'error')
+        const data = await response.json().catch(() => ({}))
+        showToast(data.error || 'Fehler beim Anlegen des Sparplans!', 'error')
     }
 }
 
 
 async function executeSavingsPlan(planId) {
-    const response = await fetch(`/savings-plans/${planId}/execute`, {
+    const response = await fetch(`/api/v1/me/savings-plans/${planId}/execute`, {
         method: 'POST'
     })
 
@@ -905,7 +909,7 @@ async function executeSavingsPlan(planId) {
 
 
 async function deleteSavingsPlan(planId) {
-    const response = await fetch(`/savings-plans/${planId}`, {
+    const response = await fetch(`/api/v1/me/savings-plans/${planId}`, {
         method: 'DELETE'
     })
 
@@ -919,7 +923,7 @@ async function deleteSavingsPlan(planId) {
 
 
 async function loadDividends() {
-    const response = await fetch(`/users/${userId}/dividends`)
+    const response = await fetch('/api/v1/me/dividends')
     const data = await response.json()
 
     dividendsData = data

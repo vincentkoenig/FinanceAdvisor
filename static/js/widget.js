@@ -1,4 +1,3 @@
-const widgetUserId = currentUserId()
 
 // Chat Widget öffnen/schließen
 function toggleChat() {
@@ -13,7 +12,7 @@ function toggleChat() {
 
 // Chatverlauf laden
 async function loadWidgetHistory() {
-    const response = await fetch(`/chat/history/${widgetUserId}`)
+    const response = await fetch('/api/v1/me/chat/history')
     const data = await response.json()
 
     const messages = document.getElementById('widget-messages')
@@ -46,7 +45,7 @@ async function sendWidgetMessage() {
     input.value = ''
 
     // Ans Backend schicken
-    const response = await fetch('/chat', {
+    const response = await fetch('/api/v1/me/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({message: message})

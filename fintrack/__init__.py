@@ -7,7 +7,7 @@ verbinden und die Blueprints der einzelnen Bereiche registrieren.
 import os
 
 import click
-from flask import Flask, g, jsonify
+from flask import Flask, g
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # config zuerst importieren, damit load_dotenv() vor allen anderen Modulen läuft
@@ -64,10 +64,9 @@ def create_app(config_name=None, config_overrides=None):
 
     app.before_request(reject_cross_site_requests)
 
-    @app.errorhandler(429)
-    def too_many_requests(error):
-        """Begrenzung erreicht - als JSON, damit das Frontend es anzeigen kann."""
-        return jsonify({"error": "Zu viele Anfragen. Bitte warte etwas und versuche es dann erneut."}), 429
+    # Einheitliche JSON-Fehler für die API (Validierung, 404, 429, 500 ...)
+    from fintrack.api import API_PREFIX, register_error_handlers
+    register_error_handlers(app)
 
     from fintrack.auth.cli import register_commands
     register_commands(app)
@@ -92,11 +91,15 @@ def create_app(config_name=None, config_overrides=None):
     from fintrack.insights import routes as insights_routes
     from fintrack.portfolio import analysis, routes as portfolio_routes
 
+    # Seiten liegen direkt unter /, die JSON-API unter /api/v1.
     # Jeder Blueprint schützt sich selbst: Bereiche mit Nutzerdaten über
-    # protect_blueprint() (Anmeldung + nur eigene Daten), Seiten über eine
-    # Login-Umleitung, Auth über owner_required, Admin über den X-Admin-Key
-    for blueprint in (pages.bp, auth_routes.bp, portfolio_routes.bp, analysis.bp,
-                      budget_routes.bp, chat_routes.bp, insights_routes.bp, admin_routes.bp):
-        app.register_blueprint(blueprint)
+    # protect_blueprint() (nur mit Anmeldung, Daten immer von current_user),
+    # Seiten über eine Login-Umleitung, Auth über login_required_api an den
+    # /me-Routen, Admin über den X-Admin-Key
+    app.register_blueprint(pages.bp)
+    for blueprint in (auth_routes.bp, portfolio_routes.bp, analysis.bp,
+                      budget_routes.bp, chat_routes.bp, insights_routes.bp):
+        app.register_blueprint(blueprint, url_prefix=API_PREFIX)
+    app.register_blueprint(admin_routes.bp, url_prefix=f'{API_PREFIX}/admin')
 
     return app

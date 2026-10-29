@@ -1,6 +1,5 @@
 async function analysePortfolio() {
     // Werte aus den Input Feldern holen
-    const userId = currentUserId()
 
     // Spinner anzeigen während die Analyse läuft
     const result = document.getElementById('analyse-result')
@@ -16,7 +15,7 @@ async function analysePortfolio() {
     button.disabled = true
 
     // POST Request an /chat schicken - wie Postman aber in JavaScript
-    const response = await fetch('/portfolio/analyze', {
+    const response = await fetch('/api/v1/me/analyses', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({})
@@ -45,11 +44,10 @@ async function analysePortfolio() {
 }
 
 
-const userId = currentUserId()
 
 // Vorherige Analysen laden
 async function loadPreviousAnalyses() {
-    const response = await fetch(`/users/${userId}/portfolio/analyses`)
+    const response = await fetch('/api/v1/me/analyses')
     const data = await response.json()
 
     const analysesList = document.getElementById('analyses-list')
@@ -70,7 +68,7 @@ async function loadPreviousAnalyses() {
 
 // Analyse anzeigen wenn angeklickt
 async function showAnalysis(analysisId) {
-    const response = await fetch(`/users/${userId}/portfolio/analyses`)
+    const response = await fetch('/api/v1/me/analyses')
     const data = await response.json()
     const analysis = data.find(a => a.id === analysisId)
 
@@ -82,7 +80,7 @@ async function showAnalysis(analysisId) {
             <h4>Risikobewertung:</h4>
             <p>${escapeHtml(analysis.risk_assessment)}</p>
             <h4>Empfehlungen:</h4>
-            <ul>${JSON.parse(analysis.recommendations.replace(/'/g, '"')).map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
+            <ul>${analysis.recommendations.map(r => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
             <p><small>${analysis.created_at}</small></p>
         </div>
     `

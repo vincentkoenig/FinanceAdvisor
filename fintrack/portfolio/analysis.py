@@ -3,6 +3,10 @@ portfolio/analysis.py - KI-gestützte Portfolio-Analyse mit Structured
 Output und objektivem Diversifikationsscore (Herfindahl-Hirschman-Index).
 """
 
+# Standard Library
+import ast
+import json
+
 # Third Party
 from flask import Blueprint, jsonify
 from flask_login import current_user
@@ -14,8 +18,26 @@ from fintrack.market.prices import get_current_price
 from fintrack.models import Asset, PortfolioAnalysis, PortfolioAnalysisSchema, UserAsset
 
 bp = Blueprint('analysis', __name__)
-# Nur mit Anmeldung, und nur Zugriff auf die eigenen Daten
+# Nur mit Anmeldung
 protect_blueprint(bp)
+
+
+def parse_stored_list(value):
+    """
+    Liest gespeicherte Empfehlungen als Liste. Neue Analysen sind als JSON
+    gespeichert, ältere als Python-Text wie "['a', 'b']" - beide Formate
+    werden unterstützt.
+    """
+    if not value:
+        return []
+    try:
+        return json.loads(value)
+    except ValueError:
+        try:
+            parsed = ast.literal_eval(value)
+            return parsed if isinstance(parsed, list) else [str(parsed)]
+        except (ValueError, SyntaxError):
+            return [value]
 
 
 def calculate_diversification_score(asset_values, total_value):
@@ -40,7 +62,7 @@ def calculate_diversification_score(asset_values, total_value):
     return max(1, min(10, score))
 
 
-@bp.route('/portfolio/analyze', methods=['POST'])
+@bp.route('/me/analyses', methods=['POST'])
 @limiter.limit("10 per hour", key_func=current_user_key)
 def analyze_portfolio():
     """
@@ -56,7 +78,7 @@ def analyze_portfolio():
     user_id = user.id
 
     # Alle Assets des Nutzers aus der DB holen
-    user_assets = UserAsset.query.filter_by(user_id=user_id).all()
+    user_assets = UserAsset.query.filter_by(user_id=user_id).filter(UserAsset.quantity > 0).all()
 
     # Nutzerdaten vorbereiten - falls Felder leer sind "not specified" setzen
     risk_profile = user.risk_profile if user.risk_profile else "not specified"
@@ -136,8 +158,9 @@ def analyze_portfolio():
         risk_assessment=analysis.risk_assessment,
         diversification_score=diversification_score,
         summary=analysis.summary,
-        recommendations=str(analysis.recommendations),
-        allocation=str(analysis.allocation)
+        # Als echtes JSON speichern (früher Python-Text, an Apostrophen zerbrochen)
+        recommendations=json.dumps(analysis.recommendations, ensure_ascii=False),
+        allocation=json.dumps([item.model_dump() for item in analysis.allocation], ensure_ascii=False)
     )
 
     db.session.add(new_analysis)
@@ -151,10 +174,10 @@ def analyze_portfolio():
     return jsonify(result), 200
 
 
-@bp.route('/users/<user_id>/portfolio/analyses', methods=['GET'])
-def get_portfolio_analyses(user_id):
-    """Alle Portfolio-Analysen eines Nutzers abrufen"""
-    analyses = PortfolioAnalysis.query.filter_by(user_id=user_id)\
+@bp.route('/me/analyses', methods=['GET'])
+def get_portfolio_analyses():
+    """Alle eigenen Portfolio-Analysen, neueste zuerst."""
+    analyses = PortfolioAnalysis.query.filter_by(user_id=current_user.id)\
         .order_by(PortfolioAnalysis.created_at.desc()).all()
 
     result = []
@@ -165,7 +188,7 @@ def get_portfolio_analyses(user_id):
             "risk_assessment": analysis.risk_assessment,
             "diversification_score": analysis.diversification_score,
             "summary": analysis.summary,
-            "recommendations": analysis.recommendations,
+            "recommendations": parse_stored_list(analysis.recommendations),
             "created_at": analysis.created_at.strftime('%d.%m.%Y %H:%M')
         })
 

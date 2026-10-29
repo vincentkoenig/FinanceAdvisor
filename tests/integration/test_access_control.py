@@ -1,9 +1,10 @@
 """
 test_access_control.py - Stellt sicher, dass
 - ohne Anmeldung keine Daten erreichbar sind (für JEDE Route der App),
-- ein angemeldeter Nutzer nie an die Daten eines anderen Nutzers kommt,
-  weder über die user_id in der URL noch über Objekt-IDs (Buchungen,
-  Kategorien, Sparpläne) noch über eine user_id im Request-Body.
+- ein angemeldeter Nutzer nie an die Daten eines anderen Nutzers kommt:
+  weder beim Lesen seiner /me-Routen noch über Objekt-IDs (Buchungen,
+  Kategorien, Sparpläne, Positionen, Watchlist) noch über eine user_id im
+  Request-Body.
 
 Die Routen werden direkt aus der App gelesen: Kommt später eine neue
 Route dazu, wird sie automatisch mitgeprüft.
@@ -19,17 +20,21 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 import pytest
 
-from tests.conftest import flask_app
 from fintrack.extensions import db
 from fintrack.models import (Asset, Category, ChatHistory, SavingsPlan, Transaction,
                              UserAsset, Watchlist)
+from tests.conftest import flask_app
 
 # Routen, die bewusst ohne Anmeldung erreichbar sind
 PUBLIC_ENDPOINTS = {
     'static', 'pages.home',
-    'auth.register', 'auth.login', 'auth.logout', 'auth.me',
+    'auth.register', 'auth.login', 'auth.logout',
     'auth.verify_email', 'auth.resend_verification',
 }
+
+# Texte, die nur in den Daten von Nutzer B vorkommen - tauchen sie in einer
+# Antwort an Nutzer A auf, sind fremde Daten durchgerutscht
+FOREIGN_MARKERS = [b'geheime Frage von B', b'B-Haupt', b'B-Unter', b'B-Buchung', b'Testaktie von B']
 
 
 def all_routes():
@@ -42,13 +47,15 @@ def all_routes():
 
 
 def fill(rule, **values):
-    """Setzt Werte in ein URL-Muster ein, z.B. /users/<user_id>/x -> /users/7/x."""
+    """Setzt Werte in ein URL-Muster ein, z.B. /x/<int:plan_id> -> /x/7."""
     return re.sub(r'<(?:\w+:)?(\w+)>', lambda m: str(values.get(m.group(1), 1)), rule)
 
 
 PROTECTED_ROUTES = [r for r in all_routes()
                     if r[0] not in PUBLIC_ENDPOINTS and not r[0].startswith('admin.')]
-USER_ID_ROUTES = [r for r in PROTECTED_ROUTES if '<user_id>' in r[1]]
+# Lesende /me-Routen ohne Platzhalter - die "Liste meiner Daten"-Routen
+ME_READ_ROUTES = [r for r in PROTECTED_ROUTES
+                  if r[1].startswith('/api/v1/me') and r[2] == 'GET' and '<' not in r[1]]
 
 
 class TestAnonymousAccess:
@@ -72,17 +79,22 @@ class TestAnonymousAccess:
     def test_login_page_is_public(self, app):
         assert app.test_client().get('/').status_code == 200
 
+    def test_no_user_ids_in_api_urls(self):
+        """Die API nimmt nie eine User-ID aus der URL - wer gemeint ist,
+        entscheidet allein die Anmeldung"""
+        assert not [r for _, r, _ in all_routes() if 'user_id' in r]
+
 
 @pytest.fixture
 def two_users(make_user, login_client):
     """
-    Nutzer A ist angemeldet, Nutzer B besitzt Daten aller Art.
+    Nutzer A ist angemeldet und hat keine Daten, Nutzer B besitzt Daten aller Art.
     Gibt (client_a, user_a, user_b, b_data) zurück.
     """
     user_a = make_user('a@test.com')
     user_b = make_user('b@test.com')
 
-    asset = Asset(name='Testaktie', symbol='TEST', asset_type='unknown', currency='EUR')
+    asset = Asset(name='Testaktie von B', symbol='TEST', asset_type='unknown', currency='EUR')
     db.session.add(asset)
     db.session.flush()
 
@@ -94,7 +106,7 @@ def two_users(make_user, login_client):
     db.session.flush()
 
     b_transaction = Transaction(user_id=user_b.id, category_id=b_category.id, amount=50,
-                                date=datetime(2026, 10, 1), is_recurring=True)
+                                description='B-Buchung', date=datetime(2026, 10, 1), is_recurring=True)
     b_plan = SavingsPlan(user_id=user_b.id, asset_id=asset.id, amount=100, day_of_month=1)
     db.session.add_all([
         b_transaction, b_plan,
@@ -110,45 +122,33 @@ def two_users(make_user, login_client):
 
 
 class TestForeignUserData:
-    """Angemeldet als A, Zugriff auf Daten von B"""
+    """Angemeldet als A, Daten gehören B"""
 
-    @pytest.mark.parametrize('endpoint,rule,method', USER_ID_ROUTES,
-                             ids=[f'{m} {r}' for _, r, m in USER_ID_ROUTES])
-    def test_foreign_user_id_in_url_is_not_found(self, two_users, endpoint, rule, method):
-        """Jede Route mit user_id in der URL liefert für fremde IDs 404"""
-        client, _, user_b, b_data = two_users
+    @pytest.mark.parametrize('endpoint,rule,method', ME_READ_ROUTES,
+                             ids=[f'{m} {r}' for _, r, m in ME_READ_ROUTES])
+    def test_my_routes_never_return_foreign_data(self, two_users, endpoint, rule, method):
+        """Keine lesende /me-Route liefert Daten von B aus"""
+        client, _, _, _ = two_users
 
-        response = client.open(fill(rule, user_id=user_b.id, asset_id=b_data.asset.id),
-                               method=method, json={})
+        response = client.get(rule)
 
-        assert response.status_code == 404
-
-    def test_own_user_id_in_url_works(self, two_users):
-        """Gegenprobe: die eigenen Daten sind erreichbar"""
-        client, user_a, _, _ = two_users
-
-        assert client.get(f'/users/{user_a.id}/categories').status_code == 200
-
-    def test_foreign_chat_history_not_readable(self, two_users):
-        client, _, user_b, _ = two_users
-
-        response = client.get(f'/chat/history/{user_b.id}')
-
-        assert response.status_code == 404
-        assert b'geheime Frage' not in response.data
+        assert response.status_code == 200
+        for marker in FOREIGN_MARKERS:
+            assert marker not in response.data, f'{rule} liefert fremde Daten: {marker!r}'
 
     @pytest.mark.parametrize('method,url_template', [
-        ('DELETE', '/transactions/{transaction}'),
-        ('PUT', '/transactions/{transaction}/toggle-pause'),
-        ('DELETE', '/categories/{category}'),
-        ('DELETE', '/savings-plans/{plan}'),
-        ('POST', '/savings-plans/{plan}/execute'),
+        ('DELETE', '/api/v1/me/transactions/{transaction}'),
+        ('POST', '/api/v1/me/transactions/{transaction}/toggle-pause'),
+        ('DELETE', '/api/v1/me/categories/{category}'),
+        ('DELETE', '/api/v1/me/savings-plans/{plan}'),
+        ('POST', '/api/v1/me/savings-plans/{plan}/execute'),
+        ('DELETE', '/api/v1/me/watchlist/{asset}'),
     ])
     def test_foreign_objects_cannot_be_changed(self, two_users, method, url_template):
         """Objekte von B lassen sich über ihre ID weder ändern noch löschen"""
         client, _, user_b, b_data = two_users
-        url = url_template.format(transaction=b_data.transaction.id,
-                                  category=b_data.category.id, plan=b_data.plan.id)
+        url = url_template.format(transaction=b_data.transaction.id, category=b_data.category.id,
+                                  plan=b_data.plan.id, asset=b_data.asset.id)
 
         response = client.open(url, method=method)
 
@@ -156,22 +156,33 @@ class TestForeignUserData:
         db.session.expire_all()
         assert db.session.get(Transaction, b_data.transaction.id).is_paused is False
         assert db.session.get(Category, b_data.category.id) is not None
-        assert db.session.get(SavingsPlan, b_data.plan.id) is not None
+        assert db.session.get(SavingsPlan, b_data.plan.id).last_executed is None
+        assert Watchlist.query.filter_by(user_id=user_b.id).count() == 1
+
+    def test_cannot_sell_foreign_position(self, two_users):
+        """A kann die Position von B nicht verkaufen - für A existiert sie nicht"""
+        client, _, user_b, b_data = two_users
+
+        response = client.post(f'/api/v1/me/positions/{b_data.asset.id}/sell', json={'quantity': 1})
+
+        assert response.status_code == 404
+        db.session.expire_all()
+        assert UserAsset.query.filter_by(user_id=user_b.id).one().quantity == 3
 
     def test_cannot_book_into_foreign_category(self, two_users):
         """Eine Buchung in einer Kategorie von B wird abgelehnt"""
         client, user_a, _, b_data = two_users
 
-        response = client.post(f'/users/{user_a.id}/transactions', json={
+        response = client.post('/api/v1/me/transactions', json={
             'category_id': b_data.category.id, 'amount': 10, 'date': '2026-10-01'})
 
         assert response.status_code == 404
         assert Transaction.query.filter_by(user_id=user_a.id).count() == 0
 
     def test_cannot_create_subcategory_under_foreign_category(self, two_users):
-        client, user_a, _, b_data = two_users
+        client, _, _, b_data = two_users
 
-        response = client.post(f'/users/{user_a.id}/categories', json={
+        response = client.post('/api/v1/me/categories', json={
             'name': 'Untergeschoben', 'type': 'variable_expense', 'parent_id': b_data.parent.id})
 
         assert response.status_code == 404
@@ -187,7 +198,7 @@ class TestForeignUserData:
             choices=[SimpleNamespace(message=fake_message)])
         mocker.patch('fintrack.chat.routes.get_openai_client', return_value=fake_client)
 
-        response = client.post('/chat', json={'user_id': user_b.id, 'message': 'Hallo'})
+        response = client.post('/api/v1/me/chat', json={'user_id': user_b.id, 'message': 'Hallo'})
 
         assert response.status_code == 200
         assert ChatHistory.query.filter_by(user_id=user_a.id, message='Hallo').count() == 1
@@ -200,7 +211,7 @@ class TestAdminOnlyRoutes:
         client, _, _, b_data = two_users
         monkeypatch.setenv('ADMIN_API_KEY', 'geheim')
 
-        response = client.post(f'/assets/{b_data.asset.id}/prices',
+        response = client.post(f'/api/v1/admin/assets/{b_data.asset.id}/prices',
                                json={'date': '2026-10-01', 'price': 1, 'currency': 'EUR'})
 
         assert response.status_code == 403

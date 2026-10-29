@@ -1,10 +1,5 @@
-// ID des angemeldeten Nutzers. Der Server schreibt sie beim Ausliefern
-// der Seite in <meta name="user-id"> - welche Daten zurückkommen,
-// entscheidet aber immer der Server anhand des Session-Cookies.
-function currentUserId() {
-    const meta = document.querySelector('meta[name="user-id"]')
-    return meta ? meta.content : null
-}
+// Alle Daten kommen von /api/v1/me/... - welcher Nutzer gemeint ist,
+// erkennt der Server am Session-Cookie, das Frontend braucht keine User-ID.
 
 // Läuft die Anmeldung während der Nutzung ab, antwortet der Server mit
 // 401. Statt leerer Seiten geht es dann zurück zur Anmeldung.
