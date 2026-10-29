@@ -8,27 +8,17 @@ gespeichert, damit die Home-Seite sie anzeigen kann.
 
 from datetime import datetime, timedelta
 
-from fintrack.market.service import price_in_eur_on
-from fintrack.models import db, Asset, User, UserAsset, DailyInsight
+from fintrack.models import db, User, DailyInsight
+from fintrack.portfolio.history import portfolio_value_on
 from fintrack.budget.service import calculate_budget_summary
 
 
 def calculate_portfolio_value_at(user_id, target_date):
     """
-    Berechnet den ungefähren Portfolio-Gesamtwert eines Nutzers an
-    einem bestimmten Datum, basierend auf den zu diesem Zeitpunkt
-    gehaltenen Mengen (aktueller Stand, keine historische Mengen-
-    Rekonstruktion) und den historischen Schlusskursen in Euro.
+    Portfolio-Gesamtwert eines Nutzers an einem Datum: die an diesem Tag
+    tatsächlich gehaltenen Mengen mal die Schlusskurse in Euro.
     """
-    holdings = UserAsset.query.filter_by(user_id=user_id).filter(UserAsset.quantity > 0).all()
-
-    total = 0
-    for holding in holdings:
-        price = price_in_eur_on(db.session.get(Asset, holding.asset_id), target_date.date())
-        if price is not None:
-            total += holding.quantity * price
-
-    return total
+    return portfolio_value_on(user_id, target_date.date())
 
 
 def generate_insight_for_user(user_id, openai_client):

@@ -7,9 +7,12 @@ Bewusst schmal gehalten, damit Tests diese Funktionen durch aufgezeichnete
 Daten ersetzen können, ohne echte Netzabfragen.
 """
 
+import logging
 from datetime import date, timedelta
 
 import yfinance as yf
+
+logger = logging.getLogger(__name__)
 
 # Manche Börsen notieren in der Untereinheit der Währung:
 # London in Pence (GBp), Johannesburg in Cent (ZAc), Tel Aviv in Agorot (ILA).
@@ -44,12 +47,29 @@ def normalize_currency(currency):
     return (currency or 'EUR').upper(), 1.0
 
 
+def _fast_info(symbol):
+    """
+    Kurzinfos eines Symbols, oder None. Bei unbekannten Symbolen wirft
+    yfinance einen Fehler (z.B. KeyError 'exchangeTimezoneName'), statt
+    nichts zurückzugeben.
+    """
+    try:
+        info = yf.Ticker(yahoo_symbol(symbol)).fast_info
+        info.get('currency')  # löst den Abruf aus
+        return info
+    except Exception as error:
+        logger.info('yfinance kennt %s nicht: %s', symbol, error)
+        return None
+
+
 def fetch_metadata(symbol):
     """
     Währung, Typ und Börse eines Symbols. Gibt None zurück, wenn yfinance
     das Symbol nicht kennt.
     """
-    info = yf.Ticker(yahoo_symbol(symbol)).fast_info
+    info = _fast_info(symbol)
+    if info is None:
+        return None
     raw_currency = info.get('currency')
     if not raw_currency:
         return None
@@ -67,8 +87,13 @@ def fetch_last_price(symbol):
     Aktueller Kurs in der Hauptwährung des Symbols als (Kurs, Währung),
     oder None, wenn kein Kurs verfügbar ist.
     """
-    info = yf.Ticker(yahoo_symbol(symbol)).fast_info
-    price = info.get('lastPrice')
+    info = _fast_info(symbol)
+    if info is None:
+        return None
+    try:
+        price = info.get('lastPrice')
+    except Exception:
+        return None
     if price is None:
         return None
     currency, factor = normalize_currency(info.get('currency'))

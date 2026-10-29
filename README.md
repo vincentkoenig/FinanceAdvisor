@@ -18,7 +18,7 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 - Automatische Neuberechnung des durchschnittlichen Kaufpreises bei weiteren Käufen
 - Historische Schlusskurse werden beim Hinzufügen eines neuen Assets für 1 Jahr geladen und in der Handelswährung gespeichert, dazu die täglichen Wechselkurse — im Chart wird jeder Tag mit seinem eigenen Wechselkurs in Euro umgerechnet
 - Ein täglicher Lauf (abends nach US-Börsenschluss) lädt die letzten 7 Tage neu und überschreibt sie: Zwischenstände werden so durch Schlusskurse ersetzt und ausgefallene Läufe automatisch nachgeholt. Danach werden Dividenden (mit dem Wechselkurs am Ex-Tag) verbucht und die KI-Insights erzeugt
-- Interaktiver Portfolio-Wert-Chart mit wählbaren Zeiträumen (1W / 1M / YTD / 1J / Max), mit vorwärts aufgefüllten Preisen, damit Wochenenden/Feiertage und neu hinzugefügte Assets den Chart nicht verzerren
+- Interaktiver Portfolio-Wert-Chart mit wählbaren Zeiträumen (1W / 1M / YTD / 1J / Max), aus den echten Käufen und Verkäufen rekonstruiert: Jeder Tag zählt die Stückzahl, die an diesem Tag im Depot lag, auch von inzwischen verkauften Positionen. An Wochenenden und Feiertagen gilt der letzte Schlusskurs
 - Sortierbare Positionstabelle (nach Titel, Kaufpreis, Positionswert, Gewinn/Verlust)
 - Allokations-Donut-Chart mit dynamisch generierten, eindeutigen Farben pro Asset sowie dem Gesamtportfoliowert in der Mitte
 - Privatsphäre-Umschalter — alle Beträge mit einem Klick hinter Sternchen verstecken
@@ -191,7 +191,7 @@ Alle Routen liegen unter `/api/v1` und antworten mit JSON. Persönliche Daten li
 | `GET` · `POST` | `/me/positions` | Positionen mit Live-Preis · Kauf erfassen (bestehende Position wird ergänzt) |
 | `POST` | `/me/positions/<asset_id>/buy` · `/sell` | Nachkauf · Verkauf |
 | `GET` | `/me/asset-transactions` | Kauf-/Verkaufshistorie |
-| `GET` | `/me/portfolio/history` | Wertverlauf für den Chart |
+| `GET` | `/me/portfolio/history` | Täglicher Portfolio-Wert in Euro (`[{date, value}]`) vom ersten Kauf bis heute |
 | `GET` · `POST` | `/me/analyses` | Bisherige KI-Analysen · neue Analyse erstellen |
 | `GET` · `POST` · `DELETE` | `/me/watchlist` · `/me/watchlist/<asset_id>` | Watchlist |
 | `GET` · `POST` | `/me/savings-plans` | Sparpläne |
