@@ -71,13 +71,24 @@ class Asset(db.Model):
     """
     Asset Tabelle - speichert alle verfügbaren Finanzprodukte unabhängig vom Nutzer.
     Apple existiert einmal hier, egal wie viele Nutzer Apple besitzen.
-    Assets werden automatisch über yfinance oder CoinGecko erstellt.
+    Assets werden automatisch über yfinance erstellt. Jedes Symbol gibt es
+    genau einmal.
+    currency: Handelswährung des Symbols (z.B. EUR für SAP.DE, USD für AAPL) -
+    Kurse werden in dieser Währung gespeichert und erst beim Anzeigen in Euro
+    umgerechnet.
+    exchange: Börse laut yfinance, z.B. "XETRA" oder "NASDAQ".
+    metadata_updated_at: wann Währung, Börse und Typ zuletzt bei yfinance
+    abgefragt wurden (NULL = noch nie, wird beim nächsten Kurs-Update geholt).
     """
+    __table_args__ = (db.UniqueConstraint('symbol'),)
+
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String, nullable=False)
     symbol = db.Column(db.String, nullable=False)
     asset_type = db.Column(db.String)
     currency = db.Column(db.String)
+    exchange = db.Column(db.String)
+    metadata_updated_at = db.Column(db.DateTime)
 
 
 class UserAsset(db.Model):
@@ -85,8 +96,11 @@ class UserAsset(db.Model):
     UserAsset Tabelle - Junction Table zwischen User und Asset.
     Beantwortet: Welcher Nutzer besitzt welches Asset und wie viel?
     Many-to-Many Beziehung: ein Nutzer kann viele Assets haben,
-    ein Asset kann vielen Nutzern gehören.
+    ein Asset kann vielen Nutzern gehören. Pro Nutzer und Asset gibt es
+    genau eine Position - weitere Käufe ändern Menge und Durchschnittspreis.
     """
+    __table_args__ = (db.UniqueConstraint('user_id', 'asset_id'),)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
@@ -166,10 +180,13 @@ class DailyInsight(db.Model):
 
 class PriceHistory(db.Model):
     """
-    PriceHistory Tabelle - speichert täglich die Preise aller Assets.
-    Wird vom Scheduler täglich befüllt.
-    Wird für den Liniendiagramm auf dem Dashboard verwendet.
+    PriceHistory Tabelle - speichert die Tages-Schlusskurse aller Assets in
+    ihrer Handelswährung (Spalte currency). Genau ein Kurs pro Asset und Tag,
+    date ist immer Mitternacht des Handelstags.
+    Wird vom Scheduler täglich befüllt und für den Wertverlauf genutzt.
     """
+    __table_args__ = (db.UniqueConstraint('asset_id', 'date'),)
+
     id = db.Column(db.Integer, primary_key=True)
     asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
     date = db.Column(db.DateTime, default=db.func.now())
@@ -194,8 +211,10 @@ class ChatHistory(db.Model):
 class Watchlist(db.Model):
     """
     Watchlist Tabelle - Assets die der Nutzer beobachtet aber noch nicht besitzt.
-    Junction Table zwischen User und Asset.
+    Junction Table zwischen User und Asset, jedes Asset höchstens einmal pro Nutzer.
     """
+    __table_args__ = (db.UniqueConstraint('user_id', 'asset_id'),)
+
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
@@ -217,6 +236,21 @@ class PortfolioAnalysis(db.Model):
     recommendations = db.Column(db.Text)
     allocation = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=db.func.now())
+
+
+class FxRate(db.Model):
+    """
+    FxRate Tabelle - Wechselkurse pro Tag: rate_to_eur ist der Wert von
+    1 Einheit der Währung in Euro (z.B. USD am 2026-10-28: 0.8970).
+    Damit werden historische Kurse mit dem Wechselkurs ihres eigenen Tages
+    umgerechnet statt mit dem von heute. Ein Eintrag pro Währung und Tag.
+    """
+    __table_args__ = (db.UniqueConstraint('currency', 'date'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    currency = db.Column(db.String(3), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    rate_to_eur = db.Column(db.Float, nullable=False)
 
 
 # ─── HAUSHALTSBUCH MODELLE ────────────────────────────────────────────────────
