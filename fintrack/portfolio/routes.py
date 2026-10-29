@@ -9,20 +9,19 @@ den angemeldeten Nutzer.
 from datetime import datetime
 
 # Third Party
-import yfinance as yf
 from flask import Blueprint, jsonify
 from flask_login import current_user
 
 # Lokale Imports
 from fintrack.api import ApiError, parse_body, parse_query
-from fintrack.auth.session import get_own, protect_blueprint
-from fintrack.extensions import db
-from fintrack.market import yahoo
+from fintrack.auth.session import current_user_key, get_own, protect_blueprint
+from fintrack.extensions import db, limiter
 from fintrack.market.prices import get_current_price
-from fintrack.market.service import prepare_new_asset, price_history_in_eur
+from fintrack.market.search import create_asset, search_assets
+from fintrack.market.service import price_history_in_eur
 from fintrack.models import (Asset, AssetTransaction, Dividend,
                              SavingsPlan, UserAsset, Watchlist)
-from fintrack.portfolio.schemas import (AssetSearchQuery, BuyTrade, PositionCreate,
+from fintrack.portfolio.schemas import (AssetCreate, AssetSearchQuery, BuyTrade, PositionCreate,
                                         SavingsPlanCreate, SellTrade, WatchlistAdd)
 from fintrack.portfolio.service import record_buy, record_sell
 
@@ -60,65 +59,29 @@ def get_asset(asset_id):
 @bp.route('/assets/search', methods=['GET'])
 def search_asset():
     """
-    Asset suchen - zuerst in DB, dann mit yfinance.
-    Nutzer kann Name oder Symbol eingeben z.B. 'Tesla' oder 'TSLA'.
-    Wenn Asset nicht in DB ist wird es automatisch erstellt.
+    Asset suchen nach Name, Symbol oder ISIN, z.B. "SAP" oder "Bitcoin".
+    Liefert eine Ergebnisliste (Euro-Börsen zuerst) und legt nichts an -
+    das passiert erst mit POST /assets für den ausgewählten Treffer.
     """
     query = parse_query(AssetSearchQuery).query
+    return jsonify({"results": search_assets(query)}), 200
 
-    # Erst versuchen, direkt per Symbol in der DB zu finden -
-    # deckt den Fall ab, dass der Nutzer bereits das exakte Symbol eintippt
-    asset = Asset.query.filter_by(symbol=query.upper()).first()
 
-    if not asset:
-        try:
-            # Mit yfinance nach Name oder Symbol suchen, um das
-            # kanonische Ticker-Symbol zu ermitteln
-            search = yf.Search(query)
-            quotes = search.quotes
-
-            if not quotes:
-                return jsonify({"error": f"Asset '{query}' nicht gefunden!"}), 404
-
-            first_result = quotes[0]
-            symbol = first_result['symbol']
-            name = first_result.get('longname', first_result.get('shortname', symbol))
-
-            # Jetzt, mit dem von yfinance aufgelösten Symbol, NOCHMAL in
-            # der DB nachschauen - verhindert Duplikate, wenn der Nutzer
-            # z.B. "Nvidia" statt "NVDA" eingegeben hat, das Asset aber
-            # bereits unter dem Symbol NVDA existiert
-            asset = Asset.query.filter_by(symbol=symbol).first()
-
-            if not asset:
-                # Handelswährung, Typ und Börse prüfen - ohne sie ist das
-                # Symbol nicht handelbar oder bei yfinance unbekannt
-                metadata = yahoo.fetch_metadata(symbol)
-                if not metadata:
-                    return jsonify({"error": f"Asset '{query}' nicht gefunden!"}), 404
-
-                asset = Asset(
-                    name=name,
-                    symbol=symbol,
-                    asset_type=metadata['asset_type'],
-                    currency=metadata['currency'],
-                    exchange=metadata['exchange']
-                )
-                db.session.add(asset)
-                db.session.commit()
-
-                prepare_new_asset(asset)
-
-        except Exception as e:
-            print(f"Error searching asset: {e}")
-            return jsonify({"error": f"Asset '{query}' nicht gefunden!"}), 404
-
+@bp.route('/assets', methods=['POST'])
+@limiter.limit("60 per hour", key_func=current_user_key)
+def add_asset():
+    """
+    Den ausgewählten Suchtreffer als Asset anlegen (lädt ein Jahr Kurse).
+    Existiert es schon, kommt das vorhandene zurück.
+    """
+    body = parse_body(AssetCreate)
+    asset, created = create_asset(body.symbol, body.name)
     return jsonify({
         "id": asset.id,
         "name": asset.name,
         "symbol": asset.symbol,
         "asset_type": asset.asset_type
-    }), 200
+    }), 201 if created else 200
 
 
 # ─── POSITIONEN ───────────────────────────────────────────────────────────────

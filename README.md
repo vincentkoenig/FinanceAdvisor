@@ -13,7 +13,7 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 
 ### 📊 Portfolio & Watchlist
 - Aktien, ETFs, Kryptowährungen und Edelmetalle hinzufügen, kaufen und verkaufen
-- Assets können per Name (z.B. „Tesla") hinzugefügt werden — das passende Symbol wird automatisch über **yfinance** aufgelöst
+- Assets per Name, Symbol oder ISIN suchen und aus einer Ergebnisliste auswählen — Euro-Börsen (Xetra zuerst) stehen oben, Kryptowährungen werden als Euro-Paar angeboten (BTC-EUR), „Gold“ und „Silber“ meinen das Edelmetall
 - Live-Preise kommen über **yfinance** in der Handelswährung des Titels und werden mit dem aktuellen Wechselkurs in Euro umgerechnet — Euro-Titel wie SAP.DE oder BTC-EUR bleiben unverändert, Kurse in Pence (London) werden in Pfund umgerechnet
 - Automatische Neuberechnung des durchschnittlichen Kaufpreises bei weiteren Käufen
 - Historische Schlusskurse werden beim Hinzufügen eines neuen Assets für 1 Jahr geladen und in der Handelswährung gespeichert, dazu die täglichen Wechselkurse — im Chart wird jeder Tag mit seinem eigenen Wechselkurs in Euro umgerechnet
@@ -185,7 +185,8 @@ Alle Routen liegen unter `/api/v1` und antworten mit JSON. Persönliche Daten li
 | `POST` | `/auth/resend-verification` | Neuen Code anfordern |
 | `POST` | `/auth/login` · `/auth/logout` | Anmelden (setzt Session-Cookie) · Abmelden |
 | `GET` · `PUT` | `/me` · `/me/settings` | Eigenes Profil · Anlage-Einstellungen speichern |
-| `GET` | `/assets/search?query=` | Asset per Name oder Symbol suchen, legt es bei Bedarf an und lädt die Kurshistorie |
+| `GET` | `/assets/search?query=` | Assets per Name, Symbol oder ISIN suchen — Ergebnisliste, bekannte Assets und Euro-Börsen zuerst, legt nichts an |
+| `POST` | `/assets` | Ausgewählten Suchtreffer (`symbol`, `name`) als Asset anlegen und ein Jahr Kurse laden (201, bei vorhandenem Asset 200) |
 | `GET` | `/assets/<id>` | Asset mit Live-Preis |
 | `GET` · `POST` | `/me/positions` | Positionen mit Live-Preis · Kauf erfassen (bestehende Position wird ergänzt) |
 | `POST` | `/me/positions/<asset_id>/buy` · `/sell` | Nachkauf · Verkauf |

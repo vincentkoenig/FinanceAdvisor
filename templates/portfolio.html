@@ -145,7 +145,7 @@
                     <h2>Watchlist</h2>
                 </div>
                 <div class="watchlist-add">
-                    <input type="text" id="asset-search" placeholder="Asset suchen z.B. AAPL, bitcoin...">
+                    <input type="text" id="asset-search" placeholder="Asset suchen: Name, Symbol oder ISIN">
                     <button class="btn-primary" onclick="addToWatchlist()">Hinzufügen</button>
                 </div>
                 <table class="portfolio-table">
@@ -229,7 +229,7 @@
         <div class="modal-overlay" onclick="hideAddPosition()"></div>
         <div class="modal">
             <h3>Position hinzufügen</h3>
-            <input type="text" id="position-symbol" placeholder="Symbol z.B. AAPL, bitcoin">
+            <input type="text" id="position-symbol" placeholder="Asset suchen: Name, Symbol oder ISIN">
             <input type="number" id="position-quantity" placeholder="Menge z.B. 10">
             <input type="number" id="position-price" placeholder="Kaufpreis z.B. 150">
             <input type="date" id="position-date">
@@ -292,7 +292,7 @@
     <div class="modal-overlay" onclick="hideAddSavingsPlan()"></div>
     <div class="modal">
         <h3>Sparplan anlegen</h3>
-        <input type="text" id="savings-plan-symbol" placeholder="Symbol z.B. AAPL, bitcoin">
+        <input type="text" id="savings-plan-symbol" placeholder="Asset suchen: Name, Symbol oder ISIN">
         <input type="number" id="savings-plan-amount" placeholder="Betrag pro Monat in €">
         <input type="number" id="savings-plan-day" placeholder="Tag im Monat (1-28)" min="1" max="28">
         <button class="btn-primary" onclick="addSavingsPlan()">Anlegen</button>
@@ -321,7 +321,13 @@
     <script src="/static/js/toast.js"></script>
     <script src="/static/js/mobile-nav.js"></script>
     <script src="/static/js/utils.js"></script>
+    <script src="/static/js/asset-picker.js"></script>
     <script src="/static/js/portfolio.js"></script>
+    <script>
+        attachAssetPicker('position-symbol')
+        attachAssetPicker('asset-search')
+        attachAssetPicker('savings-plan-symbol')
+    </script>
     <script src="/static/js/logout.js"></script>
     <script src="/static/js/widget.js"></script>
     <script src="/static/js/theme.js"></script>

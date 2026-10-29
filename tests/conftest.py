@@ -130,6 +130,7 @@ class FakeYahoo:
         self.last_prices = {}
         self.closes = {}
         self.dividends = {}
+        self.quotes = {}
         self.calls = []
 
     def add_stock(self, symbol, currency='EUR', asset_type='stock', exchange='GER'):
@@ -150,6 +151,9 @@ class FakeYahoo:
     def fetch_dividends(self, symbol, since):
         return [row for row in self.dividends.get(symbol, []) if row[0] > since]
 
+    def search_quotes(self, query, max_results=15):
+        return self.quotes.get(query, [])
+
 
 @pytest.fixture(autouse=True)
 def fake_yahoo(monkeypatch):
@@ -157,7 +161,7 @@ def fake_yahoo(monkeypatch):
     from fintrack.market import prices, yahoo
 
     fake = FakeYahoo()
-    for name in ('fetch_metadata', 'fetch_last_price', 'fetch_daily_closes', 'fetch_dividends'):
+    for name in ('fetch_metadata', 'fetch_last_price', 'fetch_daily_closes', 'fetch_dividends', 'search_quotes'):
         monkeypatch.setattr(yahoo, name, getattr(fake, name))
     prices.clear_cache()
     yield fake

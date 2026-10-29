@@ -118,3 +118,11 @@ def fetch_dividends(symbol, since):
     _, factor = normalize_currency(ticker.fast_info.get('currency'))
     return [(timestamp.date(), round(float(amount) * factor, 6))
             for timestamp, amount in dividends.items() if timestamp.date() > since]
+
+
+def search_quotes(query, max_results=15):
+    """
+    Rohe Suchtreffer von yfinance für Name, Symbol oder ISIN, in der
+    Reihenfolge von Yahoo (Relevanz).
+    """
+    return yf.Search(query, max_results=max_results, news_count=0).quotes or []
