@@ -18,11 +18,11 @@ from fintrack.auth.session import current_user_key, get_own, protect_blueprint
 from fintrack.extensions import db, limiter
 from fintrack.market.prices import get_current_price
 from fintrack.market.search import create_asset, search_assets
-from fintrack.market.service import price_history_in_eur
 from fintrack.models import (Asset, AssetTransaction, Dividend,
                              SavingsPlan, UserAsset, Watchlist)
 from fintrack.portfolio.schemas import (AssetCreate, AssetSearchQuery, BuyTrade, PositionCreate,
                                         SavingsPlanCreate, SellTrade, WatchlistAdd)
+from fintrack.portfolio.history import portfolio_value_series
 from fintrack.portfolio.service import record_buy, record_sell
 
 bp = Blueprint('portfolio', __name__)
@@ -190,24 +190,14 @@ def get_asset_transactions():
 @bp.route('/me/portfolio/history', methods=['GET'])
 def get_portfolio_history():
     """
-    Preishistorie aller aktiven Positionen für den Wertverlauf-Chart.
-    Nur Positionen mit Menge > 0 werden berücksichtigt.
+    Täglicher Portfolio-Wert in Euro für den Wertverlauf-Chart, vom ersten
+    Kauf bis heute. Jeder Tag zählt die Stückzahl, die an diesem Tag
+    tatsächlich im Depot lag - auch inzwischen verkaufte Positionen.
     """
-    positions = UserAsset.query.filter_by(user_id=current_user.id).filter(UserAsset.quantity > 0).all()
-
-    result = {}
-
-    for position in positions:
-        asset = db.session.get(Asset, position.asset_id)
-
-        # Schlusskurse in Euro, jeder Tag mit seinem eigenen Wechselkurs
-        # Kurs × Menge = Wert dieser Position an dem Tag
-        result[asset.name] = [
-            {"date": day.isoformat(), "price": price_eur * position.quantity}
-            for day, price_eur in price_history_in_eur(asset)
-        ]
-
-    return jsonify(result), 200
+    return jsonify([
+        {"date": day.isoformat(), "value": value}
+        for day, value in portfolio_value_series(current_user.id)
+    ]), 200
 
 
 # ─── WATCHLIST ────────────────────────────────────────────────────────────────

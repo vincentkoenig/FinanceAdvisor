@@ -54,6 +54,16 @@ class TestYahoo:
         assert fetch_metadata('GIBTSNICHT') is None
 
     @patch('fintrack.market.yahoo.yf.Ticker')
+    def test_unknown_symbol_returns_none_instead_of_error(self, ticker_class):
+        """yfinance wirft bei unbekannten Symbolen KeyError statt None zu liefern"""
+        info = MagicMock()
+        info.get.side_effect = KeyError('exchangeTimezoneName')
+        ticker_class.return_value = fake_ticker(info)
+
+        assert fetch_metadata('IRGENDWAS') is None
+        assert fetch_last_price('IRGENDWAS') is None
+
+    @patch('fintrack.market.yahoo.yf.Ticker')
     def test_last_price_in_pence_is_converted_to_pounds(self, ticker_class):
         ticker_class.return_value = fake_ticker({'currency': 'GBp', 'lastPrice': 8150.0})
 

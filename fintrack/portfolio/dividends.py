@@ -12,36 +12,16 @@ from datetime import datetime
 
 from fintrack.market import yahoo
 from fintrack.market.service import fx_rate_on, update_fx_rates
-from fintrack.models import db, User, Asset, UserAsset, AssetTransaction, Dividend, Category, Transaction
+from fintrack.models import db, User, Asset, UserAsset, Dividend, Category, Transaction
+from fintrack.portfolio.history import shares_held_on
 
 
 def calculate_shares_held_at(user_id, asset_id, target_date):
     """
-    Berechnet, wie viele Stück eines Assets ein Nutzer an einem
-    bestimmten Datum hielt, basierend auf der Transaktionshistorie
-    bis zu diesem Zeitpunkt (Käufe addiert, Verkäufe subtrahiert).
-    Falls keine Transaktionshistorie vor diesem Datum existiert (z.B.
-    weil die Position vor Einführung der Transaktions-Protokollierung
-    angelegt wurde), wird ersatzweise die aktuelle Bestandsmenge
-    verwendet - eine Näherung, die zwischenzeitliche Käufe/Verkäufe
-    nicht berücksichtigen kann, aber besser ist als 0 anzunehmen.
+    Wie viele Stück eines Assets ein Nutzer am Ende dieses Tages hielt,
+    rekonstruiert aus Käufen und Verkäufen (siehe portfolio/history.py).
     """
-    transactions = AssetTransaction.query.filter_by(
-        user_id=user_id, asset_id=asset_id
-    ).filter(AssetTransaction.date <= target_date).all()
-
-    if not transactions:
-        user_asset = UserAsset.query.filter_by(user_id=user_id, asset_id=asset_id).first()
-        return user_asset.quantity if user_asset else 0
-
-    shares = 0
-    for transaction in transactions:
-        if transaction.type == 'buy':
-            shares += transaction.quantity
-        else:
-            shares -= transaction.quantity
-
-    return shares
+    return shares_held_on(user_id, asset_id, target_date.date())
 
 
 def process_dividends_for_user(user_id):

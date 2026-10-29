@@ -186,76 +186,31 @@ function sortTable(column) {
 
 
 async function loadChart(period = '1J') {
-    // Portfolio Historie holen
+    // Täglicher Portfolio-Wert vom Server: [{date, value}, ...], aus den
+    // echten Käufen und Verkäufen berechnet, Wochenenden schon aufgefüllt
     const response = await fetch('/api/v1/me/portfolio/history')
-    const data = await response.json()
+    const history = await response.json()
 
-    // Alle Daten zusammenführen
-    const allDates = new Set()
-    Object.values(data).forEach(prices => {
-        prices.forEach(p => allDates.add(p.date))
-    })
-    const sortedDates = [...allDates].sort()
-
-    // Datum filtern je nach Zeitraum
+    // Startdatum je nach Zeitraum
     const today = new Date()
-    const filteredByPeriod = sortedDates.filter(date => {
-        const d = new Date(date)
-        if (period === '1T') {
-            const yesterday = new Date(today)
-            yesterday.setDate(today.getDate() - 1)
-            return d >= yesterday
-        } else if (period === '1W') {
-            const oneWeekAgo = new Date(today)
-            oneWeekAgo.setDate(today.getDate() - 7)
-            return d >= oneWeekAgo
-        } else if (period === '1M') {
-            const oneMonthAgo = new Date(today)
-            oneMonthAgo.setMonth(today.getMonth() - 1)
-            return d >= oneMonthAgo
-        } else if (period === 'YTD') {
-            const startOfYear = new Date(today.getFullYear(), 0, 1)
-            return d >= startOfYear
-        } else if (period === '1J') {
-            const oneYearAgo = new Date(today)
-            oneYearAgo.setFullYear(today.getFullYear() - 1)
-            return d >= oneYearAgo
-        } else if (period === 'Max') {
-            return true  // alle Daten anzeigen
-        }
-        return true
-    })
+    let start = null
+    if (period === '1W') {
+        start = new Date(today)
+        start.setDate(today.getDate() - 7)
+    } else if (period === '1M') {
+        start = new Date(today)
+        start.setMonth(today.getMonth() - 1)
+    } else if (period === 'YTD') {
+        start = new Date(today.getFullYear(), 0, 1)
+    } else if (period === '1J') {
+        start = new Date(today)
+        start.setFullYear(today.getFullYear() - 1)
+    }
+    // Lokales Datum als YYYY-MM-DD (toISOString würde nach UTC verschieben)
+    const pad = (n) => String(n).padStart(2, '0')
+    const startDate = start ? `${start.getFullYear()}-${pad(start.getMonth() + 1)}-${pad(start.getDate())}` : ''
 
-    // Gesamtwert pro Tag berechnen - pro Asset wird der letzte bekannte
-    // Preis bis zu diesem Datum verwendet (Forward-Fill), damit
-    // Wochenenden/Feiertage bei Aktien nicht zu Sprüngen führen und
-    // neu hinzugefügte Assets erst ab ihrem ersten Datenpunkt mitzählen
-    const chartData = []
-    filteredByPeriod.forEach(date => {
-        let total = 0
-        let hasAnyPrice = false
-
-        Object.values(data).forEach(prices => {
-            // Letzten Preis suchen, dessen Datum <= aktuelles Datum ist
-            let lastKnown = null
-            for (const p of prices) {
-                if (p.date <= date) {
-                    lastKnown = p
-                } else {
-                    break
-                }
-            }
-
-            if (lastKnown) {
-                total += lastKnown.price
-                hasAnyPrice = true
-            }
-        })
-
-        if (hasAnyPrice) {
-            chartData.push({ date: date, value: total })
-        }
-    })
+    const chartData = history.filter(point => point.date >= startDate)
 
     const filteredDates = chartData.map(d => d.date)
     const totalValues = chartData.map(d => d.value)
