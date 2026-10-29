@@ -90,8 +90,15 @@ def add_prices(asset_id):
     price = data['price']
     currency = data['currency']
 
-    new_price = PriceHistory(asset_id=asset_id, date=date, price=price, currency=currency)
-    db.session.add(new_price)
+    # Pro Asset und Tag gibt es genau einen Kurs - vorhandenen überschreiben
+    existing = PriceHistory.query.filter_by(asset_id=asset_id, date=date).first()
+    if existing:
+        existing.price = price
+        existing.currency = currency
+        status = 200
+    else:
+        db.session.add(PriceHistory(asset_id=asset_id, date=date, price=price, currency=currency))
+        status = 201
     db.session.commit()
 
-    return jsonify({"message": "Price successfully added"}), 201
+    return jsonify({"message": "Price successfully saved"}), status

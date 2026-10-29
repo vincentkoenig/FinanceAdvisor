@@ -167,4 +167,14 @@ class ExportFile(_Entry):
         for dividend in self.dividends:
             if dividend.transaction_ref is not None and dividend.transaction_ref not in transaction_refs:
                 raise ValueError('Eine Dividende verweist auf eine unbekannte Buchung')
+
+        # Pro Asset gibt es nur eine Position und einen Watchlist-Eintrag
+        # (ältere Exporte von vor dieser Regel könnten Doppelte enthalten)
+        for name, items in (('Position', self.positions), ('Watchlist-Eintrag', self.watchlist)):
+            asset_refs_used = [item.asset_ref for item in items]
+            if len(asset_refs_used) != len(set(asset_refs_used)):
+                raise ValueError(f'Doppelter {name} für dasselbe Asset in der Datei')
+        symbols = [asset.symbol for asset in self.assets]
+        if len(symbols) != len(set(symbols)):
+            raise ValueError('Ein Asset-Symbol kommt in der Datei mehrfach vor')
         return self
