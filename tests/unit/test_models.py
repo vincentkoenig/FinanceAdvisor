@@ -9,9 +9,6 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-import pytest
-from sqlalchemy.exc import IntegrityError
-
 from fintrack.models import db, User, Category, Transaction, UserAsset, Asset
 
 

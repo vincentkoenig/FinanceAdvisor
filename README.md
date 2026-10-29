@@ -114,23 +114,30 @@ FinTrack/
 ├── fintrack/                  # Die eigentliche App als Paket
 │   ├── __init__.py             # create_app(): Konfiguration, Datenbank, Blueprints
 │   ├── config.py               # Einstellungen aus Umgebungsvariablen, Datenbank-URL
-│   ├── extensions.py           # Gemeinsame Objekte: Datenbank, OpenAI-Client
+│   ├── extensions.py           # Gemeinsame Objekte: Datenbank, Migrationen, Login, Limiter, OpenAI-Client
+│   ├── api.py                  # Eingabeprüfung (Pydantic) und einheitliche JSON-Fehler der API
+│   ├── database.py             # flask upgrade-db: Migrationen ausführen, alte Datenbanken übernehmen
 │   ├── models.py               # SQLAlchemy-Modelle + Pydantic-Schemas für Structured Output
 │   ├── jobs.py                 # APScheduler — Preise, Dividenden und Insights täglich
 │   ├── pages.py                # Routen, die die HTML-Seiten ausliefern
-│   ├── auth/                   # Registrierung, Login, Verifizierungs-E-Mail, Profil
+│   ├── auth/                   # Registrierung, Login/Session, Verifizierung, Profil, CLI (create-user, set-password)
+│   ├── account/                # Export und Import aller eigenen Daten
 │   ├── portfolio/              # Assets, Positionen, Watchlist, Sparpläne, Dividenden, KI-Analyse
 │   ├── budget/                 # Haushaltsbuch: Routen + Berechnungslogik (auch vom MCP-Server genutzt)
 │   ├── chat/                   # KI-Chat mit Function-Calling-Tools
 │   ├── insights/               # Täglicher KI-Insight
 │   ├── admin/                  # Geschützte Endpoints zum manuellen Anstoßen der Jobs
 │   └── market/                 # Marktdaten (yfinance, CoinGecko, Tavily) + zentraler Preis-Service
-├── requirements.txt              # Abhängigkeiten der Haupt-App (Flask, gunicorn, psycopg2-binary, etc.)
-├── start.bat                     # Windows-Starter — startet den Server und öffnet den Browser
+├── migrations/                   # Alembic-Migrationen (Schemaänderungen der Datenbank)
+├── tests/                        # pytest: Unit- und Integrationstests (u.a. Zugriffsschutz für jede Route)
+├── requirements.txt              # Abhängigkeiten der Haupt-App, alle Versionen fest gepinnt
+├── requirements-dev.txt          # Zusätzlich für Tests (pytest, MCP-SDK)
+├── start.bat                     # Windows-Starter — migriert die Datenbank, startet den Server und öffnet den Browser
 ├── mcp_server/
 │   ├── server.py                  # MCP-Server, stellt Portfolio-/Budget-Tools für Claude Desktop bereit
-│   └── requirements.txt            # Separate, schlanke Abhängigkeiten nur für die lokale MCP-Nutzung
-├── docs/                          # Screenshots, Demo-Video, sonstige Projekt-Assets
+│   └── requirements.txt            # Abhängigkeiten der App plus MCP-SDK
+├── docs/                          # Backup-Anleitung (BACKUP.md), Screenshots, Demo-Video
+├── .github/workflows/             # CI-Tests (inkl. PostgreSQL) und nächtliches Datenbank-Backup
 ├── static/
 │   ├── manifest.json               # PWA-Manifest (Name, Icons, Anzeigemodus)
 │   ├── service-worker.js            # Minimaler Service Worker für PWA-Installierbarkeit
@@ -154,7 +161,7 @@ FinTrack/
 │       ├── theme.js                      # Dark-/Light-Mode-Umschalter
 │       ├── toast.js                      # Toast-Benachrichtigungs-Helfer
 │       ├── mobile-nav.js                  # Mobile Bottom-Nav + „Mehr"-Menü-Umschalter
-│       ├── utils.js                       # Gemeinsame Hilfsfunktionen (z.B. dynamische Farbgenerierung)
+│       ├── utils.js                       # Gemeinsame Hilfsfunktionen: HTML maskieren, Markdown bereinigen, Farben, Umleitung bei abgelaufener Anmeldung
 │       └── logout.js
 └── templates/
     ├── index.html                # Login / Registrierung
@@ -163,7 +170,7 @@ FinTrack/
     ├── budget.html                  # Haushaltsbuch
     ├── chat.html                     # Vollbild-Chat-Oberfläche
     ├── analyse.html                   # Portfolio-Analyse & Verlauf
-    └── settings.html                   # Nutzerprofil-Einstellungen
+    └── settings.html                   # Nutzerprofil-Einstellungen, Export und Import der Daten
 ```
 
 ## API-Übersicht
