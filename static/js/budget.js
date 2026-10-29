@@ -1,5 +1,3 @@
-// User ID des angemeldeten Nutzers (vom Server in die Seite geschrieben)
-const userId = currentUserId()
 
 // Aktuell angezeigter Monat - startet mit dem heutigen Monat
 let currentMonthDate = new Date()
@@ -39,7 +37,7 @@ function changeMonth(direction) {
 }
 
 async function loadCategories() {
-    const response = await fetch(`/users/${userId}/categories`)
+    const response = await fetch('/api/v1/me/categories')
     allCategories = await response.json()
 }
 
@@ -54,7 +52,7 @@ async function loadBudget() {
 
     // Transaktionen für den gewählten Monat holen
     const month = getMonthString(currentMonthDate)
-    const response = await fetch(`/users/${userId}/transactions?month=${month}`)
+    const response = await fetch(`/api/v1/me/transactions?month=${month}`)
     const transactions = await response.json()
 
     // Nach Kategorie-Typ aufsummieren (Gesamtzahlen für die Kennzahlen oben)
@@ -224,8 +222,8 @@ function renderTransactionsList(transactions) {
 
 
 async function toggleTransactionPause(transactionId) {
-    const response = await fetch(`/transactions/${transactionId}/toggle-pause`, {
-        method: 'PUT'
+    const response = await fetch(`/api/v1/me/transactions/${transactionId}/toggle-pause`, {
+        method: 'POST'
     })
 
     const data = await response.json()
@@ -245,7 +243,7 @@ function formatDate(dateString) {
 }
 
 async function deleteTransaction(transactionId) {
-    const response = await fetch(`/transactions/${transactionId}`, {
+    const response = await fetch(`/api/v1/me/transactions/${transactionId}`, {
         method: 'DELETE'
     })
 
@@ -315,7 +313,7 @@ async function addTransaction() {
         return
     }
 
-    const response = await fetch(`/users/${userId}/transactions`, {
+    const response = await fetch('/api/v1/me/transactions', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -333,7 +331,8 @@ async function addTransaction() {
         hideAddTransaction()
         loadBudget()
     } else {
-        showToast('Fehler beim Hinzufügen der Buchung!', 'error')
+        const data = await response.json().catch(() => ({}))
+        showToast(data.error || 'Fehler beim Hinzufügen der Buchung!', 'error')
     }
 }
 

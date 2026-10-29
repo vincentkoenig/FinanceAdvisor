@@ -1,6 +1,8 @@
 """
-portfolio/routes.py - Assets, Positionen (Kauf/Verkauf), Wertverlauf,
-Watchlist, Sparpläne und verbuchte Dividenden.
+portfolio/routes.py - API für Assets, Positionen (Kauf/Verkauf),
+Wertverlauf, Watchlist, Sparpläne und verbuchte Dividenden.
+Registriert unter /api/v1. Alle Routen unter /me/ beziehen sich immer auf
+den angemeldeten Nutzer.
 """
 
 # Standard Library
@@ -8,41 +10,49 @@ from datetime import datetime
 
 # Third Party
 import yfinance as yf
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
+from flask_login import current_user
 
 # Lokale Imports
+from fintrack.api import ApiError, parse_body, parse_query
 from fintrack.auth.session import get_own, protect_blueprint
 from fintrack.extensions import db
 from fintrack.market.data import get_historical_prices
 from fintrack.market.prices import get_current_price
 from fintrack.models import (Asset, AssetTransaction, Dividend, PriceHistory,
                              SavingsPlan, UserAsset, Watchlist)
+from fintrack.portfolio.schemas import (AssetSearchQuery, BuyTrade, PositionCreate,
+                                        SavingsPlanCreate, SellTrade, WatchlistAdd)
+from fintrack.portfolio.service import record_buy, record_sell
 
 bp = Blueprint('portfolio', __name__)
-# Nur mit Anmeldung, und nur Zugriff auf die eigenen Daten
+# Nur mit Anmeldung
 protect_blueprint(bp)
 
 
-@bp.route('/assets/<asset_id>', methods=['GET'])
+def get_asset_or_404(asset_id):
+    asset = db.session.get(Asset, asset_id)
+    if not asset:
+        raise ApiError(404, 'Asset nicht gefunden')
+    return asset
+
+
+# ─── ASSETS (für alle Nutzer gleich) ──────────────────────────────────────────
+
+@bp.route('/assets/<int:asset_id>', methods=['GET'])
 def get_asset(asset_id):
     """
     Asset Details abrufen inkl. aktuellem Preis.
     Preis wird live von yfinance oder CoinGecko geholt.
     """
-    asset = db.session.get(Asset, asset_id)
-
-    if not asset:
-        return jsonify({"error": "Asset not found"}), 404
-
-    # Aktuellen Preis je nach Asset-Typ holen
-    current_price = get_current_price(asset)
+    asset = get_asset_or_404(asset_id)
 
     return jsonify({
         "id": asset.id,
         "name": asset.name,
         "symbol": asset.symbol,
         "asset_type": asset.asset_type,
-        "current_price": current_price
+        "current_price": get_current_price(asset)
     }), 200
 
 
@@ -53,7 +63,7 @@ def search_asset():
     Nutzer kann Name oder Symbol eingeben z.B. 'Tesla' oder 'TSLA'.
     Wenn Asset nicht in DB ist wird es automatisch erstellt.
     """
-    query = request.args.get('query')
+    query = parse_query(AssetSearchQuery).query
 
     # Erst versuchen, direkt per Symbol in der DB zu finden -
     # deckt den Fall ab, dass der Nutzer bereits das exakte Symbol eintippt
@@ -119,15 +129,88 @@ def search_asset():
     }), 200
 
 
+# ─── POSITIONEN ───────────────────────────────────────────────────────────────
 
-@bp.route('/users/<user_id>/assets/transactions', methods=['GET'])
-def get_asset_transactions(user_id):
+@bp.route('/me/positions', methods=['GET'])
+def get_positions():
     """
-    Vollständige Kauf-/Verkaufshistorie eines Nutzers über alle Assets,
-    neueste zuerst. Enthält Asset-Name und -Symbol, damit das Frontend
-    nicht pro Zeile einen zusätzlichen Request braucht.
+    Alle Positionen des Nutzers mit Menge > 0, inkl. Live-Preis von
+    yfinance oder CoinGecko.
     """
-    transactions = AssetTransaction.query.filter_by(user_id=user_id) \
+    positions = UserAsset.query.filter_by(user_id=current_user.id).filter(UserAsset.quantity > 0).all()
+
+    result = []
+    for position in positions:
+        # Asset aus DB holen um Name und Symbol zu bekommen
+        asset = db.session.get(Asset, position.asset_id)
+
+        result.append({
+            "asset_id": position.asset_id,
+            "name": asset.name,
+            "symbol": asset.symbol,
+            "quantity": position.quantity,
+            "avg_buy_price": position.avg_buy_price,
+            "bought_at": position.bought_at,
+            "status": position.status,
+            "current_price": get_current_price(asset, unknown_type_default=position.avg_buy_price)
+        })
+
+    return jsonify(result), 200
+
+
+@bp.route('/me/positions', methods=['POST'])
+def add_position():
+    """
+    Kauf eines Assets erfassen. Ist das Asset schon im Depot, wird der Kauf
+    zur bestehenden Position addiert (neuer Durchschnittspreis) statt eine
+    zweite Position anzulegen.
+    """
+    data = parse_body(PositionCreate)
+    get_asset_or_404(data.asset_id)
+
+    record_buy(current_user.id, data.asset_id, data.quantity, data.avg_buy_price,
+               datetime.combine(data.bought_at, datetime.min.time()))
+    db.session.commit()
+
+    return jsonify({"message": "Position gespeichert"}), 201
+
+
+@bp.route('/me/positions/<int:asset_id>/buy', methods=['POST'])
+def buy(asset_id):
+    """Weiteren Kauf zu einer bestehenden Position erfassen."""
+    data = parse_body(BuyTrade)
+    position = UserAsset.query.filter_by(user_id=current_user.id, asset_id=asset_id).first()
+    if not position:
+        raise ApiError(404, 'Position nicht gefunden')
+
+    record_buy(current_user.id, asset_id, data.quantity, data.price)
+    db.session.commit()
+
+    return jsonify({"message": "Kauf gespeichert"}), 200
+
+
+@bp.route('/me/positions/<int:asset_id>/sell', methods=['POST'])
+def sell(asset_id):
+    """
+    Verkauf erfassen. Reduziert die Menge - wenn alles verkauft wird,
+    wird der Status auf 'sold' gesetzt.
+    """
+    data = parse_body(SellTrade)
+
+    record_sell(current_user.id, asset_id, data.quantity, data.price)
+    db.session.commit()
+
+    return jsonify({"message": "Verkauf gespeichert"}), 200
+
+
+@bp.route('/me/asset-transactions', methods=['GET'])
+def get_asset_transactions():
+    """
+    Vollständige Kauf-/Verkaufshistorie über alle Assets, neueste zuerst.
+    Enthält Asset-Name und -Symbol, damit das Frontend nicht pro Zeile
+    einen zusätzlichen Request braucht.
+    """
+    transactions = AssetTransaction.query.filter_by(user_id=current_user.id) \
         .order_by(AssetTransaction.date.desc()).all()
 
     result = []
@@ -149,181 +232,28 @@ def get_asset_transactions(user_id):
     return jsonify(result), 200
 
 
-@bp.route('/users/<user_id>/assets', methods=['GET'])
-def get_user_assets(user_id):
+@bp.route('/me/portfolio/history', methods=['GET'])
+def get_portfolio_history():
     """
-    Alle Assets des Nutzers abrufen.
-    Nur Assets mit quantity > 0 werden zurückgegeben.
-    Aktueller Preis wird live von yfinance oder CoinGecko geholt.
+    Preishistorie aller aktiven Positionen für den Wertverlauf-Chart.
+    Nur Positionen mit Menge > 0 werden berücksichtigt.
     """
-    # Nur Assets mit quantity > 0 holen - verkaufte Assets ausblenden
-    user_assets = UserAsset.query.filter_by(user_id=user_id).filter(UserAsset.quantity > 0).all()
-
-    result = []
-
-    for user_asset in user_assets:
-        # Asset aus DB holen um Name und Symbol zu bekommen
-        asset = db.session.get(Asset, user_asset.asset_id)
-
-        # Aktuellen Preis je nach Asset-Typ holen
-        current_price = get_current_price(asset, unknown_type_default=user_asset.avg_buy_price)
-
-        result.append({
-            "asset_id": user_asset.asset_id,
-            "name": asset.name,
-            "symbol": asset.symbol,
-            "quantity": user_asset.quantity,
-            "avg_buy_price": user_asset.avg_buy_price,
-            "bought_at": user_asset.bought_at,
-            "status": user_asset.status,
-            "current_price": current_price
-        })
-
-    return jsonify(result), 200
-
-
-@bp.route('/users/<user_id>/assets', methods=['POST'])
-def add_user_asset(user_id):
-    """
-    Neues Asset dem Nutzer zuweisen.
-    Legt zusätzlich den ersten Kauf in der Transaktionshistorie an.
-    """
-    data = request.json
-    asset_id = data['asset_id']
-    quantity = data['quantity']
-    avg_buy_price = data['avg_buy_price']
-    bought_at = datetime.strptime(data['bought_at'], '%Y-%m-%d')
-    status = data['status']
-
-    user_asset = UserAsset(
-        user_id=user_id,
-        asset_id=asset_id,
-        quantity=quantity,
-        avg_buy_price=avg_buy_price,
-        bought_at=bought_at,
-        status=status
-    )
-    db.session.add(user_asset)
-
-    # Ersten Kauf zusätzlich in der Transaktionshistorie protokollieren
-    transaction = AssetTransaction(
-        user_id=user_id,
-        asset_id=asset_id,
-        type='buy',
-        quantity=float(quantity),
-        price=float(avg_buy_price),
-        date=bought_at
-    )
-    db.session.add(transaction)
-
-    db.session.commit()
-
-    return jsonify({"message": "User asset successfully added"}), 201
-
-
-@bp.route('/users/<user_id>/assets/<asset_id>/buy', methods=['PUT'])
-def add_buy(user_id, asset_id):
-    """
-    Weiteren Kauf eines Assets hinzufügen.
-    Berechnet neuen Durchschnittspreis basierend auf altem und neuem Kauf,
-    und protokolliert den Kauf zusätzlich in der Transaktionshistorie.
-    """
-    data = request.json
-    quantity = data['quantity']
-    price = data['price']
-
-    user_asset = UserAsset.query.filter_by(user_id=user_id, asset_id=asset_id).first()
-
-    if not user_asset:
-        return jsonify({"error": "Asset not found"}), 404
-
-    # Neuen Durchschnittspreis berechnen
-    old_value = user_asset.quantity * user_asset.avg_buy_price
-    new_value = float(quantity) * float(price)
-    new_quantity = user_asset.quantity + float(quantity)
-    new_avg_price = (old_value + new_value) / new_quantity
-
-    user_asset.quantity = new_quantity
-    user_asset.avg_buy_price = round(new_avg_price, 2)
-
-    # Kauf zusätzlich in der Transaktionshistorie protokollieren
-    transaction = AssetTransaction(
-        user_id=user_id,
-        asset_id=asset_id,
-        type='buy',
-        quantity=float(quantity),
-        price=float(price)
-    )
-    db.session.add(transaction)
-
-    db.session.commit()
-
-    return jsonify({"message": "Buy successfully added"}), 200
-
-
-@bp.route('/users/<user_id>/assets/<asset_id>/sell', methods=['PUT'])
-def add_sell(user_id, asset_id):
-    """
-    Verkauf eines Assets hinzufügen.
-    Reduziert die Menge - wenn alles verkauft wird Status auf 'sold' gesetzt.
-    Protokolliert den Verkauf zusätzlich in der Transaktionshistorie.
-    """
-    data = request.json
-    quantity = data['quantity']
-    price = data.get('price')  # Verkaufspreis, optional falls Frontend ihn noch nicht schickt
-
-    user_asset = UserAsset.query.filter_by(user_id=user_id, asset_id=asset_id).first()
-
-    if not user_asset:
-        return jsonify({"error": "Asset not found"}), 404
-
-    if float(quantity) > user_asset.quantity:
-        return jsonify({"error": "Nicht genug Anteile!"}), 400
-
-    user_asset.quantity -= float(quantity)
-
-    if user_asset.quantity == 0:
-        user_asset.status = "sold"
-
-    # Verkauf zusätzlich in der Transaktionshistorie protokollieren
-    transaction = AssetTransaction(
-        user_id=user_id,
-        asset_id=asset_id,
-        type='sell',
-        quantity=float(quantity),
-        price=float(price) if price else user_asset.avg_buy_price
-    )
-    db.session.add(transaction)
-
-    db.session.commit()
-
-    return jsonify({"message": "Sell successfully added"}), 200
-
-
-@bp.route('/users/<user_id>/portfolio/history', methods=['GET'])
-def get_portfolio_history(user_id):
-    """
-    Preishistorie aller aktiven Assets des Nutzers abrufen.
-    Wird für den Liniendiagramm auf dem Dashboard verwendet.
-    Nur Assets mit quantity > 0 werden berücksichtigt.
-    """
-    # Nur aktive Assets holen - verkaufte Assets ausblenden
-    user_assets = UserAsset.query.filter_by(user_id=user_id).filter(UserAsset.quantity > 0).all()
+    positions = UserAsset.query.filter_by(user_id=current_user.id).filter(UserAsset.quantity > 0).all()
 
     result = {}
 
-    for user_asset in user_assets:
-        asset = db.session.get(Asset, user_asset.asset_id)
+    for position in positions:
+        asset = db.session.get(Asset, position.asset_id)
 
         # Preishistorie für dieses Asset holen - älteste zuerst
-        prices = PriceHistory.query.filter_by(asset_id=user_asset.asset_id) \
+        prices = PriceHistory.query.filter_by(asset_id=position.asset_id) \
             .order_by(PriceHistory.date.asc()).all()
 
         # Preis × Menge = Portfoliowert für dieses Asset
         result[asset.name] = [
             {
                 "date": price.date.strftime('%Y-%m-%d'),
-                "price": price.price * user_asset.quantity
+                "price": price.price * position.quantity
             }
             for price in prices
             if price.price is not None
@@ -332,85 +262,78 @@ def get_portfolio_history(user_id):
     return jsonify(result), 200
 
 
-@bp.route('/users/<user_id>/watchlist', methods=['POST'])
-def add_to_watchlist(user_id):
-    """Asset zur Watchlist hinzufügen mit aktuellem Preis"""
-    data = request.json
-    asset_id = data['asset_id']
+# ─── WATCHLIST ────────────────────────────────────────────────────────────────
 
-    # Asset aus DB holen um den aktuellen Preis zu speichern
-    asset = db.session.get(Asset, asset_id)
+@bp.route('/me/watchlist', methods=['POST'])
+def add_to_watchlist():
+    """Asset zur Watchlist hinzufügen und den aktuellen Preis merken."""
+    data = parse_body(WatchlistAdd)
+    asset = get_asset_or_404(data.asset_id)
 
-    # Aktuellen Preis holen je nach Asset-Typ
-    price_added = get_current_price(asset)
+    existing = Watchlist.query.filter_by(user_id=current_user.id, asset_id=asset.id).first()
+    if existing:
+        return jsonify({"message": "Asset ist bereits auf der Watchlist"}), 200
 
     # added_at wird automatisch auf aktuelle Zeit gesetzt
-    new_watchlist = Watchlist(user_id=user_id, asset_id=asset_id, price_added=price_added)
-    db.session.add(new_watchlist)
+    db.session.add(Watchlist(user_id=current_user.id, asset_id=asset.id,
+                             price_added=get_current_price(asset)))
     db.session.commit()
 
-    return jsonify({"message": "Watchlist successfully updated"}), 201
+    return jsonify({"message": "Zur Watchlist hinzugefügt"}), 201
 
 
-@bp.route('/users/<user_id>/watchlist', methods=['GET'])
-def get_watchlist(user_id):
-    """Alle Assets der Watchlist eines Nutzers abrufen"""
-    assets = Watchlist.query.filter_by(user_id=user_id).all()
+@bp.route('/me/watchlist', methods=['GET'])
+def get_watchlist():
+    """Alle Assets der eigenen Watchlist."""
+    items = Watchlist.query.filter_by(user_id=current_user.id).all()
 
-    result = []
-    for asset in assets:
-        result.append({
-            "user_id": asset.user_id,
-            "asset_id": asset.asset_id,
-            "price_added": asset.price_added,
-            "added_at": asset.added_at.strftime('%d.%m.%Y') if asset.added_at else '-'
-        })
-
-    return jsonify(result), 200
+    return jsonify([
+        {
+            "asset_id": item.asset_id,
+            "price_added": item.price_added,
+            "added_at": item.added_at.strftime('%d.%m.%Y') if item.added_at else '-'
+        }
+        for item in items
+    ]), 200
 
 
-@bp.route('/users/<user_id>/watchlist/<asset_id>', methods=['DELETE'])
-def delete_asset_from_watchlist(user_id, asset_id):
-    """Asset aus der Watchlist entfernen"""
-    watchlist_item = Watchlist.query.filter_by(user_id=user_id, asset_id=asset_id).first()
+@bp.route('/me/watchlist/<int:asset_id>', methods=['DELETE'])
+def delete_from_watchlist(asset_id):
+    """Asset von der eigenen Watchlist entfernen."""
+    item = Watchlist.query.filter_by(user_id=current_user.id, asset_id=asset_id).first()
 
-    if not watchlist_item:
-        return jsonify({"error": "Item not found"}), 404
+    if not item:
+        raise ApiError(404, 'Nicht auf der Watchlist')
 
-    db.session.delete(watchlist_item)
+    db.session.delete(item)
     db.session.commit()
 
-    return jsonify({"message": "Watchlist successfully updated"}), 200
+    return jsonify({"message": "Von der Watchlist entfernt"}), 200
 
 
-@bp.route('/users/<user_id>/savings-plans', methods=['POST'])
-def add_savings_plan(user_id):
-    """Neuen Sparplan anlegen"""
-    data = request.json
-    asset_id = data['asset_id']
-    amount = data['amount']
-    day_of_month = data['day_of_month']
+# ─── SPARPLÄNE ────────────────────────────────────────────────────────────────
 
-    plan = SavingsPlan(
-        user_id=user_id,
-        asset_id=asset_id,
-        amount=amount,
-        day_of_month=day_of_month
-    )
-    db.session.add(plan)
+@bp.route('/me/savings-plans', methods=['POST'])
+def add_savings_plan():
+    """Neuen Sparplan anlegen."""
+    data = parse_body(SavingsPlanCreate)
+    get_asset_or_404(data.asset_id)
+
+    db.session.add(SavingsPlan(user_id=current_user.id, asset_id=data.asset_id,
+                               amount=data.amount, day_of_month=data.day_of_month))
     db.session.commit()
 
     return jsonify({"message": "Sparplan erfolgreich angelegt"}), 201
 
 
-@bp.route('/users/<user_id>/savings-plans', methods=['GET'])
-def get_savings_plans(user_id):
+@bp.route('/me/savings-plans', methods=['GET'])
+def get_savings_plans():
     """
-    Alle Sparpläne eines Nutzers abrufen, inkl. Asset-Info und ob der
-    Sparplan aktuell fällig ist (Tag im Monat erreicht, seit dem
-    letzten Ausführen noch nicht in diesem Zyklus gebucht).
+    Alle aktiven Sparpläne inkl. Asset-Info und ob der Sparplan aktuell
+    fällig ist (Tag im Monat erreicht, seit dem letzten Ausführen noch
+    nicht in diesem Zyklus gebucht).
     """
-    plans = SavingsPlan.query.filter_by(user_id=user_id, active=True).all()
+    plans = SavingsPlan.query.filter_by(user_id=current_user.id, active=True).all()
 
     today = datetime.now()
     result = []
@@ -440,13 +363,13 @@ def get_savings_plans(user_id):
     return jsonify(result), 200
 
 
-@bp.route('/savings-plans/<plan_id>', methods=['DELETE'])
+@bp.route('/me/savings-plans/<int:plan_id>', methods=['DELETE'])
 def delete_savings_plan(plan_id):
-    """Eigenen Sparplan löschen"""
+    """Eigenen Sparplan löschen."""
     plan = get_own(SavingsPlan, plan_id)
 
     if not plan:
-        return jsonify({"error": "Sparplan nicht gefunden"}), 404
+        raise ApiError(404, 'Sparplan nicht gefunden')
 
     db.session.delete(plan)
     db.session.commit()
@@ -454,61 +377,29 @@ def delete_savings_plan(plan_id):
     return jsonify({"message": "Sparplan gelöscht"}), 200
 
 
-@bp.route('/savings-plans/<plan_id>/execute', methods=['POST'])
+@bp.route('/me/savings-plans/<int:plan_id>/execute', methods=['POST'])
 def execute_savings_plan(plan_id):
     """
     Führt einen fälligen Sparplan aus: holt den aktuellen Live-Preis,
-    berechnet die Menge aus dem festen Euro-Betrag, legt eine normale
-    Kauf-Transaktion an (inkl. UserAsset-Aktualisierung) und schreibt
-    last_executed fort.
+    berechnet die Menge aus dem festen Euro-Betrag, verbucht einen ganz
+    normalen Kauf und schreibt last_executed fort.
     """
     plan = get_own(SavingsPlan, plan_id)
 
     if not plan:
-        return jsonify({"error": "Sparplan nicht gefunden"}), 404
+        raise ApiError(404, 'Sparplan nicht gefunden')
 
     asset = db.session.get(Asset, plan.asset_id)
-
     current_price = get_current_price(asset)
 
     if not current_price:
-        return jsonify({"error": "Aktueller Preis konnte nicht ermittelt werden"}), 500
+        raise ApiError(502, 'Aktueller Preis konnte nicht ermittelt werden')
 
     quantity = round(plan.amount / current_price, 6)
-
-    # Bestehende Position suchen oder neu anlegen - gleiche Logik
-    # wie beim manuellen Kauf über add_buy / add_user_asset
-    user_asset = UserAsset.query.filter_by(user_id=plan.user_id, asset_id=plan.asset_id).first()
-
-    if user_asset:
-        old_value = user_asset.quantity * user_asset.avg_buy_price
-        new_value = quantity * current_price
-        new_quantity = user_asset.quantity + quantity
-        user_asset.avg_buy_price = round((old_value + new_value) / new_quantity, 2)
-        user_asset.quantity = new_quantity
-    else:
-        user_asset = UserAsset(
-            user_id=plan.user_id,
-            asset_id=plan.asset_id,
-            quantity=quantity,
-            avg_buy_price=current_price,
-            status='owned'
-        )
-        db.session.add(user_asset)
-
-    # Kauf in der Transaktionshistorie protokollieren
-    transaction = AssetTransaction(
-        user_id=plan.user_id,
-        asset_id=plan.asset_id,
-        type='buy',
-        quantity=quantity,
-        price=current_price
-    )
-    db.session.add(transaction)
+    record_buy(current_user.id, plan.asset_id, quantity, current_price)
 
     # Sparplan als ausgeführt markieren
     plan.last_executed = datetime.now()
-
     db.session.commit()
 
     return jsonify({
@@ -518,14 +409,16 @@ def execute_savings_plan(plan_id):
     }), 200
 
 
-@bp.route('/users/<user_id>/dividends', methods=['GET'])
-def get_dividends(user_id):
+# ─── DIVIDENDEN ───────────────────────────────────────────────────────────────
+
+@bp.route('/me/dividends', methods=['GET'])
+def get_dividends():
     """
-    Alle verbuchten Dividenden eines Nutzers, neueste zuerst.
-    Enthält Asset-Name und -Symbol, damit das Frontend nicht pro
-    Zeile einen zusätzlichen Request braucht.
+    Alle verbuchten Dividenden, neueste zuerst. Enthält Asset-Name und
+    -Symbol, damit das Frontend nicht pro Zeile einen zusätzlichen
+    Request braucht.
     """
-    dividends = Dividend.query.filter_by(user_id=user_id) \
+    dividends = Dividend.query.filter_by(user_id=current_user.id) \
         .order_by(Dividend.ex_dividend_date.desc()).all()
 
     result = []

@@ -1,5 +1,4 @@
 async function sendMessage() {
-    const userId = currentUserId()
     const input = document.getElementById('chat-input')
     const message = input.value
     if (!message) return
@@ -26,7 +25,7 @@ async function sendMessage() {
     messages.scrollTop = messages.scrollHeight
 
     // Ans Backend schicken
-    const response = await fetch('/chat', {
+    const response = await fetch('/api/v1/me/chat', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({message: message})
@@ -43,9 +42,8 @@ async function sendMessage() {
 
 // Chatverlauf beim Laden der Seite holen
 async function loadChatHistory() {
-    const userId = currentUserId()
 
-    const response = await fetch(`/chat/history/${userId}`, {
+    const response = await fetch('/api/v1/me/chat/history', {
         method: 'GET'
     })
 

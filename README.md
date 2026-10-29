@@ -167,34 +167,36 @@ FinTrack/
 
 ## API-Übersicht
 
+Alle Routen liegen unter `/api/v1` und antworten mit JSON. Persönliche Daten liegen unter `/api/v1/me/...` — welcher Nutzer gemeint ist, erkennt der Server am Anmelde-Cookie, die URLs enthalten nie eine User-ID. Eingaben werden mit Pydantic geprüft; Fehler kommen einheitlich als `{"error": "...", "fields": {...}}` auf Deutsch zurück.
+
 | Methode | Route | Beschreibung |
 |--------|-------|-------------|
-| `POST` | `/register` | Neuen Nutzer registrieren (legt automatisch Standard-Budgetkategorien an) |
-| `POST` | `/login` | Login |
-| `GET` | `/users/<id>` | Nutzerprofil abrufen |
-| `PUT` | `/users/<id>/settings` | Anlage-Einstellungen aktualisieren |
-| `GET` | `/assets/<id>` | Asset-Details mit Live-Preis abrufen |
-| `GET` | `/assets/search` | Asset per Name oder Symbol suchen, legt es bei Bedarf automatisch an und lädt historische Preise |
-| `POST` | `/assets/<id>/prices` | Manuell einen historischen Preiseintrag hinzufügen |
-| `GET` | `/users/<id>/assets` | Portfolio abrufen (Live-Preise) |
-| `POST` | `/users/<id>/assets` | Asset zum Portfolio hinzufügen |
-| `PUT` | `/users/<id>/assets/<id>/buy` | Kauf erfassen (aktualisiert den Durchschnittspreis) |
-| `PUT` | `/users/<id>/assets/<id>/sell` | Verkauf erfassen |
-| `GET` | `/users/<id>/portfolio/history` | Preishistorie für den Chart |
-| `POST` | `/portfolio/analyze` | KI-Portfolio-Analyse |
-| `GET` | `/users/<id>/portfolio/analyses` | Alle vorherigen Analysen abrufen |
-| `POST` | `/chat` | KI-Chat mit Function Calling und Websuche |
-| `GET` | `/chat/history/<id>` | Chatverlauf abrufen |
-| `GET/POST/DELETE` | `/users/<id>/watchlist` | Watchlist verwalten |
-| `POST` | `/update-prices` | Preisaktualisierung manuell anstoßen |
-| `GET` | `/users/<id>/categories` | Alle Budgetkategorien eines Nutzers abrufen |
-| `POST` | `/users/<id>/categories` | Neue Kategorie oder Unterkategorie hinzufügen |
-| `DELETE` | `/categories/<id>` | Kategorie (samt Unterkategorien) löschen |
-| `POST` | `/users/<id>/categories/init-defaults` | Standardkategorien nachträglich für einen bestehenden Nutzer anlegen |
-| `GET` | `/users/<id>/transactions` | Buchungen abrufen, optional gefiltert nach Monat (`?month=YYYY-MM`) |
-| `POST` | `/users/<id>/transactions` | Buchung hinzufügen (einmalig oder wiederkehrend) |
-| `DELETE` | `/transactions/<id>` | Buchung löschen |
-| `GET` | `/users/<id>/budget/summary` | Kumulierter Cash-Bestand und Aufschlüsselung des aktuellen Monats |
+| `POST` | `/auth/register` | Registrieren (nur wenn `ALLOW_REGISTRATION=1`), Code per E-Mail |
+| `POST` | `/auth/verify-email` | E-Mail mit Code bestätigen, danach angemeldet |
+| `POST` | `/auth/resend-verification` | Neuen Code anfordern |
+| `POST` | `/auth/login` · `/auth/logout` | Anmelden (setzt Session-Cookie) · Abmelden |
+| `GET` · `PUT` | `/me` · `/me/settings` | Eigenes Profil · Anlage-Einstellungen speichern |
+| `GET` | `/assets/search?query=` | Asset per Name oder Symbol suchen, legt es bei Bedarf an und lädt die Kurshistorie |
+| `GET` | `/assets/<id>` | Asset mit Live-Preis |
+| `GET` · `POST` | `/me/positions` | Positionen mit Live-Preis · Kauf erfassen (bestehende Position wird ergänzt) |
+| `POST` | `/me/positions/<asset_id>/buy` · `/sell` | Nachkauf · Verkauf |
+| `GET` | `/me/asset-transactions` | Kauf-/Verkaufshistorie |
+| `GET` | `/me/portfolio/history` | Wertverlauf für den Chart |
+| `GET` · `POST` | `/me/analyses` | Bisherige KI-Analysen · neue Analyse erstellen |
+| `GET` · `POST` · `DELETE` | `/me/watchlist` · `/me/watchlist/<asset_id>` | Watchlist |
+| `GET` · `POST` | `/me/savings-plans` | Sparpläne |
+| `DELETE` · `POST` | `/me/savings-plans/<id>` · `/execute` | Sparplan löschen · ausführen |
+| `GET` | `/me/dividends` | Verbuchte Dividenden |
+| `GET` · `POST` | `/me/categories` | Budgetkategorien |
+| `DELETE` | `/me/categories/<id>` | Kategorie löschen (nicht möglich, solange Buchungen daran hängen) |
+| `POST` | `/me/categories/init-defaults` | Standardkategorien nachträglich anlegen |
+| `GET` · `POST` | `/me/transactions` | Buchungen (optional `?month=JJJJ-MM`) · neue Buchung |
+| `DELETE` · `POST` | `/me/transactions/<id>` · `/toggle-pause` | Buchung löschen · wiederkehrende Buchung pausieren/fortsetzen |
+| `GET` | `/me/budget/summary` | Cash-Bestand und aktueller Monat |
+| `POST` · `GET` | `/me/chat` · `/me/chat/history` | KI-Chat · Verlauf |
+| `GET` | `/me/insight` | Letzter täglicher KI-Insight |
+| `POST` | `/admin/update-prices` · `/admin/check-dividends` · `/admin/generate-insights` | Jobs manuell starten (Header `X-Admin-Key`) |
+| `POST` | `/admin/assets/<id>/prices` | Historischen Preis manuell eintragen (Header `X-Admin-Key`) |
 
 ## Erste Schritte
 
@@ -225,13 +227,13 @@ Optionale Variablen:
 |---|---|
 | `SECRET_KEY` | Signiert die Anmelde-Cookies. **In Produktion Pflicht** (sonst startet die App nicht). Lokal empfohlen, sonst ist man nach jedem Neustart abgemeldet. Erzeugen mit `python -c "import secrets; print(secrets.token_hex(32))"` |
 | `ALLOW_REGISTRATION=1` | Erlaubt neue Konten über die Startseite. Standard: geschlossen — Konten dann per `create-user` anlegen (siehe unten). |
-| `ADMIN_API_KEY` | Schlüssel für `/update-prices`, `/check-dividends` und `/generate-insights` (Header `X-Admin-Key`). Ohne ihn sind diese Endpoints gesperrt. |
+| `ADMIN_API_KEY` | Schlüssel für die Routen unter `/api/v1/admin/...` (Header `X-Admin-Key`). Ohne ihn sind diese Endpoints gesperrt. |
 | `FLASK_DEBUG=1` | Debug-Modus beim lokalen Start mit `python app.py`. Wird automatisch abgeschaltet, wenn der Server im Netzwerk erreichbar ist. |
 | `FLASK_HOST=0.0.0.0` | Server im lokalen Netzwerk erreichbar machen, z.B. für Tests vom Handy. Standard ist nur dieser PC (`127.0.0.1`). |
 
 Einen manuellen Job startest du dann so:
 ```bash
-curl -X POST -H "X-Admin-Key: dein_schluessel" http://localhost:5000/update-prices
+curl -X POST -H "X-Admin-Key: dein_schluessel" http://localhost:5000/api/v1/admin/update-prices
 ```
 
 **4. Datenbank anlegen und App starten**
@@ -273,7 +275,7 @@ Die App läuft live auf [Render](https://render.com):
 
 ## Was ich dabei gelernt habe
 
-- Aufbau einer vollständigen, mehrseitigen Flask-REST-API mit über 30 Endpoints
+- Aufbau einer versionierten Flask-REST-API (`/api/v1`) mit über 30 Endpoints, Pydantic-Validierung und einheitlichen Fehlerantworten
 - Integration von OpenAI Function Calling, damit die KI eigenständig Live-Daten abruft, im Web sucht (über Tavily) und auch mehrere gleichzeitige Tool-Aufrufe in einem Zug korrekt verarbeitet
 - Nutzung von Pydantic Structured Output (`response_format`) für zuverlässiges, schema-konformes JSON von LLMs, während numerisch kritische Werte (wie der Gesamtportfoliowert) serverseitig berechnet statt der LLM-Arithmetik überlassen werden
 - Entwurf einer relationalen SQLAlchemy-Datenbank mit 9 verknüpften Modellen, inklusive einer zweistufigen, selbstreferenzierenden Kategorienstruktur für das Haushaltsbuch

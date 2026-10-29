@@ -20,7 +20,7 @@ class TestRegisterRoute:
         und liefert Status 201 zurück"""
         client = app.test_client()
 
-        response = client.post('/register', json={
+        response = client.post('/api/v1/auth/register', json={
             'email': 'neu@test.com',
             'password': 'sicheres_passwort'
         })
@@ -36,7 +36,7 @@ class TestRegisterRoute:
         from fintrack.models import Category
 
         client = app.test_client()
-        client.post('/register', json={
+        client.post('/api/v1/auth/register', json={
             'email': 'kategorien@test.com',
             'password': 'passwort123'
         })
@@ -50,7 +50,7 @@ class TestRegisterRoute:
         """Eine ungültige E-Mail-Adresse wird mit Status 400 abgelehnt"""
         client = app.test_client()
 
-        response = client.post('/register', json={
+        response = client.post('/api/v1/auth/register', json={
             'email': 'keine-email',
             'password': 'passwort123'
         })
@@ -61,12 +61,12 @@ class TestRegisterRoute:
         """Eine bereits registrierte Email kann nicht erneut genutzt werden"""
         client = app.test_client()
 
-        client.post('/register', json={
+        client.post('/api/v1/auth/register', json={
             'email': 'doppelt@test.com',
             'password': 'erstespasswort'
         })
 
-        response = client.post('/register', json={
+        response = client.post('/api/v1/auth/register', json={
             'email': 'doppelt@test.com',
             'password': 'zweitespasswort'
         })
@@ -82,12 +82,12 @@ class TestLoginRoute:
         kann sich nicht einloggen"""
         client = app.test_client()
 
-        client.post('/register', json={
+        client.post('/api/v1/auth/register', json={
             'email': 'unverifiziert@test.com',
             'password': 'meinpasswort'
         })
 
-        response = client.post('/login', json={
+        response = client.post('/api/v1/auth/login', json={
             'email': 'unverifiziert@test.com',
             'password': 'meinpasswort'
         })
@@ -100,7 +100,7 @@ class TestLoginRoute:
         Login mit korrekten Zugangsdaten"""
         client = app.test_client()
 
-        client.post('/register', json={
+        client.post('/api/v1/auth/register', json={
             'email': 'verifiziert@test.com',
             'password': 'meinpasswort'
         })
@@ -112,7 +112,7 @@ class TestLoginRoute:
         user.is_verified = True
         db.session.commit()
 
-        response = client.post('/login', json={
+        response = client.post('/api/v1/auth/login', json={
             'email': 'verifiziert@test.com',
             'password': 'meinpasswort'
         })
@@ -124,12 +124,12 @@ class TestLoginRoute:
         """Ein Login mit falschem Passwort schlägt fehl"""
         client = app.test_client()
 
-        client.post('/register', json={
+        client.post('/api/v1/auth/register', json={
             'email': 'falsch@test.com',
             'password': 'richtiges_passwort'
         })
 
-        response = client.post('/login', json={
+        response = client.post('/api/v1/auth/login', json={
             'email': 'falsch@test.com',
             'password': 'falsches_passwort'
         })

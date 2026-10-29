@@ -1,6 +1,7 @@
 """
 auth/routes.py - Registrierung, Login/Logout, E-Mail-Verifizierung sowie
 das Nutzerprofil mit den Anlage-Einstellungen.
+Registriert unter /api/v1: /auth/... ist öffentlich, /me... nur mit Anmeldung.
 """
 
 # Standard Library
@@ -8,13 +9,15 @@ import re       # Regular Expressions (kurz: Regex) sind Muster um Text zu durch
 from datetime import datetime, timedelta
 
 # Third Party
-from flask import Blueprint, current_app, request, jsonify
+from flask import Blueprint, current_app, jsonify
 from flask_login import current_user, login_user, logout_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Lokale Imports
+from fintrack.api import parse_body
 from fintrack.auth.email import generate_verification_code, send_verification_email
-from fintrack.auth.session import owner_required
+from fintrack.auth.schemas import Credentials, ResendVerification, SettingsUpdate, VerifyEmail
+from fintrack.auth.session import login_required_api
 from fintrack.budget.service import create_default_categories
 from fintrack.extensions import db, limiter
 from fintrack.models import User
@@ -52,7 +55,7 @@ def start_session(user):
     login_user(user, remember=True)
 
 
-@bp.route('/register', methods=['POST'])
+@bp.route('/auth/register', methods=['POST'])
 @limiter.limit("5 per hour")
 def register():
     """
@@ -65,9 +68,9 @@ def register():
     if not current_app.config.get('ALLOW_REGISTRATION'):
         return jsonify({"error": "Die Registrierung ist derzeit geschlossen"}), 403
 
-    data = request.get_json(silent=True) or {}
-    email = normalize_email(data.get('email'))
-    password = data.get('password') or ''
+    data = parse_body(Credentials)
+    email = normalize_email(data.email)
+    password = data.password
 
     if not re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
         return jsonify({"error": "Bitte eine gültige Email eingeben"}), 400
@@ -108,7 +111,7 @@ def register():
     }), 201
 
 
-@bp.route('/login', methods=['POST'])
+@bp.route('/auth/login', methods=['POST'])
 @limiter.limit("10 per minute; 50 per hour")
 def login():
     """
@@ -117,9 +120,9 @@ def login():
     damit niemand ausprobieren kann, welche E-Mails registriert sind.
     Ein Login ist nur möglich, wenn die Email zuvor bestätigt wurde.
     """
-    data = request.get_json(silent=True) or {}
-    password = data.get('password') or ''
-    user = find_user_by_email(data.get('email'))
+    data = parse_body(Credentials)
+    password = data.password
+    user = find_user_by_email(data.email)
 
     password_hash = user.password if user and user.password else _DUMMY_PASSWORD_HASH
     password_ok = check_password_hash(password_hash, password)
@@ -138,7 +141,7 @@ def login():
     return jsonify({"message": "Login successful", "user_id": user.id}), 200
 
 
-@bp.route('/logout', methods=['POST'])
+@bp.route('/auth/logout', methods=['POST'])
 def logout():
     """Meldet den Nutzer auf diesem Gerät ab (löscht das Session-Cookie)."""
     logout_user()
@@ -146,18 +149,21 @@ def logout():
 
 
 @bp.route('/me', methods=['GET'])
+@login_required_api
 def me():
-    """Gibt den angemeldeten Nutzer zurück, oder 401 ohne Anmeldung."""
-    if not current_user.is_authenticated:
-        return jsonify({"error": "Bitte melde dich an"}), 401
+    """Profil des angemeldeten Nutzers inkl. Anlage-Einstellungen - nie das Passwort."""
     return jsonify({
         "id": current_user.id,
         "username": current_user.username,
-        "email": current_user.email
+        "email": current_user.email,
+        "risk_profile": current_user.risk_profile,
+        "investment_experience": current_user.investment_experience,
+        "monthly_budget": current_user.monthly_budget,
+        "investment_horizon": current_user.investment_horizon
     }), 200
 
 
-@bp.route('/verify-email', methods=['POST'])
+@bp.route('/auth/verify-email', methods=['POST'])
 @limiter.limit("10 per 15 minutes")
 def verify_email():
     """
@@ -166,9 +172,9 @@ def verify_email():
     direkt angemeldet. Nach MAX_VERIFICATION_ATTEMPTS Fehlversuchen ist
     der Code ungültig und ein neuer muss angefordert werden.
     """
-    data = request.get_json(silent=True) or {}
-    code = str(data.get('code') or '').strip()
-    user = find_user_by_email(data.get('email'))
+    data = parse_body(VerifyEmail)
+    code = data.code
+    user = find_user_by_email(data.email)
 
     # Unbekannte E-Mail und falscher Code bekommen dieselbe Antwort
     if not user or (not user.is_verified and not user.verification_code):
@@ -197,7 +203,7 @@ def verify_email():
     return jsonify({"message": "Email erfolgreich verifiziert", "user_id": user.id}), 200
 
 
-@bp.route('/resend-verification', methods=['POST'])
+@bp.route('/auth/resend-verification', methods=['POST'])
 @limiter.limit("3 per 15 minutes")
 def resend_verification():
     """
@@ -205,8 +211,8 @@ def resend_verification():
     ist, zu oft falsch eingegeben wurde oder die E-Mail nicht ankam.
     Antwortet für unbekannte E-Mails genauso wie für bekannte.
     """
-    data = request.get_json(silent=True) or {}
-    user = find_user_by_email(data.get('email'))
+    data = parse_body(ResendVerification)
+    user = find_user_by_email(data.email)
 
     if user and not user.is_verified:
         new_code = generate_verification_code()
@@ -221,41 +227,20 @@ def resend_verification():
     return jsonify({"message": "Falls ein unbestätigtes Konto existiert, wurde ein neuer Code verschickt"}), 200
 
 
-@bp.route('/users/<user_id>', methods=['GET'])
-@owner_required
-def get_user(user_id):
-    """Eigenes Nutzerprofil abrufen - Passwort wird nie zurückgegeben!"""
-    return jsonify({
-        "id": current_user.id,
-        "username": current_user.username,
-        "email": current_user.email
-    }), 200
-
-
-@bp.route('/users/<user_id>/settings', methods=['PUT'])
-@owner_required
-def settings(user_id):
+@bp.route('/me/settings', methods=['PUT'])
+@login_required_api
+def settings():
     """
-    Eigene Nutzereinstellungen aktualisieren.
-    Risikoprofil, Erfahrung, Budget und Horizont werden gespeichert.
-    Diese Daten werden vom LLM für personalisierte Antworten verwendet.
+    Eigene Anlage-Einstellungen speichern: Risikoprofil, Erfahrung,
+    Budget und Horizont. Diese Daten nutzt das LLM für personalisierte
+    Antworten. Leere Felder werden als "nicht angegeben" gespeichert.
     """
-    data = request.json
-    risk_profile = data['risk_profile']
-    investment_experience = data['investment_experience']
-    monthly_budget = data['monthly_budget']
-    investment_horizon = data['investment_horizon']
+    data = parse_body(SettingsUpdate)
 
-    # Leeren String zu None umwandeln, da monthly_budget ein Float-Feld ist
-    if monthly_budget == '':
-        monthly_budget = None
-
-    user = current_user
-    user.risk_profile = risk_profile
-    user.investment_experience = investment_experience
-    user.monthly_budget = monthly_budget
-    user.investment_horizon = investment_horizon
-
+    current_user.risk_profile = data.risk_profile
+    current_user.investment_experience = data.investment_experience
+    current_user.monthly_budget = data.monthly_budget
+    current_user.investment_horizon = data.investment_horizon
     db.session.commit()
 
-    return jsonify({"message": "Settings successfully updated"}), 200
+    return jsonify({"message": "Einstellungen gespeichert"}), 200

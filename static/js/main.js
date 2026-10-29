@@ -11,7 +11,7 @@ async function register() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
-    const response = await fetch('/register', {
+    const response = await fetch('/api/v1/auth/register', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({email, password})
@@ -45,7 +45,7 @@ async function verifyEmail() {
         return
     }
 
-    const response = await fetch('/verify-email', {
+    const response = await fetch('/api/v1/auth/verify-email', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({email: pendingEmail, code: code})
@@ -64,7 +64,7 @@ async function verifyEmail() {
 
 
 async function resendVerificationCode() {
-    const response = await fetch('/resend-verification', {
+    const response = await fetch('/api/v1/auth/resend-verification', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({email: pendingEmail})
@@ -84,7 +84,7 @@ async function login() {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
 
-    const response = await fetch('/login', {
+    const response = await fetch('/api/v1/auth/login', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({email, password})

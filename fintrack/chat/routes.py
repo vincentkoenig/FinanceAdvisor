@@ -8,10 +8,12 @@ import json
 from datetime import datetime
 
 # Third Party
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
+from pydantic import Field
 from flask_login import current_user
 
 # Lokale Imports
+from fintrack.api import RequestModel, parse_body
 from fintrack.auth.session import current_user_key, protect_blueprint
 from fintrack.budget.service import calculate_budget_summary
 from fintrack.chat.tools import tools
@@ -20,14 +22,18 @@ from fintrack.market.data import get_crypto_price, get_metal_price, get_stock_pr
 from fintrack.models import ChatHistory
 
 bp = Blueprint('chat', __name__)
-# Nur mit Anmeldung, und nur Zugriff auf die eigenen Daten
+# Nur mit Anmeldung
 protect_blueprint(bp)
 
 # Wie viele Chat-Nachrichten maximal als Kontext ans LLM geschickt werden (Sliding Window)
 MAX_CHAT_HISTORY = 20
 
 
-@bp.route('/chat', methods=['POST'])
+class ChatMessage(RequestModel):
+    message: str = Field(min_length=1, max_length=4000)
+
+
+@bp.route('/me/chat', methods=['POST'])
 @limiter.limit("20 per minute; 300 per day", key_func=current_user_key)
 def chat():
     """
@@ -35,8 +41,7 @@ def chat():
     Nutzt Function Calling damit das LLM Live-Preise abrufen kann.
     Chatverlauf wird in der DB gespeichert für Kontext bei nächster Nachricht.
     """
-    data = request.json
-    message = data['message']
+    message = parse_body(ChatMessage).message
 
     # Immer der angemeldete Nutzer - eine user_id im Body wird ignoriert
     user = current_user
@@ -177,10 +182,10 @@ def chat():
     return jsonify({"reply": llm_reply}), 200
 
 
-@bp.route('/chat/history/<user_id>', methods=['GET'])
-def get_chat_history(user_id):
+@bp.route('/me/chat/history', methods=['GET'])
+def get_chat_history():
     """Chatverlauf eines Nutzers abrufen"""
-    chat_history = ChatHistory.query.filter_by(user_id=user_id).all()
+    chat_history = ChatHistory.query.filter_by(user_id=current_user.id).order_by(ChatHistory.id).all()
 
     result = []
     for entry in chat_history:
