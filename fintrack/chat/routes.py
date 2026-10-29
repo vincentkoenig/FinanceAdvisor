@@ -18,7 +18,9 @@ from fintrack.auth.session import current_user_key, protect_blueprint
 from fintrack.budget.service import calculate_budget_summary
 from fintrack.chat.tools import tools
 from fintrack.extensions import db, get_openai_client, limiter
-from fintrack.market.data import get_crypto_price, get_metal_price, get_stock_price, search_web
+from fintrack.market.data import get_crypto_price, search_web
+from fintrack.market.service import quote_in_eur
+from fintrack.market.yahoo import yahoo_symbol
 from fintrack.models import ChatHistory
 
 bp = Blueprint('chat', __name__)
@@ -139,9 +141,9 @@ def chat():
             if function_name == "get_crypto_price":
                 result = get_crypto_price(function_args['coin_id'])
             elif function_name == "get_stock_price":
-                result = get_stock_price(function_args['symbol'])
+                result = quote_in_eur(function_args['symbol'])
             elif function_name == "get_metal_price":
-                result = get_metal_price(function_args['symbol'])
+                result = quote_in_eur(yahoo_symbol(function_args['symbol'].upper()))
             elif function_name == "search_web":
                 result = search_web(function_args['query'])
             elif function_name == "get_budget_status":

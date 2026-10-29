@@ -17,7 +17,7 @@ from fintrack.account.transfer import export_user_data, import_user_data
 from fintrack.api import ApiError
 from fintrack.auth.session import current_user_key, protect_blueprint
 from fintrack.extensions import db, limiter
-from fintrack.portfolio.service import load_price_history
+from fintrack.market.service import prepare_new_asset
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +72,7 @@ def import_data():
     # gerade nicht erreichbar ist
     for asset in new_assets:
         try:
-            load_price_history(asset)
+            prepare_new_asset(asset)
         except Exception:
             db.session.rollback()
             logger.exception('Kurshistorie für %s konnte nicht geladen werden', asset.symbol)

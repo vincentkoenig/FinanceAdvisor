@@ -1,0 +1,89 @@
+name: Täglicher Lauf
+
+# Weckt den Server auf und startet den täglichen Lauf (Kurse und
+# Wechselkurse, Dividenden, Insights). Auf dem kostenlosen Render-Tarif
+# schläft der Server nach 15 Minuten ohne Besuch - dann kann der Scheduler
+# im Server selbst nicht laufen. Läuft er doch, verhindern die Sperre im
+# Server und die Insight-Prüfung pro Tag, dass etwas doppelt passiert.
+
+on:
+  schedule:
+    - cron: '30 21 * * *'  # täglich 21:30 UTC (22:30 / 23:30 deutscher Zeit, nach US-Börsenschluss)
+  workflow_dispatch:       # manuell starten: Actions -> Täglicher Lauf -> Run workflow
+
+permissions:
+  contents: read
+
+concurrency:
+  group: daily-jobs
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      APP_URL: ${{ vars.APP_URL || 'https://financeadvisor-snxz.onrender.com' }}
+      ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
+
+    steps:
+      - name: Secret prüfen
+        run: |
+          if [ -z "$ADMIN_API_KEY" ]; then
+            echo "::error::ADMIN_API_KEY fehlt (Settings -> Secrets and variables -> Actions)."
+            exit 1
+          fi
+
+      - name: Server aufwecken
+        # Der erste Aufruf nach dem Schlafen dauert bis zu einer Minute
+        run: |
+          for attempt in $(seq 1 10); do
+            if curl -fsS -o /dev/null --max-time 90 "$APP_URL/"; then
+              echo "Server ist wach."
+              exit 0
+            fi
+            echo "Noch nicht erreichbar (Versuch $attempt) - warte 15 Sekunden."
+            sleep 15
+          done
+          echo "::error::Server nicht erreichbar."
+          exit 1
+
+      - name: Täglichen Lauf starten
+        run: |
+          code=$(curl -sS -o response.json -w '%{http_code}' --max-time 60 -X POST \
+            -H "X-Admin-Key: $ADMIN_API_KEY" "$APP_URL/api/v1/admin/run-daily-jobs")
+          cat response.json; echo
+          # 409 = es läuft schon ein Lauf (z.B. vom Scheduler) - dann auf ihn warten
+          if [ "$code" != "202" ] && [ "$code" != "409" ]; then
+            echo "::error::Start fehlgeschlagen (HTTP $code)."
+            exit 1
+          fi
+
+      - name: Auf das Ende warten
+        run: |
+          for attempt in $(seq 1 100); do
+            sleep 15
+            if ! curl -fsS -o status.json --max-time 30 \
+                -H "X-Admin-Key: $ADMIN_API_KEY" "$APP_URL/api/v1/admin/jobs/status"; then
+              echo "Status nicht abrufbar (Versuch $attempt)."
+              continue
+            fi
+            state=$(jq -r '.state' status.json)
+            echo "Zustand: $state"
+            if [ "$state" = "done" ]; then
+              jq . status.json
+              exit 0
+            fi
+            if [ "$state" = "failed" ]; then
+              jq . status.json
+              echo "::error::Der tägliche Lauf ist fehlgeschlagen."
+              exit 1
+            fi
+            if [ "$state" = "idle" ]; then
+              # Server wurde neu gestartet und hat den Zustand verloren
+              echo "::error::Der Server kennt keinen Lauf mehr (Neustart?)."
+              exit 1
+            fi
+          done
+          echo "::error::Zeitüberschreitung - der Lauf ist nach 25 Minuten nicht fertig."
+          exit 1

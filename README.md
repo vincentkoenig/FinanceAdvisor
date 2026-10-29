@@ -14,9 +14,10 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 ### 📊 Portfolio & Watchlist
 - Aktien, ETFs, Kryptowährungen und Edelmetalle hinzufügen, kaufen und verkaufen
 - Assets können per Name (z.B. „Tesla") hinzugefügt werden — das passende Symbol wird automatisch über **yfinance** aufgelöst
-- Live-Preise werden bei jedem Seitenaufruf über **yfinance** und die **CoinGecko API** abgerufen
+- Live-Preise kommen über **yfinance** in der Handelswährung des Titels und werden mit dem aktuellen Wechselkurs in Euro umgerechnet — Euro-Titel wie SAP.DE oder BTC-EUR bleiben unverändert, Kurse in Pence (London) werden in Pfund umgerechnet
 - Automatische Neuberechnung des durchschnittlichen Kaufpreises bei weiteren Käufen
-- Historische Preise werden beim Hinzufügen eines neuen Assets automatisch für 1 Jahr geladen, zusätzlich sorgt ein Hintergrund-Scheduler (**APScheduler**) für tägliche Preis-Snapshots inklusive Lückenfüllung für eine durchgehende Chart-Historie
+- Historische Schlusskurse werden beim Hinzufügen eines neuen Assets für 1 Jahr geladen und in der Handelswährung gespeichert, dazu die täglichen Wechselkurse — im Chart wird jeder Tag mit seinem eigenen Wechselkurs in Euro umgerechnet
+- Ein täglicher Lauf (abends nach US-Börsenschluss) lädt die letzten 7 Tage neu und überschreibt sie: Zwischenstände werden so durch Schlusskurse ersetzt und ausgefallene Läufe automatisch nachgeholt. Danach werden Dividenden (mit dem Wechselkurs am Ex-Tag) verbucht und die KI-Insights erzeugt
 - Interaktiver Portfolio-Wert-Chart mit wählbaren Zeiträumen (1W / 1M / YTD / 1J / Max), mit vorwärts aufgefüllten Preisen, damit Wochenenden/Feiertage und neu hinzugefügte Assets den Chart nicht verzerren
 - Sortierbare Positionstabelle (nach Titel, Kaufpreis, Positionswert, Gewinn/Verlust)
 - Allokations-Donut-Chart mit dynamisch generierten, eindeutigen Farben pro Asset sowie dem Gesamtportfoliowert in der Mitte
@@ -97,7 +98,7 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 - **Pydantic** — Structured-Output-Parsing für die Portfolio-Analyse
 - **yfinance** — Kursdaten für Aktien, ETFs und Edelmetalle, historische Preise und Asset-Suche per Name
 - **CoinGecko API** — Kryptowährungskurse
-- **APScheduler** — Hintergrund-Scheduler für tägliche Preis-Snapshots und Lückenfüllung
+- **APScheduler** + **GitHub Actions** — täglicher Lauf für Kurse, Wechselkurse, Dividenden und Insights
 - **MCP (Model Context Protocol)** — eigenständiger Server, der App-Daten als Tools für Claude Desktop bereitstellt
 - **Gunicorn** — Produktions-WSGI-Server
 - **werkzeug** — Passwort-Hashing und Sicherheit
@@ -118,7 +119,7 @@ FinTrack/
 │   ├── api.py                  # Eingabeprüfung (Pydantic) und einheitliche JSON-Fehler der API
 │   ├── database.py             # flask upgrade-db: Migrationen ausführen, alte Datenbanken übernehmen
 │   ├── models.py               # SQLAlchemy-Modelle + Pydantic-Schemas für Structured Output
-│   ├── jobs.py                 # APScheduler — Preise, Dividenden und Insights täglich
+│   ├── jobs.py                 # Täglicher Lauf (Kurse, Dividenden, Insights) im Hintergrund, Scheduler
 │   ├── pages.py                # Routen, die die HTML-Seiten ausliefern
 │   ├── auth/                   # Registrierung, Login/Session, Verifizierung, Profil, CLI (create-user, set-password)
 │   ├── account/                # Export und Import aller eigenen Daten
@@ -205,7 +206,9 @@ Alle Routen liegen unter `/api/v1` und antworten mit JSON. Persönliche Daten li
 | `GET` | `/me/insight` | Letzter täglicher KI-Insight |
 | `GET` | `/me/export` | Alle eigenen Daten als JSON-Datei herunterladen |
 | `POST` | `/me/import` | Exportdatei in ein leeres Konto einspielen (alles oder nichts) |
-| `POST` | `/admin/update-prices` · `/admin/check-dividends` · `/admin/generate-insights` | Jobs manuell starten (Header `X-Admin-Key`) |
+| `POST` | `/admin/run-daily-jobs` | Kompletten täglichen Lauf im Hintergrund starten (202, bei laufendem Job 409; Header `X-Admin-Key`) |
+| `POST` | `/admin/update-prices` · `/admin/check-dividends` · `/admin/generate-insights` | Einzelne Jobs im Hintergrund starten (Header `X-Admin-Key`) |
+| `GET` | `/admin/jobs/status` | Zustand und Ergebnis des letzten Laufs (Header `X-Admin-Key`) |
 | `POST` | `/admin/assets/<id>/prices` | Historischen Preis manuell eintragen (Header `X-Admin-Key`) |
 
 ## Erste Schritte
@@ -241,7 +244,7 @@ Optionale Variablen:
 | `FLASK_DEBUG=1` | Debug-Modus beim lokalen Start mit `python app.py`. Wird automatisch abgeschaltet, wenn der Server im Netzwerk erreichbar ist. |
 | `FLASK_HOST=0.0.0.0` | Server im lokalen Netzwerk erreichbar machen, z.B. für Tests vom Handy. Standard ist nur dieser PC (`127.0.0.1`). |
 
-Einen manuellen Job startest du dann so:
+Einen manuellen Job startest du dann so (er läuft im Hintergrund, das Ergebnis steht danach unter `/api/v1/admin/jobs/status`):
 ```bash
 curl -X POST -H "X-Admin-Key: dein_schluessel" http://localhost:5000/api/v1/admin/update-prices
 ```
@@ -281,6 +284,7 @@ Die App läuft live auf [Render](https://render.com):
 - **Web Service** mit dem Startbefehl `python -m flask --app "fintrack:create_app()" upgrade-db && gunicorn app:app --workers=1` — erst werden ausstehende Datenbank-Migrationen ausgeführt, dann startet der Server (ein einzelner Worker ist nötig, damit der Preis-Update-Scheduler nicht mehrfach parallel läuft)
 - **PostgreSQL**-Datenbank bei [Neon](https://neon.tech) (kostenloser Tarif, läuft im Gegensatz zur kostenlosen Render-Datenbank nicht ab), verbunden über die Umgebungsvariable `DATABASE_URL`
 - Umgebungsvariablen (`OPENAI_API_KEY`, `COINGECKO_API_KEY`, `TAVILY_API_KEY`, `DATABASE_URL`) direkt im Render-Dashboard hinterlegt, nie im Repository gespeichert
+- Täglicher Lauf über GitHub Actions ([`daily-jobs.yml`](./.github/workflows/daily-jobs.yml), 21:30 UTC): weckt den schlafenden Server auf, startet `/api/v1/admin/run-daily-jobs` und wartet auf das Ergebnis. Braucht das Repository-Secret `ADMIN_API_KEY` (derselbe Wert wie bei Render). Läuft der Server ohnehin, startet zusätzlich der eingebaute Scheduler um 22:30 Uhr deutscher Zeit — eine Sperre verhindert doppelte Läufe
 - Nächtliches, verschlüsseltes Datenbank-Backup mit automatischem Wiederherstellungstest über GitHub Actions — Einrichtung und Wiederherstellung siehe [`docs/BACKUP.md`](./docs/BACKUP.md)
 
 ## Was ich dabei gelernt habe
