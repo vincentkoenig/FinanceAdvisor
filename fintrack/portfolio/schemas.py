@@ -15,6 +15,12 @@ class AssetSearchQuery(RequestModel):
     query: str = Field(min_length=1, max_length=100)
 
 
+class AssetCreate(RequestModel):
+    """Ein Treffer aus der Suche, den der Nutzer ausgewählt hat."""
+    symbol: str = Field(min_length=1, max_length=30, pattern=r'^[A-Za-z0-9.=^-]+$')
+    name: Optional[str] = Field(default=None, max_length=200)
+
+
 class PositionCreate(RequestModel):
     """Erster Kauf eines Assets (oder weiterer Kauf, falls schon im Depot)."""
     asset_id: PositiveInt

@@ -339,7 +339,6 @@ function hideAddPosition() {
 async function addPosition() {
 
     // Werte aus dem Modal holen
-    const symbol = document.getElementById('position-symbol').value
     const quantity = document.getElementById('position-quantity').value
     const avgBuyPrice = document.getElementById('position-price').value
 
@@ -363,14 +362,9 @@ async function addPosition() {
         return
     }
 
-    // Schritt 1: Asset suchen oder automatisch erstellen
-    const searchResponse = await fetch(`/api/v1/assets/search?query=${encodeURIComponent(symbol)}`)
-    const asset = await searchResponse.json()
-
-    if (!searchResponse.ok) {
-        showToast('Asset nicht gefunden!', 'error')
-        return
-    }
+    // Schritt 1: ausgewählten Suchtreffer holen bzw. anlegen
+    const asset = await resolveAssetPicker('position-symbol')
+    if (!asset) return
 
     // Schritt 2: Asset dem Nutzer hinzufügen
     const response = await fetch('/api/v1/me/positions', {
@@ -389,6 +383,7 @@ async function addPosition() {
 
     if (response.ok) {
         showToast('Position hinzugefügt!')
+        clearAssetPicker('position-symbol')
         // Modal schließen
         hideAddPosition()
         // Dashboard neu laden
@@ -587,15 +582,8 @@ function switchTab(tab) {
 
 
 async function addToWatchlist() {
-    const query = document.getElementById('asset-search').value
-
-    const searchResponse = await fetch(`/api/v1/assets/search?query=${encodeURIComponent(query)}`)
-    const asset = await searchResponse.json()
-
-    if (!searchResponse.ok) {
-        showToast('Asset nicht gefunden!')
-        return
-    }
+    const asset = await resolveAssetPicker('asset-search')
+    if (!asset) return
 
     const response = await fetch('/api/v1/me/watchlist', {
         method: 'POST',
@@ -607,7 +595,7 @@ async function addToWatchlist() {
 
     if (response.ok) {
         showToast('Asset hinzugefügt!')
-        document.getElementById('asset-search').value = ''
+        clearAssetPicker('asset-search')
         loadWatchlist()
     } else {
         showToast(data.error, 'error')
@@ -848,7 +836,6 @@ function hideAddSavingsPlan() {
 
 
 async function addSavingsPlan() {
-    const symbol = document.getElementById('savings-plan-symbol').value
     const amount = document.getElementById('savings-plan-amount').value
     const day = document.getElementById('savings-plan-day').value
 
@@ -861,14 +848,9 @@ async function addSavingsPlan() {
         return
     }
 
-    // Asset suchen oder automatisch erstellen, gleiche Logik wie bei addPosition
-    const searchResponse = await fetch(`/api/v1/assets/search?query=${encodeURIComponent(symbol)}`)
-    const asset = await searchResponse.json()
-
-    if (!searchResponse.ok) {
-        showToast('Asset nicht gefunden!', 'error')
-        return
-    }
+    // Ausgewählten Suchtreffer holen bzw. anlegen, wie bei addPosition
+    const asset = await resolveAssetPicker('savings-plan-symbol')
+    if (!asset) return
 
     const response = await fetch('/api/v1/me/savings-plans', {
         method: 'POST',
@@ -882,6 +864,7 @@ async function addSavingsPlan() {
 
     if (response.ok) {
         showToast('Sparplan angelegt!')
+        clearAssetPicker('savings-plan-symbol')
         hideAddSavingsPlan()
         loadSavingsPlans()
     } else {
