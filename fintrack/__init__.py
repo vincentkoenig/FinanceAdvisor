@@ -84,6 +84,7 @@ def create_app(config_name=None, config_overrides=None):
         click.echo(messages[action])
 
     from fintrack import pages
+    from fintrack.account import routes as account_routes
     from fintrack.admin import routes as admin_routes
     from fintrack.auth import routes as auth_routes
     from fintrack.budget import routes as budget_routes
@@ -97,8 +98,8 @@ def create_app(config_name=None, config_overrides=None):
     # Seiten über eine Login-Umleitung, Auth über login_required_api an den
     # /me-Routen, Admin über den X-Admin-Key
     app.register_blueprint(pages.bp)
-    for blueprint in (auth_routes.bp, portfolio_routes.bp, analysis.bp,
-                      budget_routes.bp, chat_routes.bp, insights_routes.bp):
+    for blueprint in (auth_routes.bp, portfolio_routes.bp, analysis.bp, budget_routes.bp,
+                      chat_routes.bp, insights_routes.bp, account_routes.bp):
         app.register_blueprint(blueprint, url_prefix=API_PREFIX)
     app.register_blueprint(admin_routes.bp, url_prefix=f'{API_PREFIX}/admin')
 

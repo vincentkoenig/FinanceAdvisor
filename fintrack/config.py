@@ -65,6 +65,10 @@ class Config:
     # Mindestlänge für neue Passwörter
     PASSWORD_MIN_LENGTH = 10
 
+    # Größte erlaubte Anfrage (z.B. eine Import-Datei) - schützt den Server
+    # vor riesigen Uploads. 10 MB reichen für viele Jahre an Buchungen.
+    MAX_CONTENT_LENGTH = 10 * 1024 * 1024
+
     # Begrenzung der Anfragen (Flask-Limiter) - Speicher im Prozess reicht,
     # da die App mit genau einem Gunicorn-Worker läuft
     RATELIMIT_STORAGE_URI = 'memory://'

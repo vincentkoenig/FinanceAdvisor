@@ -112,6 +112,7 @@ def register_error_handlers(app):
         messages = {
             404: 'Nicht gefunden',
             405: 'Diese Methode ist hier nicht erlaubt',
+            413: 'Die Datei ist zu groß (höchstens 10 MB)',
             429: 'Zu viele Anfragen. Bitte warte etwas und versuche es dann erneut.',
         }
         return jsonify({"error": messages.get(exc.code, exc.description)}), exc.code

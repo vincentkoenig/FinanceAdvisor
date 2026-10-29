@@ -32,3 +32,16 @@
     padding: 12px 24px !important;
     align-self: flex-start;
 }
+.settings-hint {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.5;
+    max-width: 60ch;
+}
+
+/* Der Export ist ein Link, soll aber wie die übrigen Buttons aussehen */
+a.settings-button {
+    text-decoration: none;
+    text-align: center;
+    display: inline-block;
+}
