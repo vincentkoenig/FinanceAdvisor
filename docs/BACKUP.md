@@ -79,6 +79,23 @@ Datenbank setzen und auf Render neu deployen.
 Die entschlüsselte `fintrack.dump` enthält alle Daten im Klartext und sollte
 danach gelöscht werden.
 
+## Eigener Export als dritte Sicherung
+
+Unabhängig von Neon und den nächtlichen Backups kann jeder Nutzer seine
+Daten selbst sichern: **Einstellungen → Meine Daten → Daten exportieren**
+lädt eine JSON-Datei mit allen eigenen Daten herunter (Buchungen,
+Kategorien, Portfolio, Käufe/Verkäufe, Sparpläne, Watchlist, Dividenden,
+Chats, Analysen, Einstellungen). Kurshistorien sind nicht enthalten, die
+lädt die App selbst.
+
+Die Datei ist unabhängig von der Datenbank (Format `fintrack-export`,
+Version 1, beschrieben in `fintrack/account/schemas.py`). Über **Daten
+importieren** lässt sie sich in ein **leeres** Konto einspielen, z.B. nach
+einem Umzug auf eine neue Datenbank: Konto anlegen, Datei importieren.
+Der Import prüft die Datei vollständig und speichert alles oder nichts.
+
+Die Datei enthält die Finanzdaten im Klartext — sicher aufbewahren.
+
 ## Gut zu wissen
 
 - **Pause nach 60 Tagen:** GitHub schaltet zeitgesteuerte Workflows in

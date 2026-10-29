@@ -10,7 +10,8 @@ from datetime import datetime
 
 from fintrack.api import ApiError
 from fintrack.extensions import db
-from fintrack.models import AssetTransaction, UserAsset
+from fintrack.market.data import get_historical_prices
+from fintrack.models import AssetTransaction, PriceHistory, UserAsset
 
 
 def record_buy(user_id, asset_id, quantity, price, date=None):
@@ -67,3 +68,25 @@ def record_sell(user_id, asset_id, quantity, price=None):
                                     quantity=quantity, date=datetime.now(),
                                     price=price if price is not None else position.avg_buy_price))
     return position
+
+
+def load_price_history(asset):
+    """
+    Lädt die Kurse des letzten Jahres für ein neu angelegtes Asset, damit
+    der Wertverlauf-Chart sofort Daten hat. Committet selbst. Gibt die
+    Anzahl gespeicherter Kurse zurück (0, wenn die Datenquelle nichts liefert).
+    """
+    historical_prices = get_historical_prices(asset.symbol)
+    if not historical_prices:
+        return 0
+
+    for price_data in historical_prices:
+        db.session.add(PriceHistory(
+            asset_id=asset.id,
+            date=datetime.strptime(price_data['date'], '%Y-%m-%d'),
+            price=price_data['price'],
+            currency='EUR'
+        ))
+    db.session.commit()
+    print(f"Historische Preise für {asset.symbol} gespeichert!")
+    return len(historical_prices)

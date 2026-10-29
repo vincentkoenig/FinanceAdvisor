@@ -51,6 +51,7 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 - Jeder Nutzer sieht und ändert nur seine eigenen Daten — automatisch für jede Route geprüft
 - Schutz gegen Durchprobieren: Begrenzung der Login-, Registrierungs- und Code-Versuche (Flask-Limiter), Verifizierungscode nach 5 Fehlversuchen gesperrt, einheitliche Fehlermeldung bei falscher E-Mail oder falschem Passwort
 - Registrierung abschaltbar (`ALLOW_REGISTRATION`), Konten und Passwörter alternativ per Kommandozeile
+- **Export und Import aller eigenen Daten** als JSON-Datei (Einstellungen → Meine Daten) — unabhängig von der Datenbank, damit ein Umzug auf einen anderen Server oder Anbieter jederzeit möglich ist
 - Persönliche Einstellungen: Risikoprofil, Anlageerfahrung, monatliches Budget, Anlagehorizont
 - Nutzerprofil-Daten fließen in jeden System-Prompt der KI ein, für personalisierte Beratung
 - Dark-/Light-Mode-Umschalter, seiten- und sitzungsübergreifend gespeichert
@@ -195,6 +196,8 @@ Alle Routen liegen unter `/api/v1` und antworten mit JSON. Persönliche Daten li
 | `GET` | `/me/budget/summary` | Cash-Bestand und aktueller Monat |
 | `POST` · `GET` | `/me/chat` · `/me/chat/history` | KI-Chat · Verlauf |
 | `GET` | `/me/insight` | Letzter täglicher KI-Insight |
+| `GET` | `/me/export` | Alle eigenen Daten als JSON-Datei herunterladen |
+| `POST` | `/me/import` | Exportdatei in ein leeres Konto einspielen (alles oder nichts) |
 | `POST` | `/admin/update-prices` · `/admin/check-dividends` · `/admin/generate-insights` | Jobs manuell starten (Header `X-Admin-Key`) |
 | `POST` | `/admin/assets/<id>/prices` | Historischen Preis manuell eintragen (Header `X-Admin-Key`) |
 

@@ -17,13 +17,12 @@ from flask_login import current_user
 from fintrack.api import ApiError, parse_body, parse_query
 from fintrack.auth.session import get_own, protect_blueprint
 from fintrack.extensions import db
-from fintrack.market.data import get_historical_prices
 from fintrack.market.prices import get_current_price
 from fintrack.models import (Asset, AssetTransaction, Dividend, PriceHistory,
                              SavingsPlan, UserAsset, Watchlist)
 from fintrack.portfolio.schemas import (AssetSearchQuery, BuyTrade, PositionCreate,
                                         SavingsPlanCreate, SellTrade, WatchlistAdd)
-from fintrack.portfolio.service import record_buy, record_sell
+from fintrack.portfolio.service import load_price_history, record_buy, record_sell
 
 bp = Blueprint('portfolio', __name__)
 # Nur mit Anmeldung
@@ -103,19 +102,7 @@ def search_asset():
                 db.session.add(asset)
                 db.session.commit()
 
-                historical_prices = get_historical_prices(symbol)
-
-                if historical_prices:
-                    for price_data in historical_prices:
-                        new_price = PriceHistory(
-                            asset_id=asset.id,
-                            date=datetime.strptime(price_data['date'], '%Y-%m-%d'),
-                            price=price_data['price'],
-                            currency='EUR'
-                        )
-                        db.session.add(new_price)
-                    db.session.commit()
-                    print(f"Historische Preise für {symbol} gespeichert!")
+                load_price_history(asset)
 
         except Exception as e:
             print(f"Error searching asset: {e}")

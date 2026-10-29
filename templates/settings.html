@@ -84,6 +84,23 @@
 
                 <button class="btn-primary settings-button" onclick="saveSettings()">Speichern</button>
             </div>
+
+            <div class="settings-card glass-card">
+                <h3>Meine Daten</h3>
+                <p class="settings-hint">
+                    Lade alle deine Daten als Datei herunter: Buchungen, Kategorien, Portfolio,
+                    Käufe und Verkäufe, Sparpläne, Watchlist, Dividenden, Chats und Analysen.
+                    Bewahre sie an einem sicheren Ort auf – sie enthält deine Finanzdaten im Klartext.
+                </p>
+                <a class="btn-primary settings-button" href="/api/v1/me/export" download>Daten exportieren</a>
+
+                <p class="settings-hint">
+                    Eine Exportdatei lässt sich in ein <strong>leeres</strong> Konto einspielen,
+                    z.B. nach einem Umzug auf einen neuen Server.
+                </p>
+                <input type="file" id="import-file" accept="application/json,.json">
+                <button class="btn-secondary settings-button" onclick="importData()">Daten importieren</button>
+            </div>
         </div>
 
     </div>

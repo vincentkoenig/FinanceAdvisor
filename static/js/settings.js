@@ -43,3 +43,42 @@ async function saveSettings() {
     }
 
 }
+
+// Exportdatei einlesen und in das (leere) Konto einspielen
+async function importData() {
+    const fileInput = document.getElementById('import-file')
+    const file = fileInput.files[0]
+
+    if (!file) {
+        showToast('Bitte zuerst eine Exportdatei auswählen!', 'error')
+        return
+    }
+
+    let payload
+    try {
+        payload = JSON.parse(await file.text())
+    } catch {
+        showToast('Die Datei ist keine gültige Exportdatei.', 'error')
+        return
+    }
+
+    if (!confirm('Daten aus dieser Datei in dein Konto importieren? Das geht nur, solange dein Konto noch keine eigenen Daten enthält.')) {
+        return
+    }
+
+    const response = await fetch('/api/v1/me/import', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    })
+    const data = await response.json().catch(() => ({}))
+
+    if (response.ok) {
+        const counts = data.imported
+        showToast(`Importiert: ${counts.transactions} Buchungen, ${counts.positions} Positionen, ${counts.categories} Kategorien`)
+        fileInput.value = ''
+        loadSettings()
+    } else {
+        showToast(data.error || 'Import fehlgeschlagen', 'error')
+    }
+}
