@@ -1,41 +1,64 @@
-from mcp.server.mcpserver import MCPServer
-import sys
-import os
+"""
+server.py - MCP-Server, der FinTrack-Daten für MCP-fähige Clients wie
+Claude Desktop bereitstellt (Portfolio, Haushaltsbuch, neue Buchungen).
 
-# Absoluten Pfad zum Projekt-Root berechnen - unabhängig davon,
-# aus welchem Arbeitsverzeichnis der Server gestartet wird
-# (Claude Desktop startet ihn z.B. aus C:\Windows\system32,
-# nicht aus dem Projektordner selbst)
+Läuft lokal über stdio und nutzt dieselbe App, dieselben Modelle und
+dieselbe Berechnungslogik wie die Web-App. Konfiguration über
+Umgebungsvariablen (z.B. im "env"-Block der Claude-Desktop-Konfiguration):
+
+- FINTRACK_USER_EMAIL  E-Mail des Kontos, auf das der Server zugreift (Pflicht)
+- DATABASE_URL         optional: Datenbank, z.B. die Neon-Datenbank.
+                       Ohne Angabe die lokale SQLite-Datei instance/finance_advisor.db
+"""
+
+import os
+import sys
+from datetime import datetime
+
+# Projekt-Root in den Suchpfad - Claude Desktop startet den Server aus
+# einem beliebigen Arbeitsverzeichnis (z.B. C:\Windows\system32)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, PROJECT_ROOT)
 
-from flask import Flask
-from fintrack.models import db, User, Asset, UserAsset, Category, Transaction
+from mcp.server.mcpserver import MCPServer
+
+from fintrack import create_app
+from fintrack.auth.routes import find_user_by_email
 from fintrack.budget.service import calculate_budget_summary
-from datetime import datetime
+from fintrack.extensions import db
+from fintrack.models import Asset, Category, Transaction, UserAsset
 
-# Absoluter Pfad zur Datenbank-Datei, damit es unabhängig vom
-# Arbeitsverzeichnis funktioniert
-DB_PATH = os.path.join(PROJECT_ROOT, 'instance', 'finance_advisor.db')
+# Gleiche App wie die Web-App, aber ohne Scheduler (den startet nur app.py)
+app = create_app()
 
-db_app = Flask(__name__)
-db_app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
-# instance_path explizit setzen, damit Flask nicht versucht einen
-# Ordner relativ zum (unbekannten) Arbeitsverzeichnis anzulegen
-db_app.instance_path = os.path.join(PROJECT_ROOT, 'instance')
-db.init_app(db_app)
+mcp = MCPServer("FinTrack")
 
-# Feste User-ID für den Start - MCP-Server läuft standalone ohne
-# Login/Session, Claude Desktop "meldet sich" nicht als Nutzer an
-DEFAULT_USER_ID = 1
 
-mcp = MCPServer("FinanceAdvisor")
+class UserNotConfigured(Exception):
+    """FINTRACK_USER_EMAIL fehlt oder passt zu keinem Konto."""
+
+
+def current_user():
+    """
+    Das Konto, auf das der Server zugreift - festgelegt über
+    FINTRACK_USER_EMAIL statt einer fest eingebauten User-ID.
+    Muss innerhalb eines App-Kontexts aufgerufen werden.
+    """
+    email = os.getenv('FINTRACK_USER_EMAIL')
+    if not email:
+        raise UserNotConfigured(
+            'FINTRACK_USER_EMAIL ist nicht gesetzt. Trage die E-Mail deines '
+            'FinTrack-Kontos im "env"-Block der MCP-Konfiguration ein.')
+    user = find_user_by_email(email)
+    if not user:
+        raise UserNotConfigured(f'Kein FinTrack-Konto für {email} gefunden.')
+    return user
 
 
 @mcp.tool()
 def hello_portfolio() -> str:
     """Gibt eine Testnachricht zurück, um die Verbindung zu prüfen."""
-    return "Verbindung zum FinanceAdvisor MCP-Server steht!"
+    return "Verbindung zum FinTrack MCP-Server steht!"
 
 
 @mcp.tool()
@@ -44,13 +67,13 @@ def get_portfolio_summary() -> str:
     Gibt eine Zusammenfassung des Portfolios zurück -
     alle aktuell gehaltenen Assets mit Menge und Kaufpreis.
     """
-    with db_app.app_context():
-        user = db.session.get(User, DEFAULT_USER_ID)
+    with app.app_context():
+        try:
+            user = current_user()
+        except UserNotConfigured as error:
+            return str(error)
 
-        if not user:
-            return f"Kein Nutzer mit ID {DEFAULT_USER_ID} gefunden."
-
-        holdings = UserAsset.query.filter_by(user_id=DEFAULT_USER_ID) \
+        holdings = UserAsset.query.filter_by(user_id=user.id) \
             .filter(UserAsset.quantity > 0).all()
 
         if not holdings:
@@ -75,8 +98,13 @@ def get_budget_status() -> str:
     Monats, sowie den kumulierten Cash-Bestand seit Beginn der Buchungen.
     Nutzt dieselbe Berechnungslogik wie die Budget-Seite der Web-App.
     """
-    with db_app.app_context():
-        summary = calculate_budget_summary(DEFAULT_USER_ID)
+    with app.app_context():
+        try:
+            user = current_user()
+        except UserNotConfigured as error:
+            return str(error)
+
+        summary = calculate_budget_summary(user.id)
 
         return (
             f"Haushaltsbuch-Status für den aktuellen Monat:\n"
@@ -97,17 +125,22 @@ def add_transaction(category_name: str, amount: float, description: str = "", da
     date im Format YYYY-MM-DD, wird bei leerem Wert auf heute gesetzt.
     Für wiederkehrende Buchungen bitte das Web-Frontend nutzen.
     """
-    with db_app.app_context():
+    with app.app_context():
+        try:
+            user = current_user()
+        except UserNotConfigured as error:
+            return str(error)
+
         # Kategorie anhand des Namens suchen - Groß-/Kleinschreibung
         # wird dabei ignoriert, damit "lebensmittel" auch "Lebensmittel" trifft
-        category = Category.query.filter_by(user_id=DEFAULT_USER_ID) \
+        category = Category.query.filter_by(user_id=user.id) \
             .filter(db.func.lower(Category.name) == category_name.lower()) \
             .first()
 
         if not category:
             # Verfügbare Kategorien auflisten, damit Claude einen
             # passenden Vorschlag machen kann, statt einfach zu scheitern
-            available = Category.query.filter_by(user_id=DEFAULT_USER_ID).all()
+            available = Category.query.filter_by(user_id=user.id).all()
             names = ", ".join(c.name for c in available)
             return (
                 f"Keine Kategorie namens '{category_name}' gefunden. "
@@ -135,7 +168,7 @@ def add_transaction(category_name: str, amount: float, description: str = "", da
             transaction_date = datetime.now()
 
         new_transaction = Transaction(
-            user_id=DEFAULT_USER_ID,
+            user_id=user.id,
             category_id=category.id,
             amount=amount,
             description=description if description else None,
@@ -150,6 +183,7 @@ def add_transaction(category_name: str, amount: float, description: str = "", da
             f"{type_label} erfolgreich eingetragen: {amount} € "
             f"unter '{category.name}' am {transaction_date.strftime('%d.%m.%Y')}."
         )
+
 
 if __name__ == "__main__":
     mcp.run()

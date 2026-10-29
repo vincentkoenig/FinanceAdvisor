@@ -1,5 +1,5 @@
 @echo off
-title FinanceAdvisor Server
+title FinTrack Server
 cd /d "%~dp0"
 call .venv\Scripts\activate
 

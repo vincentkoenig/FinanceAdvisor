@@ -16,7 +16,7 @@ os.environ['TESTING'] = '1'
 import pytest
 
 from fintrack import create_app
-from fintrack.models import db, User, Category, Transaction
+from fintrack.models import db, User, Category
 
 # Die App wird direkt über die Factory gebaut (nicht über app.py), damit
 # in den Tests kein Scheduler mit Hintergrundjobs startet.
