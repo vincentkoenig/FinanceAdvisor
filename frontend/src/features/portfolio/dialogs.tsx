@@ -1,14 +1,14 @@
 // Dialoge des Portfolios: Asset hinzufügen oder beobachten, Kauf und Verkauf einer Position,
 // Kauf aus der Watchlist, Sparplan anlegen und löschen.
-import { useState, type FormEvent, type ReactNode } from 'react';
-import { ApiError } from '../../api/client';
+import { useState, type FormEvent } from 'react';
 import {
   type SearchResult, type WatchItem, ensureAsset, useAsset, useAssetSearch, useBuy, useCreatePlan, useDeletePlan, useSell, useUnwatch, useWatch,
 } from '../../api/portfolio';
 import type { SavingsPlan } from '../../api/overview';
 import { Dialog } from '../../components/Dialog';
+import { Actions, type Errors, Field, apiErrors, describe, positive } from '../../components/form';
 import { useToast } from '../../components/Toast';
-import { eur, isoDay, parseAmount, pct, qty, tone } from '../../lib/format';
+import { eur, isoDay, pct, qty, tone } from '../../lib/format';
 import { type PositionRow, token } from '../home/model';
 
 const TYPE_NAMES: Record<string, string> = { etf: 'ETF', stock: 'Aktie', crypto: 'Krypto', metal: 'Edelmetall' };
@@ -16,54 +16,6 @@ const TYPE_NAMES: Record<string, string> = { etf: 'ETF', stock: 'Aktie', crypto:
 // Betrag für ein Eingabefeld: 129.96 → "129,96"
 const fieldAmount = (value: number | null | undefined) =>
   value ? value.toLocaleString('de-DE', { maximumFractionDigits: 6, useGrouping: false }) : '';
-
-type Errors = Record<string, string>;
-
-// Fehler der API: Feldfehler an die Felder, alles andere als Meldung über den Knöpfen
-function apiErrors(error: unknown, fieldNames: Record<string, string>): Errors {
-  if (error instanceof ApiError) {
-    const errors: Errors = {};
-    for (const [field, message] of Object.entries(error.fields)) errors[fieldNames[field] ?? 'form'] = message;
-    if (Object.keys(errors).length === 0) errors.form = error.message;
-    return errors;
-  }
-  return { form: 'Das hat nicht geklappt. Bitte versuche es noch einmal.' };
-}
-
-function positive(text: string, label: string, errors: Errors, key: string) {
-  const value = parseAmount(text);
-  if (value === null || Number.isNaN(value) || value <= 0) {
-    errors[key] = `Bitte ${label} größer 0 eingeben.`;
-    return 0;
-  }
-  return value;
-}
-
-function Field({ id, label, error, hint, children }: { id: string; label: string; error?: string; hint?: string; children: ReactNode }) {
-  return (
-    <div className="field">
-      <label htmlFor={id}>{label}</label>
-      {children}
-      {error ? <p className="err" id={`${id}-msg`}>{error}</p> : hint && <p className="hint" id={`${id}-msg`}>{hint}</p>}
-    </div>
-  );
-}
-
-// Verknüpft das Feld mit seiner Meldung oder seinem Hinweis
-const describe = (id: string, error?: string, hasHint = false) =>
-  ({ 'aria-invalid': error ? true : undefined, 'aria-describedby': error || hasHint ? `${id}-msg` : undefined });
-
-function Actions({ onCancel, busy, label, busyLabel, error }: { onCancel: () => void; busy: boolean; label: string; busyLabel: string; error?: string }) {
-  return (
-    <>
-      {error && <p className="err" role="alert">{error}</p>}
-      <div className="dialog-actions">
-        <button type="button" className="btn" onClick={onCancel} disabled={busy}>Abbrechen</button>
-        <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? busyLabel : label}</button>
-      </div>
-    </>
-  );
-}
 
 // ─── Asset suchen und hinzufügen ───
 

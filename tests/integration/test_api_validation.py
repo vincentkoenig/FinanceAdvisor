@@ -176,6 +176,17 @@ class TestPortfolioRules:
 
 class TestBudgetRules:
 
+    def test_paused_booking_reports_since_when(self, client, category):
+        """Das Haushaltsbuch zählt eine pausierte Buchung in früheren Monaten weiter mit"""
+        created = client.post('/api/v1/me/transactions', json={
+            'category_id': category.id, 'amount': 10, 'date': '2026-01-01', 'is_recurring': True}).get_json()
+        client.post(f"/api/v1/me/transactions/{created['transaction_id']}/toggle-pause")
+
+        booking = client.get('/api/v1/me/transactions').get_json()[0]
+
+        assert booking['is_paused'] is True
+        assert booking['paused_at'] == date.today().isoformat()
+
     def test_category_with_transactions_cannot_be_deleted(self, client, category):
         """Sonst verlieren Buchungen ihre Kategorie und zählen falsch im Saldo"""
         client.post('/api/v1/me/transactions', json={'category_id': category.id, 'amount': 10, 'date': '2026-10-01'})

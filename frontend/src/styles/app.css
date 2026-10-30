@@ -61,6 +61,10 @@ h2 { font-size: var(--fs-section); line-height: 24px; font-weight: 600; }
   --raised: var(--hero-raised); --control: var(--hero-control); --positive: var(--hero-pos); --negative: var(--hero-neg);
   background: var(--surface); color: var(--text);
 }
+.panel.hero {
+  --flow-1: var(--hero-flow-1); --flow-2: var(--hero-flow-2); --flow-3: var(--hero-flow-3); --flow-4: var(--hero-flow-4);
+  --flow-1-ink: var(--hero-flow-1-ink); --flow-2-ink: var(--hero-flow-2-ink); --flow-3-ink: var(--hero-flow-3-ink); --flow-4-ink: var(--hero-flow-4-ink);
+}
 .lead-label { color: var(--muted); font-size: 14px; font-weight: 400; }
 .lead-figure { font-family: var(--font-figure); font-size: var(--fs-lead); line-height: 50px; font-weight: 600; letter-spacing: -0.01em; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .lead-sub { margin-top: 6px; color: var(--muted); }
@@ -199,6 +203,25 @@ details.fold .fold-peek, details.fold .fold-chev { display: none; }
 .sort-row .select { width: auto; flex: 1; height: 36px; }
 .only-phone { display: none; }
 
+/* ─── Haushaltsbuch ─── */
+.hero-flow { margin-top: 20px; }
+.month-switch { display: inline-flex; align-items: center; gap: 2px; padding: 2px; border-radius: 999px; background: var(--raised); }
+.month-switch span { min-width: 128px; text-align: center; font-weight: 500; }
+.bar-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.bar-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 12px; }
+.bar-list .bar { grid-column: 1 / -1; height: 2px; margin-top: 4px; }
+.total-row { margin-top: 12px; min-height: 44px; box-shadow: inset 0 1px 0 var(--rule-strong); }
+.total-row + .row { min-height: 40px; }
+.pill-inline { margin-left: 8px; vertical-align: 1px; }
+.is-paused { opacity: 0.6; }
+.table .date-col { width: 64px; }
+.table .actions-col { width: 96px; }
+.input-lg { height: 52px; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.switch { appearance: none; flex: none; width: 34px; height: 20px; margin: 1px 0 0; border-radius: 999px; background: var(--control); position: relative; cursor: pointer; transition: background var(--t-hover); }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: transform var(--t-hover); }
+.switch:checked { background: var(--positive); }
+.switch:checked::after { transform: translateX(14px); }
+
 /* ─── Einstellungen ─── */
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .form-grid .full { grid-column: 1 / -1; }
@@ -269,6 +292,8 @@ details.fold .fold-peek, details.fold .fold-chev { display: none; }
 @media (max-width: 767px) {
   :root { --pad: 16px; --card-pad: 16px; --fs-lead: 40px; }
   .toplinks, .hide-phone, .desktop-only { display: none; }
+  .title-row .actions { width: 100%; }
+  .title-row .actions .month-switch { flex: 1; justify-content: space-between; }
   .only-phone { display: revert; }
   .topbar-inner { height: 52px; gap: 12px; }
   .topbar-inner .mark { flex: 1; }

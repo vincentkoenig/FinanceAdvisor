@@ -40,8 +40,11 @@ export type Booking = {
   amount: number;
   description: string | null;
   date: string;
+  end_date?: string | null;
   is_recurring: boolean;
   is_paused: boolean;
+  paused_at?: string | null;
+  category_id?: number;
   category_name: string | null;
   category_type: CategoryType | null;
 };
