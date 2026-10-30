@@ -1,22 +1,24 @@
 // Rahmen jeder Seite: Top-Leiste über einer zentrierten Spalte, auf dem Handy eine Leiste unten.
 // Bereiche, die noch nicht im neuen Frontend sind, verlinken auf die bisherigen Seiten.
 import { useEffect, useState } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router';
+import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router';
 import { useLogout, useMe } from '../api/auth';
+import { AREAS } from '../lib/areas';
 import type { Theme } from '../lib/theme';
+import { AreaLink } from './AreaLink';
 import { Icon, Mark, type IconName } from './Icon';
 
-export type RootContext = { theme: Theme; toggleTheme: () => void };
+export type RootContext = { theme: Theme; toggleTheme: () => void; setTheme: (theme: Theme) => void };
 
 type NavItem = { label: string; short: string; icon: IconName } & ({ to: string } | { href: string });
 
-// "href" führt zur bisherigen Seite, bis der Bereich umgezogen ist
+// Wohin ein Eintrag führt, steht in lib/areas.ts (noch nicht umgezogene Bereiche: bisherige Seite)
 export const NAV: NavItem[] = [
-  { label: 'Übersicht', short: 'Übersicht', icon: 'home', to: '/' },
-  { label: 'Portfolio', short: 'Portfolio', icon: 'chart', href: '/portfolio-page' },
-  { label: 'Haushaltsbuch', short: 'Budget', icon: 'wallet', href: '/budget-page' },
-  { label: 'Chat', short: 'Chat', icon: 'chat', href: '/chat-page' },
-  { label: 'Analyse', short: 'Analyse', icon: 'chart', href: '/analyse-page' },
+  { label: 'Übersicht', short: 'Übersicht', icon: 'home', ...AREAS.home },
+  { label: 'Portfolio', short: 'Portfolio', icon: 'chart', ...AREAS.portfolio },
+  { label: 'Haushaltsbuch', short: 'Budget', icon: 'wallet', ...AREAS.budget },
+  { label: 'Chat', short: 'Chat', icon: 'chat', ...AREAS.chat },
+  { label: 'Analyse', short: 'Analyse', icon: 'chart', ...AREAS.analyse },
 ];
 
 function NavEntry({ item, compact }: { item: NavItem; compact?: boolean }) {
@@ -30,7 +32,8 @@ function initials(email: string) {
 }
 
 export function Shell() {
-  const { theme, toggleTheme } = useOutletContext<RootContext>();
+  const context = useOutletContext<RootContext>();
+  const { theme, toggleTheme } = context;
   const { data: user } = useMe();
   const logout = useLogout();
   const navigate = useNavigate();
@@ -92,7 +95,7 @@ export function Shell() {
             {menuOpen && (
               <div className="menu" role="menu">
                 <div className="menu-head">{user?.email}</div>
-                <a href="/settings-page" role="menuitem"><Icon name="gear" size={16} />Einstellungen</a>
+                <Link to="/settings" role="menuitem"><Icon name="gear" size={16} />Einstellungen</Link>
                 <button role="menuitem" onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} />{themeLabel}</button>
                 <div className="menu-sep" />
                 <button role="menuitem" onClick={signOut} disabled={logout.isPending}><Icon name="logout" size={16} />Abmelden</button>
@@ -103,7 +106,7 @@ export function Shell() {
       </header>
 
       <main className="canvas">
-        <Outlet />
+        <Outlet context={context} />
       </main>
 
       <nav className="bottom-nav" aria-label="Hauptnavigation">
@@ -119,8 +122,8 @@ export function Shell() {
               <button className="icon-btn" onClick={() => setMoreOpen(false)} aria-label="Schließen"><Icon name="close" /></button>
             </div>
             <div className="rows">
-              <a className="row" href="/analyse-page"><Icon name="chart" /><span className="grow">Analyse</span><Icon name="right" size={16} /></a>
-              <a className="row" href="/settings-page"><Icon name="gear" /><span className="grow">Einstellungen</span><Icon name="right" size={16} /></a>
+              <AreaLink area="analyse" className="row"><Icon name="chart" /><span className="grow">Analyse</span><Icon name="right" size={16} /></AreaLink>
+              <Link className="row" to="/settings"><Icon name="gear" /><span className="grow">Einstellungen</span><Icon name="right" size={16} /></Link>
               <button className="row" onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'moon'} /><span className="grow">{themeLabel}</span></button>
               <button className="row" onClick={signOut} disabled={logout.isPending}><Icon name="logout" /><span className="grow">Abmelden</span></button>
             </div>
