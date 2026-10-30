@@ -23,17 +23,16 @@ export function useTheme() {
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', ground);
   }, [theme]);
 
-  const toggle = useCallback(() => {
-    setTheme((current) => {
-      const next: Theme = current === 'dark' ? 'light' : 'dark';
-      try {
-        localStorage.setItem(KEY, next);
-      } catch {
-        // nicht speicherbar, gilt dann nur bis zum Neuladen
-      }
-      return next;
-    });
+  const choose = useCallback((next: Theme) => {
+    setTheme(next);
+    try {
+      localStorage.setItem(KEY, next);
+    } catch {
+      // nicht speicherbar, gilt dann nur bis zum Neuladen
+    }
   }, []);
 
-  return { theme, toggle };
+  const toggle = useCallback(() => choose(theme === 'dark' ? 'light' : 'dark'), [choose, theme]);
+
+  return { theme, toggle, setTheme: choose };
 }

@@ -12,6 +12,9 @@ const PATHS = {
   more: 'M5 12h.01M12 12h.01M19 12h.01',
   close: 'M6 6l12 12M18 6 6 18',
   right: 'M9 18l6-6-6-6',
+  down: 'M6 9l6 6 6-6',
+  download: 'M12 3v12M7 10l5 5 5-5M5 21h14',
+  upload: 'M12 21V9M7 14l5-5 5 5M5 3h14',
 } as const;
 
 export type IconName = keyof typeof PATHS;

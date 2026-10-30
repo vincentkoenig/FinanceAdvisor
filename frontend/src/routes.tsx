@@ -2,14 +2,20 @@
 import { Navigate, Outlet, useLocation, useOutletContext, type RouteObject } from 'react-router';
 import { useMe } from './api/auth';
 import { Shell, type RootContext } from './components/Shell';
+import { ToastProvider } from './components/Toast';
 import { LoginPage } from './features/auth/LoginPage';
 import { HomePage } from './features/home/HomePage';
 import { NotFoundPage } from './features/NotFoundPage';
+import { SettingsPage } from './features/settings/SettingsPage';
 import { useTheme } from './lib/theme';
 
 function Root() {
-  const { theme, toggle } = useTheme();
-  return <Outlet context={{ theme, toggleTheme: toggle } satisfies RootContext} />;
+  const { theme, toggle, setTheme } = useTheme();
+  return (
+    <ToastProvider>
+      <Outlet context={{ theme, toggleTheme: toggle, setTheme } satisfies RootContext} />
+    </ToastProvider>
+  );
 }
 
 function RequireAuth() {
@@ -34,6 +40,7 @@ export const routes: RouteObject[] = [
             element: <Shell />,
             children: [
               { index: true, element: <HomePage /> },
+              { path: 'settings', element: <SettingsPage /> },
               { path: '*', element: <NotFoundPage /> },
             ],
           },

@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll } from 'vitest';
-import { server } from './server';
+import { resetData, sent, server } from './server';
 
 // jsdom kennt matchMedia nicht; das Design fällt dann auf "dunkel" zurück
 window.matchMedia ??= ((query: string) => ({
@@ -13,6 +13,9 @@ beforeAll(() => server.listen({ onUnhandledFrame: 'error' }));
 afterEach(() => {
   cleanup();
   server.resetHandlers();
+  resetData();
+  delete sent.settings;
+  delete sent.import;
   localStorage.clear();
 });
 afterAll(() => server.close());

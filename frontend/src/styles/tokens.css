@@ -20,6 +20,10 @@
   --primary: #0f3d2b; --primary-ink: #ffffff;
   --positive: #0a7a4e; --negative: #b4441c; --warning: #b86e00; --warning-ink: #7a4800;
   --signal: #d98b00;
+  /* Monatsfluss: Fixkosten, Variabel, Frei übrig, Sparplan; dazu die Schrift mit dem höheren Kontrast */
+  --flow-1: #44564b; --flow-2: #adbfb3; --flow-3: #8fd9b2; --flow-4: #0a8455;
+  --flow-1-ink: #ffffff; --flow-2-ink: #111111; --flow-3-ink: #111111; --flow-4-ink: #ffffff;
+  --chart-muted: var(--control);
   --hero-bg: #0f3d2b; --hero-text: #f2f8f4; --hero-muted: #b3cfbf; --hero-accent: #86e3b4;
   --hero-pos: #9ceac1; --hero-neg: #ffbf9e;
   --hero-rule: color-mix(in srgb, var(--hero-bg) 84%, #ffffff);
@@ -40,6 +44,8 @@
   --primary: #cdeedc; --primary-ink: #06140d;
   --positive: #4fd394; --negative: #f2905f; --warning: #f0b43c; --warning-ink: #f0b43c;
   --signal: #f0b43c;
+  --flow-1: #6d8a7a; --flow-2: #2c463a; --flow-3: #a6f0c8; --flow-4: #2fae74;
+  --flow-1-ink: #111111; --flow-2-ink: #ffffff; --flow-3-ink: #111111; --flow-4-ink: #111111;
   --hero-bg: #135b40; --hero-text: #f1faf5; --hero-muted: #b7d8c6; --hero-accent: #a6f0c8;
   --hero-pos: #b4f3d1; --hero-neg: #ffc7a8;
   --shadow-float: 0 16px 40px rgba(0, 0, 0, 0.55);

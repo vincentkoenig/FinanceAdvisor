@@ -47,8 +47,8 @@ describe('Anmeldung', () => {
     const { router } = renderApp('/');
     const user = userEvent.setup();
     expect(await screen.findByRole('heading', { name: 'Übersicht' })).toBeInTheDocument();
-    expect(screen.getByText(`Angemeldet als ${testUser.email}`)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Konto' }));
+    expect(screen.getByRole('menu')).toHaveTextContent(testUser.email);
     await user.click(screen.getByRole('menuitem', { name: 'Abmelden' }));
     await waitFor(() => expect(router.state.location.pathname).toBe('/login'));
     expect(session.loggedIn).toBe(false);
