@@ -155,6 +155,16 @@ class TestPortfolioRules:
 
         assert [p['asset_type'] for p in positions] == ['unknown']
 
+    def test_watchlist_includes_name_and_price(self, client, asset, monkeypatch):
+        """Die Watchlist im neuen Frontend braucht keinen Request pro Zeile"""
+        monkeypatch.setattr('fintrack.portfolio.routes.get_current_price', lambda a, **kw: 12.5)
+        client.post('/api/v1/me/watchlist', json={'asset_id': asset.id})
+
+        items = client.get('/api/v1/me/watchlist').get_json()
+
+        assert items == [{'asset_id': asset.id, 'name': 'Testaktie', 'symbol': 'TST', 'price_added': 12.5,
+                          'current_price': 12.5, 'added_at': items[0]['added_at']}]
+
     def test_sell_more_than_owned(self, client, asset):
         client.post('/api/v1/me/positions', json={'asset_id': asset.id, 'quantity': 2, 'avg_buy_price': 10, 'bought_at': '2026-10-01'})
 

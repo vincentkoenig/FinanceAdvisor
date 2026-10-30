@@ -99,13 +99,8 @@ describe('Portfolio', () => {
     expect(await screen.findByText('Noch keine Positionen im Depot')).toBeInTheDocument();
     expect(await screen.findByText(/Der Wertverlauf erscheint/)).toBeInTheDocument();
     expect(screen.getByText(/Die Aufteilung erscheint mit der ersten Position/)).toBeInTheDocument();
-    expect(screen.getByText(/Noch keine Positionen. Über/)).toBeInTheDocument();
+    expect(screen.getByText(/Noch keine Positionen. Mit „Asset hinzufügen“/)).toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole('tab', { name: /Dividenden/ }));
     expect(screen.getByText(/Noch keine Dividenden/)).toBeInTheDocument();
-  });
-
-  it('führt zum Bearbeiten auf die bisherige Seite', async () => {
-    renderApp('/portfolio');
-    expect(await screen.findByRole('link', { name: 'Kaufen und verwalten' })).toHaveAttribute('href', '/portfolio-page');
   });
 });

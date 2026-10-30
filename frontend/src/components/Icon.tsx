@@ -16,6 +16,7 @@ const PATHS = {
   download: 'M12 3v12M7 10l5 5 5-5M5 21h14',
   upload: 'M12 21V9M7 14l5-5 5 5M5 3h14',
   plus: 'M12 5v14M5 12h14',
+  trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   bars: 'M3 9h18v6H3zM11 9v6M17 9v6',
   ring: 'M21 12a9 9 0 1 1-9-9M16.5 12A4.5 4.5 0 1 1 12 7.5',
 } as const;

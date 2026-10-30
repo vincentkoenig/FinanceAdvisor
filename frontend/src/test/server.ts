@@ -38,6 +38,9 @@ const initialData = () => ({
     { id: 31, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', ex_dividend_date: '2026-06-12', amount_per_share: 0.4512, shares_held: 100, total_amount: 45.12 },
     { id: 32, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', ex_dividend_date: '2025-12-10', amount_per_share: 0.4, shares_held: 100, total_amount: 40 },
   ],
+  watchlist: [
+    { asset_id: 3, name: 'SAP SE', symbol: 'SAP.DE', price_added: 200, current_price: 220, added_at: '01.10.2026' },
+  ] as { asset_id: number; name: string; symbol: string; price_added: number | null; current_price: number | null; added_at: string }[],
   insight: { content: 'Dein Depot hat diese Woche 1,4 % zugelegt.', created_at: '2026-10-30 07:00' } as { content: string | null; created_at?: string },
 });
 
@@ -45,7 +48,13 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown } = {};
+
+// Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
+export const searchResults = [
+  { asset_id: 3, symbol: 'SAP.DE', name: 'SAP SE', exchange: 'XETRA', asset_type: 'stock', eur: true },
+  { asset_id: null, symbol: 'NVD.DE', name: 'NVIDIA Corp', exchange: 'XETRA', asset_type: 'stock', eur: true },
+];
 
 const needsLogin = () => HttpResponse.json({ error: 'Bitte melde dich an' }, { status: 401 });
 
@@ -79,6 +88,41 @@ export const handlers = [
     plan.is_due = false;
     plan.last_executed = '2026-10-30';
     return HttpResponse.json({ message: 'Sparplan erfolgreich ausgeführt', quantity: 1.98, price: 101 });
+  }),
+
+  http.get('/api/v1/me/watchlist', () => HttpResponse.json(data.watchlist)),
+  http.post('/api/v1/me/watchlist', async ({ request }) => {
+    const { asset_id } = (await request.json()) as { asset_id: number };
+    const hit = searchResults.find((r) => (r.asset_id ?? 99) === asset_id)!;
+    data.watchlist.push({ asset_id, name: hit.name, symbol: hit.symbol, price_added: 100, current_price: 100, added_at: '30.10.2026' });
+    return HttpResponse.json({ message: 'Zur Watchlist hinzugefügt' }, { status: 201 });
+  }),
+  http.delete('/api/v1/me/watchlist/:id', ({ params }) => {
+    data.watchlist = data.watchlist.filter((w) => w.asset_id !== Number(params.id));
+    return HttpResponse.json({ message: 'Von der Watchlist entfernt' });
+  }),
+  http.get('/api/v1/assets/search', () => HttpResponse.json({ results: searchResults })),
+  http.post('/api/v1/assets', async ({ request }) => {
+    sent.asset = await request.json();
+    return HttpResponse.json({ id: 99, name: 'NVIDIA Corp', symbol: 'NVD.DE', asset_type: 'stock' }, { status: 201 });
+  }),
+  http.get('/api/v1/assets/:id', ({ params }) =>
+    HttpResponse.json({ id: Number(params.id), name: 'SAP SE', symbol: 'SAP.DE', asset_type: 'stock', current_price: 221.5 })),
+  http.post('/api/v1/me/positions', async ({ request }) => {
+    sent.buy = await request.json();
+    return HttpResponse.json({ message: 'Position gespeichert' }, { status: 201 });
+  }),
+  http.post('/api/v1/me/positions/:id/sell', async ({ request, params }) => {
+    sent.sell = { asset_id: Number(params.id), ...(await request.json() as object) };
+    return HttpResponse.json({ message: 'Verkauf gespeichert' });
+  }),
+  http.post('/api/v1/me/savings-plans', async ({ request }) => {
+    sent.plan = await request.json();
+    return HttpResponse.json({ message: 'Sparplan erfolgreich angelegt' }, { status: 201 });
+  }),
+  http.delete('/api/v1/me/savings-plans/:id', ({ params }) => {
+    data.savingsPlans = data.savingsPlans.filter((p) => p.id !== Number(params.id));
+    return HttpResponse.json({ message: 'Sparplan gelöscht' });
   }),
 
   http.put('/api/v1/me/settings', async ({ request }) => {
