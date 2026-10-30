@@ -4,7 +4,7 @@ import { eur, parseAmount, pct } from '../../lib/format';
 import { dayChange, largestPositions, monthFlow, planDates, portfolioTotals, recentBookings, token } from './model';
 
 const position = (over: Partial<Position>): Position =>
-  ({ asset_id: 1, name: 'X', symbol: 'X', quantity: 1, avg_buy_price: 10, current_price: 10, ...over });
+  ({ asset_id: 1, name: 'X', symbol: 'X', asset_type: null, quantity: 1, avg_buy_price: 10, current_price: 10, ...over });
 
 const plan = (over: Partial<SavingsPlan>): SavingsPlan =>
   ({ id: 1, asset_id: 1, asset_name: 'X', asset_symbol: 'X', amount: 100, day_of_month: 1, last_executed: null, is_due: false, ...over });

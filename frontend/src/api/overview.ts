@@ -6,6 +6,7 @@ export type Position = {
   asset_id: number;
   name: string;
   symbol: string;
+  asset_type: string | null;
   quantity: number;
   avg_buy_price: number;
   current_price: number | null;
@@ -48,11 +49,23 @@ export type Booking = {
 export type Trade = {
   id: number;
   asset_id: number;
+  asset_name: string;
+  asset_symbol: string;
   type: 'buy' | 'sell';
   quantity: number;
   price: number;
   total: number;
   date: string;
+};
+
+export type Dividend = {
+  id: number;
+  asset_name: string;
+  asset_symbol: string;
+  ex_dividend_date: string;
+  amount_per_share: number;
+  shares_held: number;
+  total_amount: number;
 };
 
 export type Insight = { content: string | null; created_at?: string };
@@ -65,6 +78,7 @@ export const keys = {
   bookings: ['transactions'] as const,
   insight: ['insight'] as const,
   trades: ['asset-transactions'] as const,
+  dividends: ['dividends'] as const,
 };
 
 // Kurse ändern sich höchstens alle paar Minuten; beim Zurückkehren zur Seite reicht das
@@ -87,6 +101,9 @@ export const useBookings = () =>
 
 export const useTrades = () =>
   useQuery({ queryKey: keys.trades, queryFn: () => api<Trade[]>('/me/asset-transactions'), staleTime: minute });
+
+export const useDividends = () =>
+  useQuery({ queryKey: keys.dividends, queryFn: () => api<Dividend[]>('/me/dividends'), staleTime: 10 * minute });
 
 export const useInsight = () =>
   useQuery({ queryKey: keys.insight, queryFn: () => api<Insight>('/me/insight'), staleTime: 30 * minute });

@@ -147,6 +147,14 @@ class TestPortfolioRules:
         assert position.avg_buy_price == 15
         assert AssetTransaction.query.count() == 2
 
+    def test_positions_include_asset_type(self, client, asset):
+        """Die Aufteilung im Portfolio gruppiert nach Anlageart"""
+        client.post('/api/v1/me/positions', json={'asset_id': asset.id, 'quantity': 2, 'avg_buy_price': 10, 'bought_at': '2026-10-01'})
+
+        positions = client.get('/api/v1/me/positions').get_json()
+
+        assert [p['asset_type'] for p in positions] == ['unknown']
+
     def test_sell_more_than_owned(self, client, asset):
         client.post('/api/v1/me/positions', json={'asset_id': asset.id, 'quantity': 2, 'avg_buy_price': 10, 'bought_at': '2026-10-01'})
 

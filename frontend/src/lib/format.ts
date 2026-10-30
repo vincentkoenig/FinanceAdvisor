@@ -32,6 +32,11 @@ export function pct(value: number, { sign = true }: { sign?: boolean } = {}) {
   return signOf(rounded, sign) + nf(1, 1).format(Math.abs(rounded)) + ' %';
 }
 
+/** Stückzahl mit bis zu sechs Nachkommastellen: 0.081 → "0,081" */
+export function qty(value: number) {
+  return nf(0, 6).format(value);
+}
+
 /** Klasse für Gewinn/Verlust */
 export function tone(value: number) {
   return value > 0 ? 'pos' : value < 0 ? 'neg' : 'muted';
@@ -56,6 +61,11 @@ export function monthName(day: Date) {
 /** Datum → "2026-10" */
 export function monthKey(day: Date) {
   return `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/** Datum → "2026-10-03" (Ortszeit) */
+export function isoDay(day: Date) {
+  return `${monthKey(day)}-${String(day.getDate()).padStart(2, '0')}`;
 }
 
 /** "1.234,5" oder "1234.5" → 1234.5; leer → null; sonst NaN */

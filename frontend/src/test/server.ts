@@ -1,5 +1,5 @@
 // Nachgebaute API für die Tests: ein Nutzer, Login mit festem Passwort, Session als Variable,
-// dazu Beispieldaten für die Übersicht. resetData() stellt vor jedem Test den Ausgangszustand her.
+// dazu Beispieldaten für Übersicht und Portfolio. resetData() stellt vor jedem Test den Ausgangszustand her.
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 
@@ -12,8 +12,8 @@ export const session = { loggedIn: false };
 
 const initialData = () => ({
   positions: [
-    { asset_id: 1, name: 'iShares Core MSCI World', symbol: 'EUNL.DE', quantity: 100, avg_buy_price: 80, current_price: 100, bought_at: null, status: 'owned' },
-    { asset_id: 2, name: 'Bitcoin', symbol: 'BTC-EUR', quantity: 0.1, avg_buy_price: 50000, current_price: 40000, bought_at: null, status: 'owned' },
+    { asset_id: 1, name: 'iShares Core MSCI World', symbol: 'EUNL.DE', asset_type: 'etf', quantity: 100, avg_buy_price: 80, current_price: 100, bought_at: null, status: 'owned' },
+    { asset_id: 2, name: 'Bitcoin', symbol: 'BTC-EUR', asset_type: 'crypto', quantity: 0.1, avg_buy_price: 50000, current_price: 40000, bought_at: null, status: 'owned' },
   ],
   summary: {
     cumulative_balance: 2000, current_month_balance: 1000, current_month_income: 3000,
@@ -33,6 +33,10 @@ const initialData = () => ({
   ],
   trades: [
     { id: 21, asset_id: 1, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', type: 'buy', quantity: 100, price: 80, total: 8000, date: '2026-01-02' },
+  ],
+  dividends: [
+    { id: 31, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', ex_dividend_date: '2026-06-12', amount_per_share: 0.4512, shares_held: 100, total_amount: 45.12 },
+    { id: 32, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', ex_dividend_date: '2025-12-10', amount_per_share: 0.4, shares_held: 100, total_amount: 40 },
   ],
   insight: { content: 'Dein Depot hat diese Woche 1,4 % zugelegt.', created_at: '2026-10-30 07:00' } as { content: string | null; created_at?: string },
 });
@@ -67,6 +71,7 @@ export const handlers = [
   http.get('/api/v1/me/savings-plans', () => HttpResponse.json(data.savingsPlans)),
   http.get('/api/v1/me/transactions', () => HttpResponse.json(data.transactions)),
   http.get('/api/v1/me/asset-transactions', () => HttpResponse.json(data.trades)),
+  http.get('/api/v1/me/dividends', () => HttpResponse.json(data.dividends)),
   http.get('/api/v1/me/insight', () => HttpResponse.json(data.insight)),
   http.post('/api/v1/me/savings-plans/:id/execute', ({ params }) => {
     const plan = data.savingsPlans.find((p) => p.id === Number(params.id));
