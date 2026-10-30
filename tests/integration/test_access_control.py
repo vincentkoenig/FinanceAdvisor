@@ -30,6 +30,9 @@ PUBLIC_ENDPOINTS = {
     'static', 'pages.home',
     'auth.register', 'auth.login', 'auth.logout',
     'auth.verify_email', 'auth.resend_verification',
+    # Das React-Frontend unter /app: reine Dateien ohne Nutzerdaten,
+    # die Anmeldung prüft es selbst über /api/v1/me
+    'spa.app_root', 'spa.frontend',
 }
 
 # Texte, die nur in den Daten von Nutzer B vorkommen - tauchen sie in einer

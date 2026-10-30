@@ -37,6 +37,8 @@ def create_app(config_name=None, config_overrides=None):
         instance_path=os.path.join(PROJECT_ROOT, 'instance'),
     )
     app.config.from_object(get_config(config_name))
+    # Gebautes React-Frontend (npm run build in frontend/), ausgeliefert unter /app
+    app.config['FRONTEND_DIST'] = os.path.join(PROJECT_ROOT, 'frontend', 'dist')
     app.config.update(config_overrides or {})
 
     # Hinter dem Render-Proxy: echte Client-IP und HTTPS aus den
@@ -83,7 +85,7 @@ def create_app(config_name=None, config_overrides=None):
         }
         click.echo(messages[action])
 
-    from fintrack import pages
+    from fintrack import pages, spa
     from fintrack.account import routes as account_routes
     from fintrack.admin import routes as admin_routes
     from fintrack.auth import routes as auth_routes
@@ -92,12 +94,13 @@ def create_app(config_name=None, config_overrides=None):
     from fintrack.insights import routes as insights_routes
     from fintrack.portfolio import analysis, routes as portfolio_routes
 
-    # Seiten liegen direkt unter /, die JSON-API unter /api/v1.
+    # Seiten liegen direkt unter /, das neue Frontend unter /app, die JSON-API unter /api/v1.
     # Jeder Blueprint schützt sich selbst: Bereiche mit Nutzerdaten über
     # protect_blueprint() (nur mit Anmeldung, Daten immer von current_user),
     # Seiten über eine Login-Umleitung, Auth über login_required_api an den
     # /me-Routen, Admin über den X-Admin-Key
     app.register_blueprint(pages.bp)
+    app.register_blueprint(spa.bp)
     for blueprint in (auth_routes.bp, portfolio_routes.bp, analysis.bp, budget_routes.bp,
                       chat_routes.bp, insights_routes.bp, account_routes.bp):
         app.register_blueprint(blueprint, url_prefix=API_PREFIX)

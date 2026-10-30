@@ -4,3 +4,4 @@ __pycache__/
 instance/
 .pytest_cache/
 .coverage
+.taste-skill/

@@ -129,6 +129,7 @@ FinTrack/
 │   ├── insights/               # Täglicher KI-Insight
 │   ├── admin/                  # Geschützte Endpoints zum manuellen Anstoßen der Jobs
 │   └── market/                 # Marktdaten (yfinance, CoinGecko, Tavily) + zentraler Preis-Service
+├── frontend/                     # Neues React-Frontend (React, TypeScript, Vite), ausgeliefert unter /app
 ├── migrations/                   # Alembic-Migrationen (Schemaänderungen der Datenbank)
 ├── tests/                        # pytest: Unit- und Integrationstests (u.a. Zugriffsschutz für jede Route)
 ├── requirements.txt              # Abhängigkeiten der Haupt-App, alle Versionen fest gepinnt
@@ -275,6 +276,15 @@ http://localhost:5000
 ```
 Auf dem Smartphone bietet Chrome an, die App über „Zum Startbildschirm hinzufügen" bzw. den Installations-Prompt als PWA zu installieren.
 
+**Neues Frontend (im Aufbau):** Das neue React-Frontend (React, TypeScript, Vite) liegt in `frontend/` und läuft unter `/app`, die bisherigen Seiten bleiben bis zum Ende des Umbaus unter `/`. Es braucht Node 24 (siehe `.node-version`):
+```bash
+cd frontend
+npm install
+npm run dev      # Entwicklungsserver auf http://localhost:5280/app/, leitet /api an Flask auf Port 5000 weiter
+npm test         # Tests (Vitest, Testing Library, MSW)
+npm run build    # baut nach frontend/dist; Flask liefert das dann unter http://localhost:5000/app/ aus
+```
+
 **6. (Optional) MCP-Server mit Claude Desktop verbinden**
 
 Die komplette Anleitung dazu findet sich in [`mcp_server/`](./mcp_server) — kurz zusammengefasst: einen Eintrag in der `claude_desktop_config.json` anlegen, der auf `mcp_server/server.py` verweist und den Python-Interpreter der eigenen virtuellen Umgebung nutzt, danach Claude Desktop neu starten.
@@ -282,6 +292,7 @@ Die komplette Anleitung dazu findet sich in [`mcp_server/`](./mcp_server) — ku
 ## Deployment
 
 Die App läuft live auf [Render](https://render.com):
+- **Build-Befehl** `pip install -r requirements.txt && npm ci --prefix frontend && npm run build --prefix frontend` — baut neben den Python-Abhängigkeiten auch das neue Frontend nach `frontend/dist` (Node-Version aus `.node-version`)
 - **Web Service** mit dem Startbefehl `python -m flask --app "fintrack:create_app()" upgrade-db && gunicorn app:app --workers=1` — erst werden ausstehende Datenbank-Migrationen ausgeführt, dann startet der Server (ein einzelner Worker ist nötig, damit der Preis-Update-Scheduler nicht mehrfach parallel läuft)
 - **PostgreSQL**-Datenbank bei [Neon](https://neon.tech) (kostenloser Tarif, läuft im Gegensatz zur kostenlosen Render-Datenbank nicht ab), verbunden über die Umgebungsvariable `DATABASE_URL`
 - Umgebungsvariablen (`OPENAI_API_KEY`, `COINGECKO_API_KEY`, `TAVILY_API_KEY`, `DATABASE_URL`) direkt im Render-Dashboard hinterlegt, nie im Repository gespeichert
