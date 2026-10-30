@@ -14,8 +14,7 @@ afterEach(() => {
   cleanup();
   server.resetHandlers();
   resetData();
-  delete sent.settings;
-  delete sent.import;
+  for (const key of Object.keys(sent) as (keyof typeof sent)[]) delete sent[key];
   localStorage.clear();
 });
 afterAll(() => server.close());

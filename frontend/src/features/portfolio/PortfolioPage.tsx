@@ -1,24 +1,25 @@
 // Portfolio. Frage der Seite: Wie hat sich mein Depot entwickelt?
 // Oben der Depotwert als Leitfläche mit Wertverlauf und Zeitraum, daneben die Aufteilung nach
-// Anlageart, darunter Reiter für Positionen, Transaktionen und Dividenden.
-// Kaufen, Verkaufen, Watchlist und Sparpläne laufen bis zum nächsten Schritt über die bisherige Seite.
+// Anlageart, darunter Reiter für Positionen, Watchlist, Transaktionen, Sparpläne und Dividenden.
+// Kaufen, Verkaufen, Beobachten und Sparpläne laufen über Dialoge (dialogs.tsx).
 import { useState } from 'react';
 import {
-  type Dividend, type Trade, useDividends, usePortfolioHistory, usePositions, useTrades,
+  type Dividend, type SavingsPlan, type Trade,
+  useDividends, useExecutePlan, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
 } from '../../api/overview';
+import { type WatchItem, useWatchlist } from '../../api/portfolio';
 import { Icon } from '../../components/Icon';
 import { Loaded } from '../../components/Loaded';
+import { useToast } from '../../components/Toast';
 import { ValueChart } from '../../components/ValueChart';
 import { useIsPhone } from '../../components/Fold';
 import { dayShort, eur, parseDay, pct, qty, tone } from '../../lib/format';
-import { type PositionRow, portfolioTotals, positionRows, token } from '../home/model';
+import { type PositionRow, planDates, portfolioTotals, positionRows, token } from '../home/model';
+import { AddAssetDialog, DeletePlanDialog, type PlanAsset, PlanDialog, PositionDialog, WatchDialog } from './dialogs';
 import {
   type Range, RANGES, type Slice, type Sort, type SortKey,
   allocation, dividendsThisYear, finding, rangeChange, rangeSeries, sortRows,
 } from './model';
-
-// Bearbeiten läuft bis Portfolio II über die bisherige Seite
-const LEGACY_PORTFOLIO = '/portfolio-page';
 
 type AllocView = 'bar' | 'ring';
 const ALLOC_KEY = 'ft-alloc-view';
@@ -33,10 +34,20 @@ function storedAllocView(): AllocView {
 
 const TABS = [
   { id: 'positions', label: 'Positionen' },
+  { id: 'watchlist', label: 'Watchlist' },
   { id: 'trades', label: 'Transaktionen' },
+  { id: 'plans', label: 'Sparpläne' },
   { id: 'dividends', label: 'Dividenden' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
+
+// Welcher Dialog offen ist; die Daten der Zeile kommen beim Öffnen mit
+type Open =
+  | { type: 'add' | 'watch-add' | 'plan' }
+  | { type: 'position'; row: PositionRow }
+  | { type: 'watch'; item: WatchItem }
+  | { type: 'delete-plan'; plan: SavingsPlan }
+  | null;
 
 // Dividenden je Anteil haben oft mehr als zwei Nachkommastellen
 const perShareDigits = (value: number) => (Number(value.toFixed(2)) === value ? 2 : 4);
@@ -48,6 +59,10 @@ export function PortfolioPage() {
   const history = usePortfolioHistory();
   const trades = useTrades();
   const dividends = useDividends();
+  const watchlist = useWatchlist();
+  const plans = useSavingsPlans();
+  const [open, setOpen] = useState<Open>(null);
+  const close = () => setOpen(null);
   const [range, setRange] = useState<Range>('1M');
   const [allocView, setAllocViewState] = useState<AllocView>(storedAllocView);
   const [tab, setTab] = useState<Tab>('positions');
@@ -65,8 +80,13 @@ export function PortfolioPage() {
   const change = series && trades.data ? rangeChange(series, trades.data) : null;
   const found = rows ? finding(rows) : null;
   const counts: Record<Tab, number | undefined> = {
-    positions: positions.data?.length, trades: trades.data?.length, dividends: dividends.data?.length,
+    positions: positions.data?.length, watchlist: watchlist.data?.length, trades: trades.data?.length,
+    plans: plans.data?.length, dividends: dividends.data?.length,
   };
+  // Ein Sparplan geht auf ein Asset aus dem Depot oder der Watchlist
+  const planAssets: PlanAsset[] = [...(positions.data ?? []), ...(watchlist.data ?? [])]
+    .filter((a, i, all) => all.findIndex((b) => b.asset_id === a.asset_id) === i)
+    .map((a) => ({ asset_id: a.asset_id, name: a.name }));
 
   return (
     <>
@@ -81,7 +101,7 @@ export function PortfolioPage() {
           </p>
         </div>
         <div className="actions">
-          <a className="btn" href={LEGACY_PORTFOLIO}><Icon name="plus" size={16} />Kaufen und verwalten</a>
+          <button className="btn btn-primary" onClick={() => setOpen({ type: 'add' })}><Icon name="plus" size={16} />Asset hinzufügen</button>
         </div>
       </div>
 
@@ -163,8 +183,14 @@ export function PortfolioPage() {
       <section className="panel" role="tabpanel" id="tab-panel" aria-labelledby={`tab-${tab}`}>
         {tab === 'positions' && (
           <Loaded queries={[positions]}>
-            {() => <Positions rows={rows!} />}
+            {() => <Positions rows={rows!} onOpen={(row) => setOpen({ type: 'position', row })} />}
           </Loaded>
+        )}
+        {tab === 'watchlist' && (
+          <Watchlist query={watchlist} onAdd={() => setOpen({ type: 'watch-add' })} onOpen={(item) => setOpen({ type: 'watch', item })} />
+        )}
+        {tab === 'plans' && (
+          <Plans query={plans} today={today} onAdd={() => setOpen({ type: 'plan' })} onDelete={(plan) => setOpen({ type: 'delete-plan', plan })} />
         )}
         {tab === 'trades' && (
           <Loaded queries={[trades]}>
@@ -177,6 +203,13 @@ export function PortfolioPage() {
           </Loaded>
         )}
       </section>
+
+      {open?.type === 'add' && <AddAssetDialog mode="buy" onClose={close} />}
+      {open?.type === 'watch-add' && <AddAssetDialog mode="watch" onClose={close} />}
+      {open?.type === 'position' && <PositionDialog row={open.row} onClose={close} />}
+      {open?.type === 'watch' && <WatchDialog item={open.item} onClose={close} />}
+      {open?.type === 'plan' && <PlanDialog assets={planAssets} onClose={close} />}
+      {open?.type === 'delete-plan' && <DeletePlanDialog plan={open.plan} onClose={close} />}
     </>
   );
 }
@@ -235,10 +268,10 @@ const COLUMNS: { key: SortKey; label: string; right?: boolean }[] = [
   { key: 'gain', label: 'Gewinn / Verlust', right: true },
 ];
 
-function Positions({ rows }: { rows: PositionRow[] }) {
+function Positions({ rows, onOpen }: { rows: PositionRow[]; onOpen: (row: PositionRow) => void }) {
   const [sort, setSort] = useState<Sort>({ key: 'value', dir: -1 });
   if (rows.length === 0) {
-    return <p className="empty-line">Noch keine Positionen. Über „Kaufen und verwalten“ legst du die erste an.</p>;
+    return <p className="empty-line">Noch keine Positionen. Mit „Asset hinzufügen“ legst du die erste an.</p>;
   }
   const sorted = sortRows(rows, sort);
   const value = rows.reduce((sum, row) => sum + row.value, 0);
@@ -263,12 +296,16 @@ function Positions({ rows }: { rows: PositionRow[] }) {
             </tr>
           </thead>
           <tbody>
+            {/* Die ganze Zeile öffnet Kauf und Verkauf; per Tastatur der Name als Knopf */}
             {sorted.map((p) => (
-              <tr key={p.asset_id}>
+              <tr key={p.asset_id} className="row-link" onClick={() => onOpen(p)}>
                 <td>
                   <div className="ident">
                     <span className="token" aria-hidden="true">{token(p.symbol, p.name)}</span>
-                    <div className="min0"><span className="name trunc">{p.name}</span><span className="sub-line">{p.symbol}</span></div>
+                    <div className="min0">
+                      <button className="name trunc plain-btn" onClick={(e) => { e.stopPropagation(); onOpen(p); }}>{p.name}</button>
+                      <span className="sub-line">{p.symbol}</span>
+                    </div>
                   </div>
                 </td>
                 <td className="r">{qty(p.quantity)}</td>
@@ -296,11 +333,11 @@ function Positions({ rows }: { rows: PositionRow[] }) {
         </div>
         <div className="rows">
           {sorted.map((p) => (
-            <div className="row" key={p.asset_id}>
+            <button className="row row-btn" key={p.asset_id} onClick={() => onOpen(p)}>
               <span className="token" aria-hidden="true">{token(p.symbol, p.name)}</span>
-              <div className="grow"><span className="trunc">{p.name}</span><span className="sub-line">{qty(p.quantity)} Stück · {p.symbol}</span></div>
-              <div className="end"><span className="strong">{eur(p.value)}</span><span className={`sub-line ${tone(p.gain)}`}>{p.gainPct === null ? '–' : pct(p.gainPct)} seit Kauf</span></div>
-            </div>
+              <span className="grow"><span className="trunc">{p.name}</span><span className="sub-line">{qty(p.quantity)} Stück · {p.symbol}</span></span>
+              <span className="end"><span className="strong block">{eur(p.value)}</span><span className={`sub-line ${tone(p.gain)}`}>{p.gainPct === null ? '–' : pct(p.gainPct)} seit Kauf</span></span>
+            </button>
           ))}
         </div>
       </div>
@@ -383,6 +420,93 @@ function Dividends({ dividends, total, year }: { dividends: Dividend[]; total: n
             </div>
           </>
         )}
+    </>
+  );
+}
+
+function Watchlist({ query, onAdd, onOpen }: { query: ReturnType<typeof useWatchlist>; onAdd: () => void; onOpen: (item: WatchItem) => void }) {
+  return (
+    <>
+      <div className="panel-head">
+        <h2>Watchlist</h2>
+        <button className="btn btn-sm" onClick={onAdd}><Icon name="plus" size={16} />Beobachten</button>
+      </div>
+      <Loaded queries={[query]}>
+        {() => query.data!.length === 0
+          ? <p className="empty-line">Noch nichts auf der Watchlist. Mit „Beobachten“ fügst du ein Asset hinzu.</p>
+          : (
+            <div className="rows">
+              {query.data!.map((w) => {
+                const change = w.current_price && w.price_added ? (w.current_price / w.price_added - 1) * 100 : null;
+                return (
+                  <button className="row row-btn" key={w.asset_id} onClick={() => onOpen(w)}>
+                    <span className="token" aria-hidden="true">{token(w.symbol, w.name)}</span>
+                    <span className="grow"><span className="trunc">{w.name}</span><span className="sub-line">{w.symbol} · beobachtet seit {w.added_at}</span></span>
+                    <span className="end">
+                      <span className="strong block">{w.current_price ? eur(w.current_price) : '–'}</span>
+                      {change !== null && <span className={`sub-line ${tone(change)}`}>{pct(change)} seit {eur(w.price_added!)}</span>}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+      </Loaded>
+    </>
+  );
+}
+
+type PlansProps = { query: ReturnType<typeof useSavingsPlans>; today: Date; onAdd: () => void; onDelete: (plan: SavingsPlan) => void };
+
+function Plans({ query, today, onAdd, onDelete }: PlansProps) {
+  const execute = useExecutePlan();
+  const notify = useToast();
+  const run = (plan: SavingsPlan) => execute.mutate(plan.id, {
+    onSuccess: (result) => notify(`Sparplan ausgeführt: ${qty(result.quantity)} Stück zu ${eur(result.price)}`),
+    onError: (error) => notify(error.message, { error: true }),
+  });
+  const monthly = query.data?.reduce((sum, p) => sum + p.amount, 0) ?? 0;
+
+  return (
+    <>
+      <div className="panel-head">
+        <h2>Sparpläne</h2>
+        {monthly > 0 && <span className="meta num">{eur(monthly)} pro Monat</span>}
+        <button className="btn btn-sm" onClick={onAdd}><Icon name="plus" size={16} />Sparplan anlegen</button>
+      </div>
+      <Loaded queries={[query]}>
+        {() => {
+          if (query.data!.length === 0) return <p className="empty-line">Noch keine Sparpläne. Ein Sparplan kauft jeden Monat für einen festen Betrag.</p>;
+          const { due, upcoming } = planDates(query.data!, today);
+          return (
+            <div className="rows">
+              {[...due, ...upcoming].map(({ plan, date }) => (
+                <div className="row" key={plan.id}>
+                  <span className="token" aria-hidden="true">{token(plan.asset_symbol, plan.asset_name)}</span>
+                  <div className="grow">
+                    <span className="trunc">{plan.asset_name}</span>
+                    <span className="sub-line">
+                      {eur(plan.amount)} am {Math.min(plan.day_of_month, 28)}. jedes Monats{plan.last_executed && ` · zuletzt ${dayShort(plan.last_executed)}`}
+                    </span>
+                  </div>
+                  {plan.is_due
+                    ? (
+                      <>
+                        <span className="pill pill-signal hide-phone">fällig seit {dayShort(date)}</span>
+                        <button className="btn btn-primary btn-sm" onClick={() => run(plan)} disabled={execute.isPending}
+                          aria-label={`Sparplan ${plan.asset_name} ausführen`}>
+                          {execute.isPending && execute.variables === plan.id ? 'Läuft …' : 'Ausführen'}
+                        </button>
+                      </>
+                    )
+                    : <span className="pill">nächster {dayShort(date)}</span>}
+                  <button className="icon-btn" onClick={() => onDelete(plan)} aria-label={`Sparplan ${plan.asset_name} löschen`}><Icon name="trash" size={16} /></button>
+                </div>
+              ))}
+            </div>
+          );
+        }}
+      </Loaded>
     </>
   );
 }

@@ -223,17 +223,25 @@ def add_to_watchlist():
 
 @bp.route('/me/watchlist', methods=['GET'])
 def get_watchlist():
-    """Alle Assets der eigenen Watchlist."""
+    """
+    Alle Assets der eigenen Watchlist mit Name, Symbol und Live-Preis,
+    damit das Frontend nicht pro Zeile einen zusätzlichen Request braucht.
+    """
     items = Watchlist.query.filter_by(user_id=current_user.id).all()
 
-    return jsonify([
-        {
+    result = []
+    for item in items:
+        asset = db.session.get(Asset, item.asset_id)
+        result.append({
             "asset_id": item.asset_id,
+            "name": asset.name,
+            "symbol": asset.symbol,
             "price_added": item.price_added,
+            "current_price": get_current_price(asset),
             "added_at": item.added_at.strftime('%d.%m.%Y') if item.added_at else '-'
-        }
-        for item in items
-    ]), 200
+        })
+
+    return jsonify(result), 200
 
 
 @bp.route('/me/watchlist/<int:asset_id>', methods=['DELETE'])
