@@ -4,7 +4,7 @@ export type Area = 'home' | 'portfolio' | 'budget' | 'chat' | 'analyse' | 'setti
 
 export const AREAS: Record<Area, { to: string } | { href: string }> = {
   home: { to: '/' },
-  portfolio: { href: '/portfolio-page' },
+  portfolio: { to: '/portfolio' },
   budget: { href: '/budget-page' },
   chat: { href: '/chat-page' },
   analyse: { href: '/analyse-page' },

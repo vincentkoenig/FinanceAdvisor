@@ -103,6 +103,7 @@ def get_positions():
             "asset_id": position.asset_id,
             "name": asset.name,
             "symbol": asset.symbol,
+            "asset_type": asset.asset_type,
             "quantity": position.quantity,
             "avg_buy_price": position.avg_buy_price,
             "bought_at": position.bought_at,

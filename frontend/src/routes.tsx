@@ -6,6 +6,7 @@ import { ToastProvider } from './components/Toast';
 import { LoginPage } from './features/auth/LoginPage';
 import { HomePage } from './features/home/HomePage';
 import { NotFoundPage } from './features/NotFoundPage';
+import { PortfolioPage } from './features/portfolio/PortfolioPage';
 import { SettingsPage } from './features/settings/SettingsPage';
 import { useTheme } from './lib/theme';
 
@@ -40,6 +41,7 @@ export const routes: RouteObject[] = [
             element: <Shell />,
             children: [
               { index: true, element: <HomePage /> },
+              { path: 'portfolio', element: <PortfolioPage /> },
               { path: 'settings', element: <SettingsPage /> },
               { path: '*', element: <NotFoundPage /> },
             ],

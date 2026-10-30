@@ -1,35 +1,17 @@
 // Übersicht. Frage der Seite: Wie viel habe ich, und was ist heute zu tun?
 // Oben das Gesamtvermögen als grüne Leitfläche und daneben das Fällige, darunter Monatsfluss,
 // Tages-Update, größte Positionen und letzte Buchungen (auf dem Handy eingeklappt).
-import type { UseQueryResult } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
 import {
   type Booking, useBookings, useBudgetSummary, useExecutePlan, useInsight, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
 } from '../../api/overview';
 import { AreaLink } from '../../components/AreaLink';
 import { Fold } from '../../components/Fold';
+import { Loaded } from '../../components/Loaded';
 import { useToast } from '../../components/Toast';
-import { dayShort, eur, monthName, parseDay, pct, tone } from '../../lib/format';
+import { dayShort, eur, monthName, parseDay, pct, qty, tone } from '../../lib/format';
 import {
   dayChange, largestPositions, monthFlow, planDates, portfolioTotals, recentBookings, signedAmount, token,
 } from './model';
-
-const quantityFormat = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 6 });
-
-// Lädt noch, Fehler mit "Erneut versuchen", oder der Inhalt
-function Loaded({ queries, children }: { queries: UseQueryResult[]; children: () => ReactNode }) {
-  const failed = queries.find((q) => q.isError);
-  if (failed) {
-    return (
-      <div className="load-error" role="alert">
-        <span>Konnte nicht geladen werden.</span>
-        <button className="btn btn-sm" onClick={() => queries.forEach((q) => q.isError && q.refetch())}>Erneut versuchen</button>
-      </div>
-    );
-  }
-  if (queries.some((q) => q.isPending)) return <p className="muted loading" role="status">Lädt …</p>;
-  return <>{children()}</>;
-}
 
 export function HomePage() {
   const positions = usePositions();
@@ -50,7 +32,7 @@ export function HomePage() {
   const flow = summary.data && plans.data ? monthFlow(summary.data, plans.data, today) : null;
 
   const runPlan = (id: number) => execute.mutate(id, {
-    onSuccess: (result) => notify(`Sparplan ausgeführt: ${quantityFormat.format(result.quantity)} Stück zu ${eur(result.price)}`),
+    onSuccess: (result) => notify(`Sparplan ausgeführt: ${qty(result.quantity)} Stück zu ${eur(result.price)}`),
     onError: (error) => notify(error.message, { error: true }),
   });
 

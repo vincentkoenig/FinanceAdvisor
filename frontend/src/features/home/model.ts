@@ -1,6 +1,6 @@
 // Rechnungen der Übersicht ohne React, damit sie sich einzeln testen lassen.
 import type { Booking, BudgetSummary, HistoryPoint, Position, SavingsPlan, Trade } from '../../api/overview';
-import { monthKey } from '../../lib/format';
+import { isoDay, monthKey } from '../../lib/format';
 
 export type PortfolioTotals = { value: number; cost: number; gain: number; gainPct: number | null };
 
@@ -18,22 +18,24 @@ export function portfolioTotals(positions: Position[]): PortfolioTotals {
 /**
  * Veränderung des Depots seit gestern: heutiger Wert zu Live-Kursen gegen den letzten Tag
  * vor heute im Wertverlauf (der Verlauf schreibt für heute nur den letzten Schlusskurs fort).
- * Käufe und Verkäufe seitdem sind keine Kursbewegung und werden herausgerechnet.
  */
 export function dayChange(history: HistoryPoint[], currentValue: number, trades: Trade[], today: Date) {
   const todayKey = isoDay(today);
   const before = [...history].reverse().find((point) => point.date < todayKey);
-  if (!before) return null;
-  const netBought = trades
-    .filter((t) => t.date > before.date)
-    .reduce((sum, t) => sum + (t.type === 'buy' ? t.total : -t.total), 0);
-  const abs = currentValue - before.value - netBought;
-  const base = before.value + Math.max(netBought, 0);
-  return { abs, pct: base > 0 ? (abs / base) * 100 : null };
+  return before ? changeSince(before, currentValue, trades) : null;
 }
 
-function isoDay(day: Date) {
-  return `${monthKey(day)}-${String(day.getDate()).padStart(2, '0')}`;
+/**
+ * Kursbewegung seit einem Punkt im Wertverlauf. Käufe und Verkäufe seitdem sind keine
+ * Kursbewegung und werden herausgerechnet; Prozent bezogen auf den Wert plus Zukäufe.
+ */
+export function changeSince(start: HistoryPoint, currentValue: number, trades: Trade[]) {
+  const netBought = trades
+    .filter((t) => t.date > start.date)
+    .reduce((sum, t) => sum + (t.type === 'buy' ? t.total : -t.total), 0);
+  const abs = currentValue - start.value - netBought;
+  const base = start.value + Math.max(netBought, 0);
+  return { abs, pct: base > 0 ? (abs / base) * 100 : null };
 }
 
 export type PlanDate = { plan: SavingsPlan; date: Date };
@@ -83,17 +85,21 @@ export function recentBookings(bookings: Booking[], count = 4) {
   return [...bookings].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, count);
 }
 
-/** Die größten Positionen nach aktuellem Wert, mit Gewinn seit Kauf */
+export type PositionRow = Position & { price: number; value: number; cost: number; gain: number; gainPct: number | null };
+
+/** Positionen mit Wert, Einstand und Gewinn seit Kauf (ohne Kurs zählt der Einstandspreis) */
+export function positionRows(positions: Position[]): PositionRow[] {
+  return positions.map((p) => {
+    const price = p.current_price ?? p.avg_buy_price;
+    const value = price * p.quantity;
+    const cost = p.avg_buy_price * p.quantity;
+    return { ...p, price, value, cost, gain: value - cost, gainPct: cost > 0 ? (value / cost - 1) * 100 : null };
+  });
+}
+
+/** Die größten Positionen nach aktuellem Wert */
 export function largestPositions(positions: Position[], count = 4) {
-  return positions
-    .map((p) => {
-      const price = p.current_price ?? p.avg_buy_price;
-      const value = price * p.quantity;
-      const cost = p.avg_buy_price * p.quantity;
-      return { ...p, value, gain: value - cost, gainPct: cost > 0 ? (value / cost - 1) * 100 : null };
-    })
-    .sort((a, b) => b.value - a.value)
-    .slice(0, count);
+  return positionRows(positions).sort((a, b) => b.value - a.value).slice(0, count);
 }
 
 /** Kurzzeichen für den runden Platzhalter einer Position */
