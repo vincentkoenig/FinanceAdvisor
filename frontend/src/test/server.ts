@@ -50,6 +50,14 @@ const initialData = () => ({
   watchlist: [
     { asset_id: 3, name: 'SAP SE', symbol: 'SAP.DE', price_added: 200, current_price: 220, added_at: '01.10.2026' },
   ] as { asset_id: number; name: string; symbol: string; price_added: number | null; current_price: number | null; added_at: string }[],
+  chat: [
+    { role: 'user', message: 'Wie viel habe ich übrig?' },
+    { role: 'assistant', message: 'Im Oktober bleiben dir **1.000 €**.\n\n- Einnahmen: 3.000 €\n- Ausgaben: 2.000 €' },
+  ] as { role: 'user' | 'assistant'; message: string }[],
+  analyses: [
+    { id: 2, total_value: 14000, risk_assessment: 'Mittleres Risiko durch den Bitcoin-Anteil.', diversification_score: 5, summary: 'Das Depot ist breit über einen Welt-ETF gestreut.', recommendations: ['Krypto-Anteil im Blick behalten', 'Notgroschen prüfen'], created_at: '30.10.2026 08:00' },
+    { id: 1, total_value: 12000, risk_assessment: 'Hohes Risiko.', diversification_score: 3, summary: 'Ältere Einschätzung.', recommendations: [], created_at: '01.09.2026 10:30' },
+  ],
   insight: { content: 'Dein Depot hat diese Woche 1,4 % zugelegt.', created_at: '2026-10-30 07:00' } as { content: string | null; created_at?: string },
 });
 
@@ -74,7 +82,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -174,6 +182,18 @@ export const handlers = [
   http.delete('/api/v1/me/savings-plans/:id', ({ params }) => {
     data.savingsPlans = data.savingsPlans.filter((p) => p.id !== Number(params.id));
     return HttpResponse.json({ message: 'Sparplan gelöscht' });
+  }),
+
+  http.get('/api/v1/me/chat/history', () => HttpResponse.json(data.chat)),
+  http.post('/api/v1/me/chat', async ({ request }) => {
+    const { message } = (await request.json()) as { message: string };
+    sent.chat = message;
+    return HttpResponse.json({ reply: `Antwort auf: ${message}` });
+  }),
+  http.get('/api/v1/me/analyses', () => HttpResponse.json(data.analyses)),
+  http.post('/api/v1/me/analyses', () => {
+    data.analyses.unshift({ id: 3, total_value: 14000, risk_assessment: 'Neu bewertet.', diversification_score: 6, summary: 'Frische Analyse.', recommendations: ['Weiter so'], created_at: '31.10.2026 09:00' });
+    return HttpResponse.json({ disclaimer: 'Keine Anlageberatung' });
   }),
 
   http.put('/api/v1/me/settings', async ({ request }) => {
