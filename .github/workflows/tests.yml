@@ -88,3 +88,43 @@ jobs:
       - name: Container-Log bei Fehler
         if: failure()
         run: docker logs fintrack || true
+
+  # Nach jedem Merge auf main: den eigenen Server aktualisieren, aber nur wenn alle
+  # Tests grün sind. Der Deploy-Schlüssel darf auf dem Server nur deploy/server-deploy.sh
+  # ausführen (siehe deploy/README.md).
+  deploy:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    env:
+      APP_URL: https://fintrack.vincentkoenig.ai
+      DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+
+    steps:
+      - name: Deploy-Schlüssel prüfen
+        run: |
+          if [ -z "$DEPLOY_SSH_KEY" ]; then
+            echo "::warning::DEPLOY_SSH_KEY fehlt (Settings -> Secrets and variables -> Actions) - kein Deploy."
+            echo "skip=1" >> "$GITHUB_ENV"
+          fi
+
+      - name: Server aktualisieren
+        if: env.skip != '1'
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          # Fester Host-Schlüssel des Servers: verhindert, dass sich ein fremder Server
+          # dazwischenschaltet (Fingerabdruck SHA256:nSGR3epb9tDBKuXH+ek0KRznPvDugCqHwx4ybj+K+sE)
+          echo "fintrack.vincentkoenig.ai ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILocSDNKLJYLil+EKjIhOXNkjM4OFa6zH1SJ36Pw2QNF" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            root@fintrack.vincentkoenig.ai deploy
+
+      - name: Von außen prüfen
+        if: env.skip != '1'
+        run: |
+          curl -fsS --retry 5 --retry-delay 5 --retry-all-errors "$APP_URL/healthz?db=1"; echo
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$APP_URL/app/")" = 200

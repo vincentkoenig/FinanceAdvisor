@@ -1,0 +1,22 @@
+# FinTrack auf dem eigenen Server (Hostinger KVM 1) hinter dem vorhandenen Traefik.
+# Traefik holt das HTTPS-Zertifikat automatisch; der Container hat keinen Port nach außen.
+#
+# Auf dem Server liegt das Repository unter /opt/fintrack/src, die Geheimnisse in
+# /opt/fintrack/.env (nur für root lesbar, nie im Repository). Gestartet wird über
+# deploy/server-deploy.sh, das GitHub Actions nach jedem Merge auf main aufruft.
+name: fintrack
+
+services:
+  fintrack:
+    build: ..
+    image: fintrack:local
+    restart: unless-stopped
+    # Alle Einstellungen kommen aus der .env auf dem Server, auch SCHEDULER_ENABLED:
+    # 0 solange noch ein anderer Server (Render) den täglichen Lauf macht
+    env_file: /opt/fintrack/.env
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.fintrack.rule: "Host(`fintrack.vincentkoenig.ai`)"
+      traefik.http.routers.fintrack.entrypoints: "websecure"
+      traefik.http.routers.fintrack.tls.certresolver: "letsencrypt"
+      traefik.http.services.fintrack.loadbalancer.server.port: "8000"
