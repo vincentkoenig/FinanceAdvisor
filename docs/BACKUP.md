@@ -20,7 +20,7 @@ zwei Secrets anlegen:
 
 | Name | Inhalt |
 |---|---|
-| `BACKUP_DATABASE_URL` | Connection String der Neon-Datenbank, derselbe Wert wie `DATABASE_URL` auf Render |
+| `BACKUP_DATABASE_URL` | Connection String der Neon-Datenbank, derselbe Wert wie `DATABASE_URL` in `/opt/fintrack/.env` auf dem Server |
 | `BACKUP_PASSPHRASE` | Langes Passwort für die Verschlüsselung, im Passwortmanager ablegen |
 
 > **Ohne `BACKUP_PASSPHRASE` lassen sich die Sicherungen nicht mehr öffnen.**
@@ -71,8 +71,9 @@ pg_restore --no-owner --no-privileges --exit-on-error \
 
 **4. Umschalten**
 
-`DATABASE_URL` auf Render und das Secret `BACKUP_DATABASE_URL` auf die neue
-Datenbank setzen und auf Render neu deployen.
+`DATABASE_URL` in `/opt/fintrack/.env` auf dem Server und das Secret
+`BACKUP_DATABASE_URL` auf die neue Datenbank setzen, dann auf dem Server neu
+ausrollen: `sh /opt/fintrack/src/deploy/server-deploy.sh`.
 
 **5. Aufräumen**
 

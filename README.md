@@ -1,9 +1,9 @@
 # FinTrack (ehemals FinanceAdvisor) 💹
 
 
-Eine KI-gestützte Finanz-Web-App mit **Flask**-API, **React**-Frontend und **OpenAI**. Verwalte dein Investment-Portfolio, führe ein Haushaltsbuch, chatte mit einem KI-Finanzberater und lass dir strukturierte Portfolio-Analysen erstellen — installierbar als mobile App (PWA), live deployed auf Render, und über einen eigenen MCP-Server auch für Claude Desktop nutzbar.
+Eine KI-gestützte Finanz-Web-App mit **Flask**-API, **React**-Frontend und **OpenAI**. Verwalte dein Investment-Portfolio, führe ein Haushaltsbuch, chatte mit einem KI-Finanzberater und lass dir strukturierte Portfolio-Analysen erstellen — installierbar als mobile App (PWA), live auf einem eigenen Server, und über einen eigenen MCP-Server auch für Claude Desktop nutzbar.
 
-**Live-Demo:** https://financeadvisor-snxz.onrender.com/app/ *(kostenloser Tarif — nach Inaktivität kann der erste Aufruf 30-60 Sekunden dauern, während der Server aufwacht)*
+**Live:** https://fintrack.vincentkoenig.ai *(Konten legt der Betreiber an)*
 
 ## Features
 
@@ -76,7 +76,7 @@ Eine KI-gestützte Finanz-Web-App mit **Flask**-API, **React**-Frontend und **Op
 - Toast-Benachrichtigungen, Ladezustände, erklärende leere Zustände und „Erneut versuchen“ bei Ladefehlern
 
 ### ☁️ Deployment
-- Live auf **Render**, läuft unter **Gunicorn** mit einem einzigen Worker (nötig, damit der Preis-Update-Scheduler nicht mehrfach parallel läuft)
+- Live als **Docker**-Container auf einem eigenen Server hinter **Traefik** (automatisches HTTPS), läuft unter **Gunicorn** mit einem einzigen Worker (nötig, damit der Scheduler nicht mehrfach parallel läuft) — kein Kaltstart
 - **PostgreSQL** im Produktivbetrieb, die App fällt lokal automatisch auf **SQLite** zurück, wenn keine `DATABASE_URL`-Umgebungsvariable gesetzt ist — derselbe Code für lokale Entwicklung und Produktion
 - Geheimnisse (OpenAI-, CoinGecko-, Tavily-API-Keys, Datenbank-URL) werden über Umgebungsvariablen verwaltet, niemals im Repository gespeichert
 
@@ -91,7 +91,7 @@ Eine KI-gestützte Finanz-Web-App mit **Flask**-API, **React**-Frontend und **Op
 ![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
 ![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)
-![Render](https://img.shields.io/badge/Render-46E3B7?style=flat&logo=render&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
 
 - **Flask** — REST-API-Backend, liefert außerdem das gebaute Frontend aus
 - **SQLAlchemy** — ORM, PostgreSQL im Live-Betrieb / SQLite für die lokale Entwicklung
@@ -269,12 +269,12 @@ Die komplette Anleitung dazu findet sich in [`mcp_server/`](./mcp_server) — ku
 
 ## Deployment
 
-Die App läuft live auf [Render](https://render.com):
-- **Build-Befehl** `pip install -r requirements.txt && npm ci --prefix frontend && npm run build --prefix frontend` — baut neben den Python-Abhängigkeiten auch das Frontend nach `frontend/dist` (Node-Version aus `.node-version`)
-- **Web Service** mit dem Startbefehl `python -m flask --app "fintrack:create_app()" upgrade-db && gunicorn app:app --workers=1` — erst werden ausstehende Datenbank-Migrationen ausgeführt, dann startet der Server (ein einzelner Worker ist nötig, damit der Preis-Update-Scheduler nicht mehrfach parallel läuft)
-- **PostgreSQL**-Datenbank bei [Neon](https://neon.tech) (kostenloser Tarif, läuft im Gegensatz zur kostenlosen Render-Datenbank nicht ab), verbunden über die Umgebungsvariable `DATABASE_URL`
-- Umgebungsvariablen (`OPENAI_API_KEY`, `COINGECKO_API_KEY`, `TAVILY_API_KEY`, `DATABASE_URL`) direkt im Render-Dashboard hinterlegt, nie im Repository gespeichert
-- Täglicher Lauf über GitHub Actions ([`daily-jobs.yml`](./.github/workflows/daily-jobs.yml), 21:30 UTC): weckt den schlafenden Server auf, startet `/api/v1/admin/run-daily-jobs` und wartet auf das Ergebnis. Braucht das Repository-Secret `ADMIN_API_KEY` (derselbe Wert wie bei Render). Läuft der Server ohnehin, startet zusätzlich der eingebaute Scheduler um 22:30 Uhr deutscher Zeit — eine Sperre verhindert doppelte Läufe
+Die App läuft unter https://fintrack.vincentkoenig.ai auf einem eigenen VPS (Hostinger, Frankfurt) — Aufbau und Einrichtung siehe [`deploy/README.md`](./deploy/README.md):
+- **Docker**-Container (`Dockerfile`) hinter dem vorhandenen **Traefik**, der das HTTPS-Zertifikat automatisch holt; beim Start laufen zuerst die Migrationen, dann Gunicorn
+- **Automatisches Ausrollen:** Nach jedem Merge auf `main` laufen die Tests, danach aktualisiert GitHub Actions den Server über einen Deploy-Schlüssel, der nur das Deploy-Skript ausführen darf, und prüft `/healthz?db=1` von außen
+- **PostgreSQL**-Datenbank bei [Neon](https://neon.tech) in Frankfurt (kostenloser Tarif), verbunden über die Umgebungsvariable `DATABASE_URL`
+- Geheimnisse in `/opt/fintrack/.env` auf dem Server (nur für root lesbar) und als GitHub-Secrets, nie im Repository
+- Täglicher Lauf (Kurse, Dividenden, Insights) über den eingebauten Scheduler um 22:30 Uhr deutscher Zeit; GitHub Actions ([`daily-jobs.yml`](./.github/workflows/daily-jobs.yml), 21:30 UTC) startet ihn zusätzlich als Absicherung über `/api/v1/admin/run-daily-jobs` (Repository-Secret `ADMIN_API_KEY`, derselbe Wert wie auf dem Server) — eine Sperre verhindert doppelte Läufe
 - Nächtliches, verschlüsseltes Datenbank-Backup mit automatischem Wiederherstellungstest über GitHub Actions — Einrichtung und Wiederherstellung siehe [`docs/BACKUP.md`](./docs/BACKUP.md)
 
 ## Was ich dabei gelernt habe
@@ -296,5 +296,6 @@ Die App läuft live auf [Render](https://render.com):
 - Umbau der App in eine installierbare Progressive Web App mit eigenem Manifest, generiertem Icon-Set und einem bewusst minimalen Service Worker (kein Offline-Caching, da die App auf Live-Kurs- und Chat-Daten angewiesen ist)
 - Zusammenführung einer eigenständigen Seite (Watchlist) in eine bestehende Seite als Tab-Ansicht, ohne das Backend anzufassen, mit sorgfältiger Konsolidierung von Navigation und JavaScript-Zustand zur Vermeidung von Variablenkonflikten
 - Migration von SQLite zu einem dualen SQLite/PostgreSQL-Setup, gesteuert über eine Umgebungsvariable, sowie Deployment auf Render mit Gunicorn, inklusive Behebung eines Schedulers, der beim Wechsel vom Flask-Entwicklungsserver zu einem WSGI-Server stillschweigend aufgehört hatte zu laufen
+- Umzug von Render auf einen eigenen VPS ohne Kaltstart: Docker-Image mit Healthcheck, der die Datenbank nicht weckt, Traefik für HTTPS, abgesicherter Server (Firewall, nur SSH-Schlüssel) und automatisches Ausrollen über einen eingeschränkten Deploy-Schlüssel
 - Trennung von Verantwortlichkeiten über mehrere Module hinweg (Routen, Modelle, Services, Scheduler, Tools, Budget-Logik)
 - Schrittweiser Umbau der Jinja-Seiten zu einer React-/TypeScript-PWA in kleinen Pull Requests, parallel unter `/app`, bis zur Umstellung — mit klickbarem Prototyp vorab, Tests gegen eine nachgebaute API (MSW) und einem eigenen Service Worker, der bewusst keine Finanzdaten auf dem Gerät speichert

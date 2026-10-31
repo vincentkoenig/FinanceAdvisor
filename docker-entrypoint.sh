@@ -1,6 +1,6 @@
 #!/bin/sh
 # Start im Container: erst ausstehende Datenbank-Migrationen, dann der Server.
-# Wie bisher auf Render: genau ein Gunicorn-Worker, damit der eingebaute Scheduler
+# Genau ein Gunicorn-Worker, damit der eingebaute Scheduler
 # (täglicher Lauf) nicht mehrfach parallel läuft. Mehrere Threads, damit eine lange
 # KI-Anfrage (Chat, Analyse) die anderen Seiten nicht blockiert.
 set -e

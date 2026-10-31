@@ -17,8 +17,8 @@ load_dotenv()
 
 def is_production():
     """
-    Läuft die App in Produktion? Render setzt automatisch RENDER=true,
-    alternativ lässt sich APP_ENV=production setzen.
+    Läuft die App in Produktion? Der Docker-Container setzt APP_ENV=production
+    (siehe Dockerfile); RENDER=true stammt aus der Zeit auf Render.
     """
     return os.getenv('RENDER') == 'true' or os.getenv('APP_ENV') == 'production'
 
@@ -89,7 +89,7 @@ class Config:
         # Cookies nur über HTTPS schicken - lokal läuft die App über http
         self.SESSION_COOKIE_SECURE = production
         self.REMEMBER_COOKIE_SECURE = production
-        # Hinter dem Render-Proxy kommt die echte Client-IP im Header
+        # Hinter dem Proxy (Traefik) kommt die echte Client-IP im Header
         # X-Forwarded-For an - wichtig für die Begrenzung pro IP
         self.TRUST_PROXY = production
 

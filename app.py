@@ -1,6 +1,6 @@
 """
 app.py - Einstiegspunkt der App.
-Gunicorn startet auf Render "gunicorn app:app" und importiert dafür das
+Gunicorn startet im Container "gunicorn app:app" und importiert dafür das
 Objekt app aus dieser Datei. Lokal startet "python app.py" den
 Entwicklungsserver. Die eigentliche App wird im Paket fintrack/ gebaut.
 """
@@ -14,13 +14,13 @@ app = create_app()
 
 # Scheduler starten - aktualisiert Preise, Dividenden und Insights automatisch.
 # Läuft sowohl beim lokalen Start (python app.py) als auch wenn Gunicorn die
-# App importiert (auf Render). Mit SCHEDULER_ENABLED=0 lässt er sich abschalten,
+# App importiert (im Container). Mit SCHEDULER_ENABLED=0 lässt er sich abschalten,
 # z.B. für einen zweiten lokalen Prozess.
 if os.getenv('SCHEDULER_ENABLED', '1') == '1':
     start_scheduler(app)
 
 if __name__ == '__main__':
-    # Auf Render läuft die App über Gunicorn, das diesen Block gar nicht
+    # Im Container läuft die App über Gunicorn, das diesen Block gar nicht
     # ausführt. Lokal steuern zwei Umgebungsvariablen den Start:
     # - FLASK_DEBUG=1 aktiviert den Debug-Modus (inkl. Werkzeug-Debugger)
     # - FLASK_HOST=0.0.0.0 macht den Server im lokalen Netzwerk erreichbar

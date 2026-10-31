@@ -41,7 +41,7 @@ def create_app(config_name=None, config_overrides=None):
     app.config['FRONTEND_DIST'] = os.path.join(PROJECT_ROOT, 'frontend', 'dist')
     app.config.update(config_overrides or {})
 
-    # Hinter dem Render-Proxy: echte Client-IP und HTTPS aus den
+    # Hinter dem Proxy (Traefik): echte Client-IP und HTTPS aus den
     # X-Forwarded-Headern übernehmen (genau ein Proxy davor)
     if app.config.get('TRUST_PROXY'):
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
