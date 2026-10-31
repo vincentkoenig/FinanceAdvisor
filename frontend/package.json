@@ -10,7 +10,8 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "size": "node scripts/check-size.mjs"
   },
   "dependencies": {
     "@fontsource/barlow-semi-condensed": "^5.3.0",

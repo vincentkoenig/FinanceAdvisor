@@ -38,6 +38,13 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    // Bibliotheken in eine eigene Datei: sie ändert sich bei einem normalen Deploy nicht und
+    // bleibt im Browser-Cache, neu geladen wird nur der eigene Code
+    rolldownOptions: {
+      output: {
+        codeSplitting: { groups: [{ name: 'vendor', test: /node_modules[\\/](react|react-dom|react-router|scheduler|@tanstack)[\\/]/ }] },
+      },
+    },
   },
   test: {
     environment: 'jsdom',

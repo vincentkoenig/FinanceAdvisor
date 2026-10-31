@@ -49,7 +49,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Frontend prüfen (Typen, Lint, Tests, Build)
+      - name: Frontend prüfen (Typen, Lint, Tests, Build, Größe)
         working-directory: frontend
         run: |
           npm ci
@@ -57,6 +57,7 @@ jobs:
           npm run lint
           npm test
           npx vite build
+          npm run size
 
       - name: Tests ausführen
         env:

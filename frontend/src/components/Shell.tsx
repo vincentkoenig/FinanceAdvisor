@@ -1,10 +1,12 @@
 // Rahmen jeder Seite: Top-Leiste über einer zentrierten Spalte, auf dem Handy eine Leiste unten.
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router';
 import { useLogout, useMe } from '../api/auth';
+import { preloadPages } from '../lib/lazyPage';
 import { usePrivacy } from '../lib/privacy';
 import type { Theme } from '../lib/theme';
 import { Icon, Mark, type IconName } from './Icon';
+import { Skeleton } from './Loaded';
 
 export type RootContext = { theme: Theme; toggleTheme: () => void; setTheme: (theme: Theme) => void };
 
@@ -66,11 +68,22 @@ export function Shell() {
   useEffect(() => {
     if (shownPath.current === location.pathname) return;
     shownPath.current = location.pathname;
-    const heading = document.querySelector<HTMLElement>('#main h1');
-    if (!heading) return;
-    heading.tabIndex = -1;
-    heading.focus({ preventScroll: true });
+    const main = document.getElementById('main');
+    const focusHeading = () => {
+      const heading = main?.querySelector<HTMLElement>('h1');
+      if (!heading) return false;
+      heading.tabIndex = -1;
+      heading.focus({ preventScroll: true });
+      return true;
+    };
+    // Eine nachgeladene Seite hat ihre Überschrift erst etwas später
+    if (focusHeading() || !main) return;
+    const observer = new MutationObserver(() => focusHeading() && observer.disconnect());
+    observer.observe(main, { childList: true, subtree: true });
+    return () => observer.disconnect();
   }, [location.pathname]);
+
+  useEffect(() => preloadPages(), []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 4);
@@ -133,7 +146,9 @@ export function Shell() {
       </header>
 
       <main className="canvas" id="main" tabIndex={-1}>
-        <Outlet context={context} />
+        <Suspense fallback={<Skeleton />}>
+          <Outlet context={context} />
+        </Suspense>
       </main>
 
       <nav className="bottom-nav" aria-label="Navigation unten">
