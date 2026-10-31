@@ -71,3 +71,35 @@ describe('Chat', () => {
     expect(screen.getByRole('button', { name: 'Senden' })).toBeDisabled();
   });
 });
+
+describe('Neuer Chat', () => {
+  beforeEach(() => {
+    session.loggedIn = true;
+  });
+
+  it('löscht den Verlauf nach Rückfrage und zeigt wieder die Vorschläge', async () => {
+    renderApp('/chat');
+    const user = userEvent.setup();
+    const chat = await conversation();
+    await within(chat).findByText('Wie viel habe ich übrig?');
+    await user.click(screen.getByRole('button', { name: 'Neuer Chat' }));
+    const dialog = screen.getByRole('dialog', { name: 'Neuen Chat beginnen?' });
+    expect(dialog).toHaveTextContent('Einstellungen → Meine Daten');
+    await user.click(within(dialog).getByRole('button', { name: 'Verlauf löschen' }));
+    expect(await screen.findByText('Neuer Chat gestartet')).toBeInTheDocument();
+    expect(within(chat).queryByText('Wie viel habe ich übrig?')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Wie viel habe ich diesen Monat übrig?' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Neuer Chat' })).not.toBeInTheDocument();
+    expect(data.chat).toEqual([]);
+  });
+
+  it('lässt den Verlauf stehen, wenn abgebrochen wird', async () => {
+    renderApp('/chat');
+    const user = userEvent.setup();
+    await within(await conversation()).findByText('Wie viel habe ich übrig?');
+    await user.click(screen.getByRole('button', { name: 'Neuer Chat' }));
+    await user.click(screen.getByRole('button', { name: 'Abbrechen' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(data.chat).toHaveLength(2);
+  });
+});
