@@ -1,8 +1,9 @@
 // Signatur der App: wohin das Einkommen eines Monats geht (Übersicht und Haushaltsbuch)
 import type { monthFlow } from '../features/home/model';
-import { eur } from '../lib/format';
+import { useMoney } from '../lib/privacy';
 
 export function MonthFlow({ flow }: { flow: ReturnType<typeof monthFlow> }) {
+  const { eur } = useMoney();
   if (flow.income <= 0 && flow.parts.every((p) => p.value === 0)) {
     return <p className="empty-line">Für diesen Monat gibt es noch keine Buchungen.</p>;
   }

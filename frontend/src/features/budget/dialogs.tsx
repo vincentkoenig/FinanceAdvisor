@@ -5,7 +5,7 @@ import type { Booking, CategoryType } from '../../api/overview';
 import { Dialog } from '../../components/Dialog';
 import { Actions, type Errors, Field, apiErrors, describe, positive } from '../../components/form';
 import { useToast } from '../../components/Toast';
-import { eur } from '../../lib/format';
+import { useMoney } from '../../lib/privacy';
 
 const TYPES: { type: CategoryType; label: string }[] = [
   { type: 'income', label: 'Einnahme' },
@@ -24,6 +24,7 @@ function choices(categories: Category[], type: CategoryType) {
 }
 
 export function AddBookingDialog({ defaultDate, onClose }: { defaultDate: string; onClose: () => void }) {
+  const { eur } = useMoney();
   const categories = useCategories();
   const defaults = useDefaultCategories();
   const add = useAddBooking();

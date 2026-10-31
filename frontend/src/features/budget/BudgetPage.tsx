@@ -8,7 +8,8 @@ import { Icon } from '../../components/Icon';
 import { Loaded } from '../../components/Loaded';
 import { MonthFlow } from '../../components/MonthFlow';
 import { useToast } from '../../components/Toast';
-import { dayShort, eur, isoDay, monthKey, parseDay } from '../../lib/format';
+import { dayShort, isoDay, monthKey, parseDay } from '../../lib/format';
+import { useMoney } from '../../lib/privacy';
 import { monthFlow, signedAmount } from '../home/model';
 import { AddBookingDialog, DeleteBookingDialog } from './dialogs';
 import {
@@ -22,6 +23,7 @@ const dayMonth = (iso: string) => parseDay(iso).toLocaleDateString('de-DE', { da
 type Open = { type: 'add' } | { type: 'delete'; booking: Booking } | null;
 
 export function BudgetPage() {
+  const { eur } = useMoney();
   const today = new Date();
   const [offset, setOffset] = useState(0);
   const month = monthStart(today, offset);
@@ -136,6 +138,7 @@ export function BudgetPage() {
 type BookingsProps = { bookings: Booking[]; month: Date; categories: Category[]; onDelete: (b: Booking) => void };
 
 function Bookings({ bookings, month, categories, onDelete }: BookingsProps) {
+  const { eur } = useMoney();
   const toggle = useTogglePause();
   const notify = useToast();
   const name = (b: Booking) => b.description || b.category_name || 'Buchung';

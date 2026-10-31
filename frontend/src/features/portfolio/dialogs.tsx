@@ -8,7 +8,8 @@ import type { SavingsPlan } from '../../api/overview';
 import { Dialog } from '../../components/Dialog';
 import { Actions, type Errors, Field, apiErrors, describe, positive } from '../../components/form';
 import { useToast } from '../../components/Toast';
-import { eur, isoDay, pct, qty, tone } from '../../lib/format';
+import { isoDay, pct, tone } from '../../lib/format';
+import { useMoney } from '../../lib/privacy';
 import { type PositionRow, token } from '../home/model';
 
 const TYPE_NAMES: Record<string, string> = { etf: 'ETF', stock: 'Aktie', crypto: 'Krypto', metal: 'Edelmetall' };
@@ -20,6 +21,7 @@ const fieldAmount = (value: number | null | undefined) =>
 // ─── Asset suchen und hinzufügen ───
 
 export function AddAssetDialog({ mode, onClose }: { mode: 'buy' | 'watch'; onClose: () => void }) {
+  const { qty } = useMoney();
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<SearchResult | null>(null);
   const [quantity, setQuantity] = useState('');
@@ -117,6 +119,7 @@ export function AddAssetDialog({ mode, onClose }: { mode: 'buy' | 'watch'; onClo
 // ─── Kauf und Verkauf einer Position ───
 
 export function PositionDialog({ row, onClose }: { row: PositionRow; onClose: () => void }) {
+  const { eur, qty } = useMoney();
   const [kind, setKind] = useState<'buy' | 'sell'>('buy');
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState(fieldAmount(row.current_price ?? row.avg_buy_price));
@@ -199,6 +202,7 @@ export function PositionDialog({ row, onClose }: { row: PositionRow; onClose: ()
 // ─── Kauf aus der Watchlist ───
 
 export function WatchDialog({ item, onClose }: { item: WatchItem; onClose: () => void }) {
+  const { eur, qty } = useMoney();
   const [quantity, setQuantity] = useState('');
   const [price, setPrice] = useState(fieldAmount(item.current_price));
   const [errors, setErrors] = useState<Errors>({});
@@ -267,6 +271,7 @@ export function WatchDialog({ item, onClose }: { item: WatchItem; onClose: () =>
 export type PlanAsset = { asset_id: number; name: string };
 
 export function PlanDialog({ assets, onClose }: { assets: PlanAsset[]; onClose: () => void }) {
+  const { eur } = useMoney();
   const [assetId, setAssetId] = useState(assets[0]?.asset_id ?? 0);
   const [amount, setAmount] = useState('');
   const [day, setDay] = useState(Math.min(new Date().getDate(), 28));

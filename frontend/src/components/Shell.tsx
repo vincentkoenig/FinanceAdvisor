@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router';
 import { useLogout, useMe } from '../api/auth';
+import { usePrivacy } from '../lib/privacy';
 import type { Theme } from '../lib/theme';
 import { Icon, Mark, type IconName } from './Icon';
 
@@ -30,6 +31,7 @@ export function Shell() {
   const context = useOutletContext<RootContext>();
   const { theme, toggleTheme } = context;
   const { data: user } = useMe();
+  const { hidden, setHidden } = usePrivacy();
   const logout = useLogout();
   const navigate = useNavigate();
   const location = useLocation();
@@ -83,6 +85,10 @@ export function Shell() {
             {NAV.map((item) => <NavEntry key={item.label} item={item} />)}
           </nav>
           <div className="top-actions">
+            <button className="icon-btn" aria-pressed={hidden} onClick={() => setHidden(!hidden)}
+              aria-label="Beträge verbergen" title={hidden ? 'Beträge zeigen' : 'Beträge verbergen'}>
+              <Icon name={hidden ? 'eyeOff' : 'eye'} size={20} />
+            </button>
             <button className="avatar" aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Konto"
               onClick={() => setMenuOpen(!menuOpen)}>
               {user ? initials(user.email) : ''}

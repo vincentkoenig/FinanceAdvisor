@@ -5,11 +5,12 @@ import { useAnalyses, useRunAnalysis } from '../../api/advisor';
 import { usePositions } from '../../api/overview';
 import { Loaded } from '../../components/Loaded';
 import { useToast } from '../../components/Toast';
-import { eur } from '../../lib/format';
+import { useMoney } from '../../lib/privacy';
 
 const scoreText = (score: number | null) => (score === null ? '–' : `${score} von 10`);
 
 export function AnalysePage() {
+  const { eur, text } = useMoney();
   const analyses = useAnalyses();
   const positions = usePositions();
   const run = useRunAnalysis();
@@ -58,13 +59,13 @@ export function AnalysePage() {
               <div className="grid grid-3">
                 <section className="panel span-2" aria-labelledby="h-summary">
                   <div className="panel-head"><h2 id="h-summary">Einschätzung</h2><span className="meta">{latest.created_at}</span></div>
-                  <p className="prose">{latest.summary}</p>
+                  <p className="prose">{text(latest.summary)}</p>
                   <h3 className="sub-head">Risiko</h3>
-                  <p className="prose">{latest.risk_assessment}</p>
+                  <p className="prose">{text(latest.risk_assessment)}</p>
                   {latest.recommendations.length > 0 && (
                     <>
                       <h3 className="sub-head">Worauf du achten kannst</h3>
-                      <ol className="recommendations">{latest.recommendations.map((r, i) => <li key={i}>{r}</li>)}</ol>
+                      <ol className="recommendations">{latest.recommendations.map((r, i) => <li key={i}>{text(r)}</li>)}</ol>
                     </>
                   )}
                   <p className="hint disclaimer">Die Einschätzung stammt von einer KI und ist keine Anlageberatung.</p>
@@ -99,7 +100,7 @@ export function AnalysePage() {
                         <summary>
                           <span className="grow">
                             <span className="strong">{a.created_at}</span>
-                            <span className="sub-line clamp-2">{a.summary}</span>
+                            <span className="sub-line clamp-2">{text(a.summary)}</span>
                           </span>
                           <span className="end">
                             <span className="pill">Streuung {scoreText(a.diversification_score)}</span>
@@ -107,10 +108,10 @@ export function AnalysePage() {
                           </span>
                         </summary>
                         <div className="older-body">
-                          <p className="prose">{a.summary}</p>
+                          <p className="prose">{text(a.summary)}</p>
                           <h3 className="sub-head">Risiko</h3>
-                          <p className="prose">{a.risk_assessment}</p>
-                          {a.recommendations.length > 0 && <ol className="recommendations">{a.recommendations.map((r, i) => <li key={i}>{r}</li>)}</ol>}
+                          <p className="prose">{text(a.risk_assessment)}</p>
+                          {a.recommendations.length > 0 && <ol className="recommendations">{a.recommendations.map((r, i) => <li key={i}>{text(r)}</li>)}</ol>}
                         </div>
                       </details>
                     ))}

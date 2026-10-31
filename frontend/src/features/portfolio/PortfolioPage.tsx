@@ -13,7 +13,8 @@ import { Loaded } from '../../components/Loaded';
 import { useToast } from '../../components/Toast';
 import { ValueChart } from '../../components/ValueChart';
 import { useIsPhone } from '../../components/Fold';
-import { dayShort, eur, parseDay, pct, qty, tone } from '../../lib/format';
+import { dayShort, parseDay, pct, tone } from '../../lib/format';
+import { useMoney } from '../../lib/privacy';
 import { type PositionRow, planDates, portfolioTotals, positionRows, token } from '../home/model';
 import { AddAssetDialog, DeletePlanDialog, type PlanAsset, PlanDialog, PositionDialog, WatchDialog } from './dialogs';
 import {
@@ -55,6 +56,7 @@ const perShareDigits = (value: number) => (Number(value.toFixed(2)) === value ? 
 const dayNumeric = (iso: string) => parseDay(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 export function PortfolioPage() {
+  const { eur } = useMoney();
   const positions = usePositions();
   const history = usePortfolioHistory();
   const trades = useTrades();
@@ -215,6 +217,7 @@ export function PortfolioPage() {
 }
 
 function Allocation({ slices, view, total }: { slices: Slice[]; view: AllocView; total: number }) {
+  const { eur } = useMoney();
   const label = slices.map((s) => `${s.label} ${Math.round(s.share)} %`).join(', ');
   let chart;
   if (view === 'ring') {
@@ -269,6 +272,7 @@ const COLUMNS: { key: SortKey; label: string; right?: boolean }[] = [
 ];
 
 function Positions({ rows, onOpen }: { rows: PositionRow[]; onOpen: (row: PositionRow) => void }) {
+  const { eur, qty } = useMoney();
   const [sort, setSort] = useState<Sort>({ key: 'value', dir: -1 });
   if (rows.length === 0) {
     return <p className="empty-line">Noch keine Positionen. Mit „Asset hinzufügen“ legst du die erste an.</p>;
@@ -346,6 +350,7 @@ function Positions({ rows, onOpen }: { rows: PositionRow[]; onOpen: (row: Positi
 }
 
 function Trades({ trades }: { trades: Trade[] }) {
+  const { eur, qty } = useMoney();
   if (trades.length === 0) return <p className="empty-line">Noch keine Käufe oder Verkäufe.</p>;
   const kind = (t: Trade) => (t.type === 'buy' ? 'Kauf' : 'Verkauf');
   return (
@@ -382,6 +387,7 @@ function Trades({ trades }: { trades: Trade[] }) {
 }
 
 function Dividends({ dividends, total, year }: { dividends: Dividend[]; total: number; year: number }) {
+  const { eur, qty } = useMoney();
   return (
     <>
       <div className="panel-head">
@@ -425,6 +431,7 @@ function Dividends({ dividends, total, year }: { dividends: Dividend[]; total: n
 }
 
 function Watchlist({ query, onAdd, onOpen }: { query: ReturnType<typeof useWatchlist>; onAdd: () => void; onOpen: (item: WatchItem) => void }) {
+  const { eur } = useMoney();
   return (
     <>
       <div className="panel-head">
@@ -459,6 +466,7 @@ function Watchlist({ query, onAdd, onOpen }: { query: ReturnType<typeof useWatch
 type PlansProps = { query: ReturnType<typeof useSavingsPlans>; today: Date; onAdd: () => void; onDelete: (plan: SavingsPlan) => void };
 
 function Plans({ query, today, onAdd, onDelete }: PlansProps) {
+  const { eur, qty } = useMoney();
   const execute = useExecutePlan();
   const notify = useToast();
   const run = (plan: SavingsPlan) => execute.mutate(plan.id, {

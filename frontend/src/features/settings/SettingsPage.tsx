@@ -9,6 +9,7 @@ import { Icon } from '../../components/Icon';
 import type { RootContext } from '../../components/Shell';
 import { useToast } from '../../components/Toast';
 import { parseAmount } from '../../lib/format';
+import { usePrivacy } from '../../lib/privacy';
 
 const RISK = [['conservative', 'Konservativ'], ['balanced', 'Ausgewogen'], ['aggressive', 'Aggressiv']];
 const EXPERIENCE = [['beginner', 'Anfänger'], ['intermediate', 'Fortgeschritten'], ['expert', 'Experte']];
@@ -164,6 +165,7 @@ function DataSection() {
 export function SettingsPage() {
   const { theme, setTheme } = useOutletContext<RootContext>();
   const { data: user } = useMe();
+  const { hidden, setHidden } = usePrivacy();
   const logout = useLogout();
   const navigate = useNavigate();
   if (!user) return null;
@@ -186,6 +188,13 @@ export function SettingsPage() {
               <button type="button" aria-pressed={theme === 'dark'} onClick={() => setTheme('dark')}>Dunkel</button>
               <button type="button" aria-pressed={theme === 'light'} onClick={() => setTheme('light')}>Hell</button>
             </div>
+          </div>
+          <div className="switch-row">
+            <div className="text">
+              <label htmlFor="hide-amounts" className="strong">Beträge verbergen</label>
+              <p className="hint">Zeigt Euro-Beträge und Stückzahlen als •••• an, Prozente bleiben sichtbar. Auch über das Auge oben in der Leiste.</p>
+            </div>
+            <input type="checkbox" className="switch" id="hide-amounts" checked={hidden} onChange={(e) => setHidden(e.target.checked)} />
           </div>
         </Row>
         <Row title="Meine Daten" description="Eine Datei mit allem: Buchungen, Kategorien, Portfolio, Käufe und Verkäufe, Sparpläne, Watchlist, Dividenden, Chats und Analysen.">

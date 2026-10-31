@@ -12,15 +12,18 @@ import { HomePage } from './features/home/HomePage';
 import { NotFoundPage } from './features/NotFoundPage';
 import { PortfolioPage } from './features/portfolio/PortfolioPage';
 import { SettingsPage } from './features/settings/SettingsPage';
+import { PrivacyProvider } from './lib/privacy';
 import { useTheme } from './lib/theme';
 
 function Root() {
   const { theme, toggle, setTheme } = useTheme();
   return (
-    <ToastProvider>
-      <Outlet context={{ theme, toggleTheme: toggle, setTheme } satisfies RootContext} />
-      <AppStatus />
-    </ToastProvider>
+    <PrivacyProvider>
+      <ToastProvider>
+        <Outlet context={{ theme, toggleTheme: toggle, setTheme } satisfies RootContext} />
+        <AppStatus />
+      </ToastProvider>
+    </PrivacyProvider>
   );
 }
 

@@ -5,12 +5,14 @@ import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import type { HistoryPoint } from '../api/overview';
 import { niceTicks } from '../features/portfolio/model';
 import { eur, parseDay } from '../lib/format';
+import { MASK, usePrivacy } from '../lib/privacy';
 
 const PAD_TOP = 8;
 const PAD_BOTTOM = 26;
 const decimal = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 1 });
 
-function tickLabel(value: number) {
+function tickLabel(value: number, hidden: boolean) {
+  if (hidden) return MASK;
   return Math.abs(value) >= 1000 ? `${decimal.format(value / 1000)} Tsd.` : eur(value, { digits: 0 });
 }
 
@@ -35,13 +37,15 @@ function useWidth(fallback: number) {
 export function ValueChart({ points, height = 240 }: { points: HistoryPoint[]; height?: number }) {
   const [ref, width] = useWidth(600);
   const [hover, setHover] = useState<number | null>(null);
+  const { hidden } = usePrivacy();
+  const money = (value: number) => (hidden ? `${MASK} €` : eur(value));
 
   const values = points.map((p) => p.value);
   const lowest = Math.min(...values);
   // Eine Wertlinie braucht keine Null-Basis: die Skala beginnt knapp unter dem tiefsten Wert
   const ticks = niceTicks(lowest * 0.97, Math.max(...values), 4);
   const bottom = ticks[0], top = ticks[ticks.length - 1];
-  const padLeft = 12 + Math.max(...ticks.map((t) => tickLabel(t).length)) * 6.6;
+  const padLeft = 12 + Math.max(...ticks.map((t) => tickLabel(t, hidden).length)) * 6.6;
   const plotWidth = width - padLeft;
   const x = (i: number) => padLeft + (i * plotWidth) / Math.max(1, points.length - 1);
   const y = (v: number) => PAD_TOP + (height - PAD_TOP - PAD_BOTTOM) * (1 - (v - bottom) / (top - bottom));
@@ -63,7 +67,7 @@ export function ValueChart({ points, height = 240 }: { points: HistoryPoint[]; h
   };
 
   const first = points[0], last = points[points.length - 1];
-  const label = `Depotwert vom ${dayLong(first.date)} bis ${dayLong(last.date)}, zuletzt ${eur(last.value)}`;
+  const label = `Depotwert vom ${dayLong(first.date)} bis ${dayLong(last.date)}, zuletzt ${money(last.value)}`;
   const hovered = hover === null ? null : points[hover];
 
   return (
@@ -72,7 +76,7 @@ export function ValueChart({ points, height = 240 }: { points: HistoryPoint[]; h
         {ticks.map((t) => (
           <g key={t}>
             <line x1={padLeft} x2={width} y1={y(t)} y2={y(t)} className="grid" shapeRendering="crispEdges" />
-            <text x={padLeft - 8} y={y(t) + 4} textAnchor="end" className="axis">{tickLabel(t)}</text>
+            <text x={padLeft - 8} y={y(t) + 4} textAnchor="end" className="axis">{tickLabel(t, hidden)}</text>
           </g>
         ))}
         {xTicks.map((i) => (
@@ -97,7 +101,7 @@ export function ValueChart({ points, height = 240 }: { points: HistoryPoint[]; h
           transform: x(hover!) > width * 0.6 ? 'translateX(calc(-100% - 12px))' : 'translateX(12px)',
         }}>
           <div className="muted">{dayLong(hovered.date)}</div>
-          <b>{eur(hovered.value)}</b>
+          <b>{money(hovered.value)}</b>
         </div>
       )}
     </div>
