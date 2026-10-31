@@ -14,7 +14,7 @@ import { Loaded } from '../../components/Loaded';
 import { useToast } from '../../components/Toast';
 import { ValueChart } from '../../components/ValueChart';
 import { useIsPhone } from '../../components/Fold';
-import { dayShort, parseDay, pct, tone } from '../../lib/format';
+import { dayShort, parseDay, pct, pctTone, tone } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import { type PositionRow, planDates, portfolioTotals, positionRows, token } from '../home/model';
 import { AddAssetDialog, DeletePlanDialog, type PlanAsset, PlanDialog, PositionDialog, WatchDialog } from './dialogs';
@@ -269,6 +269,7 @@ const COLUMNS: { key: SortKey; label: string; right?: boolean }[] = [
   { key: 'name', label: 'Titel' },
   { key: 'quantity', label: 'Stück', right: true },
   { key: 'price', label: 'Kurs', right: true },
+  { key: 'day', label: 'Heute', right: true },
   { key: 'value', label: 'Wert', right: true },
   { key: 'gain', label: 'Gewinn / Verlust', right: true },
 ];
@@ -282,6 +283,8 @@ function Positions({ rows, onOpen }: { rows: PositionRow[]; onOpen: (row: Positi
   const sorted = sortRows(rows, sort);
   const value = rows.reduce((sum, row) => sum + row.value, 0);
   const gain = rows.reduce((sum, row) => sum + row.gain, 0);
+  const hasDay = rows.some((row) => row.dayAbs !== null);
+  const day = rows.reduce((sum, row) => sum + (row.dayAbs ?? 0), 0);
   // Zahlen zuerst absteigend, Namen zuerst A–Z; ein zweiter Klick dreht die Richtung
   const sortBy = (key: SortKey) => setSort((s) => (s.key === key ? { key, dir: s.dir === 1 ? -1 : 1 } : { key, dir: key === 'name' ? 1 : -1 }));
 
@@ -316,13 +319,17 @@ function Positions({ rows, onOpen }: { rows: PositionRow[]; onOpen: (row: Positi
                 </td>
                 <td className="r">{qty(p.quantity)}</td>
                 <td className="r">{eur(p.price)}<span className="sub-line">Ø {eur(p.avg_buy_price)}</span></td>
+                <td className="r">
+                  {p.dayPct === null ? <span className="muted">–</span>
+                    : <><span className={pctTone(p.dayPct)}>{pct(p.dayPct)}</span><span className="sub-line">{eur(p.dayAbs!, { sign: true })}</span></>}
+                </td>
                 <td className="r strong">{eur(p.value)}<span className="sub-line">Einstand {eur(p.cost)}</span></td>
                 <td className="r"><span className={tone(p.gain)}>{eur(p.gain, { sign: true })}</span><span className="sub-line">{p.gainPct === null ? '–' : pct(p.gainPct)}</span></td>
               </tr>
             ))}
           </tbody>
           <tfoot>
-            <tr><td>Gesamt</td><td /><td /><td className="r">{eur(value)}</td><td className="r"><span className={tone(gain)}>{eur(gain, { sign: true })}</span></td></tr>
+            <tr><td>Gesamt</td><td /><td /><td className="r">{hasDay && <span className={tone(day)}>{eur(day, { sign: true })}</span>}</td><td className="r">{eur(value)}</td><td className="r"><span className={tone(gain)}>{eur(gain, { sign: true })}</span></td></tr>
           </tfoot>
         </table>
       </div>
@@ -334,6 +341,7 @@ function Positions({ rows, onOpen }: { rows: PositionRow[]; onOpen: (row: Positi
             onChange={(e) => { const key = e.target.value as SortKey; setSort({ key, dir: key === 'name' ? 1 : -1 }); }}>
             <option value="value">Wert</option>
             <option value="gain">Gewinn / Verlust</option>
+            <option value="day">Heute</option>
             <option value="name">Name</option>
           </select>
         </div>
@@ -341,8 +349,14 @@ function Positions({ rows, onOpen }: { rows: PositionRow[]; onOpen: (row: Positi
           {sorted.map((p) => (
             <button className="row row-btn" key={p.asset_id} onClick={() => onOpen(p)}>
               <span className="token" aria-hidden="true">{token(p.symbol, p.name)}</span>
-              <span className="grow"><span className="trunc">{p.name}</span><span className="sub-line">{qty(p.quantity)} Stück · {p.symbol}</span></span>
-              <span className="end"><span className="strong block">{eur(p.value)}</span><span className={`sub-line ${tone(p.gain)}`}>{p.gainPct === null ? '–' : pct(p.gainPct)} seit Kauf</span></span>
+              <span className="grow">
+                <span className="trunc">{p.name}</span>
+                <span className="sub-line">{qty(p.quantity)} Stück · <span className={tone(p.gain)}>{p.gainPct === null ? '–' : pct(p.gainPct)}</span> seit Kauf</span>
+              </span>
+              <span className="end">
+                <span className="strong block">{eur(p.value)}</span>
+                <span className="sub-line">{p.dayPct === null ? '–' : <><span className={pctTone(p.dayPct)}>{pct(p.dayPct)}</span> heute</>}</span>
+              </span>
             </button>
           ))}
         </div>

@@ -77,6 +77,16 @@ describe('Übersicht', () => {
     expect(await screen.findByText('Dein Depot hat diese Woche 1,4 % zugelegt.')).toBeInTheDocument();
   });
 
+  it('zeigt die Bewegung heute, sobald es Schlusskurse gibt', async () => {
+    data.positions[0].previous_close = 98;
+    data.positions[1].previous_close = 41000;
+    renderApp('/');
+    const movers = await section('Bewegung heute');
+    expect(await within(movers).findByText('Bitcoin')).toBeInTheDocument();
+    // Bitcoin bewegt sich stärker (−2,4 %) und steht deshalb oben
+    expect(movers).toHaveTextContent('BTCBitcoin4.000,00 €−2,4 %−100,00 €EUNLiShares Core MSCI World10.000,00 €+2,0 %+200,00 €');
+  });
+
   it('erklärt leere Bereiche bei einem neuen Konto', async () => {
     data.positions = [];
     data.savingsPlans = [];

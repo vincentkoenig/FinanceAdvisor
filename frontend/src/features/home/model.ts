@@ -85,16 +85,28 @@ export function recentBookings(bookings: Booking[], count = 4) {
   return [...bookings].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id).slice(0, count);
 }
 
-export type PositionRow = Position & { price: number; value: number; cost: number; gain: number; gainPct: number | null };
+export type PositionRow = Position & {
+  price: number; value: number; cost: number; gain: number; gainPct: number | null;
+  /** Kursbewegung seit dem letzten Schlusskurs vor heute, mal Stückzahl; null ohne beide Kurse */
+  dayAbs: number | null; dayPct: number | null;
+};
 
-/** Positionen mit Wert, Einstand und Gewinn seit Kauf (ohne Kurs zählt der Einstandspreis) */
+/** Positionen mit Wert, Einstand, Gewinn seit Kauf und Tagesänderung (ohne Kurs zählt der Einstandspreis) */
 export function positionRows(positions: Position[]): PositionRow[] {
   return positions.map((p) => {
     const price = p.current_price ?? p.avg_buy_price;
     const value = price * p.quantity;
     const cost = p.avg_buy_price * p.quantity;
-    return { ...p, price, value, cost, gain: value - cost, gainPct: cost > 0 ? (value / cost - 1) * 100 : null };
+    const prev = p.previous_close;
+    const day = p.current_price != null && prev ? { dayAbs: (p.current_price - prev) * p.quantity, dayPct: (p.current_price / prev - 1) * 100 } : { dayAbs: null, dayPct: null };
+    return { ...p, price, value, cost, gain: value - cost, gainPct: cost > 0 ? (value / cost - 1) * 100 : null, ...day };
   });
+}
+
+/** Die Positionen mit der stärksten Bewegung heute (nach Prozent, egal in welche Richtung) */
+export function topMovers(positions: Position[], count = 4) {
+  return positionRows(positions).filter((p) => p.dayPct !== null)
+    .sort((a, b) => Math.abs(b.dayPct!) - Math.abs(a.dayPct!)).slice(0, count);
 }
 
 /** Die größten Positionen nach aktuellem Wert */

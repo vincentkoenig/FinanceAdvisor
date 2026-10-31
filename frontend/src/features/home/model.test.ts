@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Booking, BudgetSummary, Position, SavingsPlan, Trade } from '../../api/overview';
 import { eur, parseAmount, pct } from '../../lib/format';
-import { dayChange, largestPositions, monthFlow, planDates, portfolioTotals, recentBookings, token } from './model';
+import { dayChange, largestPositions, monthFlow, planDates, portfolioTotals, positionRows, recentBookings, token, topMovers } from './model';
 
 const position = (over: Partial<Position>): Position =>
   ({ asset_id: 1, name: 'X', symbol: 'X', asset_type: null, quantity: 1, avg_buy_price: 10, current_price: 10, ...over });
@@ -115,5 +115,28 @@ describe('Buchungen', () => {
   it('nimmt die neuesten zuerst', () => {
     const b = (id: number, date: string) => ({ id, date }) as Booking;
     expect(recentBookings([b(1, '2026-10-01'), b(2, '2026-10-28'), b(3, '2026-10-28')], 2).map((x) => x.id)).toEqual([3, 2]);
+  });
+});
+
+describe('Tagesänderung pro Position', () => {
+  it('rechnet Kursbewegung seit dem letzten Schlusskurs mal Stückzahl', () => {
+    const [row] = positionRows([position({ quantity: 4, current_price: 102, previous_close: 100 })]);
+    expect(row.dayAbs).toBeCloseTo(8);
+    expect(row.dayPct).toBeCloseTo(2);
+  });
+
+  it('bleibt leer ohne Schlusskurs oder ohne Live-Kurs', () => {
+    const rows = positionRows([position({ previous_close: null }), position({ current_price: null, previous_close: 10 }), position({})]);
+    expect(rows.map((r) => r.dayPct)).toEqual([null, null, null]);
+  });
+
+  it('nimmt die stärksten Bewegungen in beide Richtungen, ohne Positionen ohne Tageskurs', () => {
+    const movers = topMovers([
+      position({ asset_id: 1, current_price: 101, previous_close: 100 }),
+      position({ asset_id: 2, current_price: 95, previous_close: 100 }),
+      position({ asset_id: 3, current_price: 103, previous_close: 100 }),
+      position({ asset_id: 4 }),
+    ]);
+    expect(movers.map((m) => m.asset_id)).toEqual([2, 3, 1]);
   });
 });

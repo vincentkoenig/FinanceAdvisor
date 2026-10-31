@@ -91,11 +91,13 @@ export function allocation(rows: PositionRow[]): Slice[] {
   }));
 }
 
-export type SortKey = 'name' | 'quantity' | 'price' | 'value' | 'gain';
+export type SortKey = 'name' | 'quantity' | 'price' | 'day' | 'value' | 'gain';
 export type Sort = { key: SortKey; dir: 1 | -1 };
 
 export function sortRows(rows: PositionRow[], { key, dir }: Sort) {
-  return [...rows].sort((a, b) => (key === 'name' ? a.name.localeCompare(b.name, 'de') : a[key] - b[key]) * dir);
+  // Ohne Tageskurs zählt die Position wie unbewegt
+  const number = (row: PositionRow) => (key === 'day' ? row.dayPct ?? 0 : row[key as Exclude<SortKey, 'name' | 'day'>]);
+  return [...rows].sort((a, b) => (key === 'name' ? a.name.localeCompare(b.name, 'de') : number(a) - number(b)) * dir);
 }
 
 /** Satz unter dem Titel: welche Position den Gewinn trägt, oder wo der Verlust herkommt */

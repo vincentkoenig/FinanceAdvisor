@@ -6,7 +6,7 @@ den angemeldeten Nutzer.
 """
 
 # Standard Library
-from datetime import datetime
+from datetime import date, datetime, timedelta
 
 # Third Party
 from flask import Blueprint, jsonify
@@ -17,6 +17,7 @@ from fintrack.api import ApiError, parse_body, parse_query
 from fintrack.auth.session import current_user_key, get_own, protect_blueprint
 from fintrack.extensions import db, limiter
 from fintrack.market.prices import get_current_price
+from fintrack.market.service import price_in_eur_on
 from fintrack.market.search import create_asset, search_assets
 from fintrack.models import (Asset, AssetTransaction, Dividend,
                              SavingsPlan, UserAsset, Watchlist)
@@ -86,13 +87,19 @@ def add_asset():
 
 # ─── POSITIONEN ───────────────────────────────────────────────────────────────
 
+def _rounded(value):
+    return round(value, 4) if value is not None else None
+
+
 @bp.route('/me/positions', methods=['GET'])
 def get_positions():
     """
     Alle Positionen des Nutzers mit Menge > 0, inkl. Live-Preis von
-    yfinance oder CoinGecko.
+    yfinance oder CoinGecko und dem letzten Schlusskurs vor heute in Euro
+    (previous_close, für die Tagesänderung; None ohne gespeicherten Kurs).
     """
     positions = UserAsset.query.filter_by(user_id=current_user.id).filter(UserAsset.quantity > 0).all()
+    yesterday = date.today() - timedelta(days=1)
 
     result = []
     for position in positions:
@@ -108,7 +115,8 @@ def get_positions():
             "avg_buy_price": position.avg_buy_price,
             "bought_at": position.bought_at,
             "status": position.status,
-            "current_price": get_current_price(asset, unknown_type_default=position.avg_buy_price)
+            "current_price": get_current_price(asset, unknown_type_default=position.avg_buy_price),
+            "previous_close": _rounded(price_in_eur_on(asset, yesterday)),
         })
 
     return jsonify(result), 200

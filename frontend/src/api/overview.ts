@@ -10,6 +10,8 @@ export type Position = {
   quantity: number;
   avg_buy_price: number;
   current_price: number | null;
+  /** Letzter Schlusskurs vor heute in Euro, für die Tagesänderung */
+  previous_close?: number | null;
 };
 
 export type BudgetSummary = {

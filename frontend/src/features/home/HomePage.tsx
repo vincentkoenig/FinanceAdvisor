@@ -1,6 +1,7 @@
 // Übersicht. Frage der Seite: Wie viel habe ich, und was ist heute zu tun?
 // Oben das Gesamtvermögen als grüne Leitfläche und daneben das Fällige, darunter Monatsfluss,
-// Tages-Update, größte Positionen und letzte Buchungen (auf dem Handy eingeklappt).
+// Tages-Update, Bewegung heute (ohne Tageskurse: größte Positionen) und letzte Buchungen
+// (auf dem Handy eingeklappt).
 import { Link } from 'react-router';
 import {
   type Booking, useBookings, useBudgetSummary, useExecutePlan, useInsight, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
@@ -10,10 +11,10 @@ import { Fold } from '../../components/Fold';
 import { Loaded } from '../../components/Loaded';
 import { MonthFlow } from '../../components/MonthFlow';
 import { useToast } from '../../components/Toast';
-import { dayShort, monthName, parseDay, pct, tone } from '../../lib/format';
+import { dayShort, monthName, parseDay, pct, pctTone, tone } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import {
-  dayChange, largestPositions, monthFlow, planDates, portfolioTotals, recentBookings, signedAmount, token,
+  dayChange, largestPositions, monthFlow, planDates, portfolioTotals, recentBookings, signedAmount, token, topMovers,
 } from './model';
 
 export function HomePage() {
@@ -34,6 +35,7 @@ export function HomePage() {
   const change = history.data && trades.data && totals ? dayChange(history.data, totals.value, trades.data, today) : null;
   const dates = plans.data ? planDates(plans.data, today) : null;
   const flow = summary.data && plans.data ? monthFlow(summary.data, plans.data, today) : null;
+  const movers = positions.data ? topMovers(positions.data) : [];
 
   const bookingAmount = (b: Booking) => eur(signedAmount(b), { sign: signedAmount(b) > 0 });
 
@@ -171,13 +173,30 @@ export function HomePage() {
       </div>
 
       <div className="grid grid-2">
-        <Fold id="h-positions" title="Größte Positionen"
-          peek={positions.data?.length ? `${positions.data.length} im Depot` : ''}
+        <Fold id="h-positions" title={movers.length ? 'Bewegung heute' : 'Größte Positionen'}
+          peek={movers.length ? `${movers[0].symbol || movers[0].name} ${pct(movers[0].dayPct!)}` : positions.data?.length ? `${positions.data.length} im Depot` : ''}
           action={positions.data?.length ? <Link to="/portfolio" className="btn btn-text btn-sm">Alle {positions.data.length}</Link> : null}>
           <Loaded queries={[positions]}>
             {() => positions.data!.length === 0
               ? <p className="empty-line">Noch keine Positionen. Im <Link to="/portfolio" className="link">Portfolio</Link> legst du die erste an.</p>
-              : (
+              : movers.length ? (
+                <div className="rows">
+                  {movers.map((p) => (
+                    <div className="row" key={p.asset_id}>
+                      <span className="token" aria-hidden="true">{token(p.symbol, p.name)}</span>
+                      <div className="grow">
+                        <span className="trunc">{p.name}</span>
+                        <span className="sub-line">{eur(p.value)}</span>
+                      </div>
+                      <DayBar pct={p.dayPct!} />
+                      <div className="end">
+                        <span className={pctTone(p.dayPct!)}>{pct(p.dayPct!)}</span>
+                        <span className="sub-line">{eur(p.dayAbs!, { sign: true })}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
                 <div className="rows">
                   {largestPositions(positions.data!).map((p) => (
                     <div className="row" key={p.asset_id}>
@@ -223,5 +242,15 @@ export function HomePage() {
         </Fold>
       </div>
     </>
+  );
+}
+
+// Tagesbewegung als kleiner Balken um die Nulllinie; ±3 % füllen eine Hälfte
+function DayBar({ pct }: { pct: number }) {
+  const width = Math.min(Math.abs(pct) / 3, 1) * 50;
+  return (
+    <span className="daybar" aria-hidden="true">
+      <span className={pct >= 0 ? 'up' : 'down'} style={{ width: `${width.toFixed(1)}%` }} />
+    </span>
   );
 }
