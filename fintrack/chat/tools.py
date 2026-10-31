@@ -6,6 +6,7 @@ Definiert die Tools die das LLM benutzen kann:
 - get_metal_price    → aktuellen Edelmetall-Preis abrufen
 - search_web         → aktuelle Informationen aus dem Web suchen
 - get_budget_status  → Haushaltsbuch-Status des Nutzers abrufen
+- get_contracts      → Verträge des Nutzers mit Kosten und Kündigungsfristen
 Das LLM entscheidet selbst wann es welches Tool aufrufen soll.
 """
 
@@ -102,6 +103,25 @@ tools = [
                 "balance since tracking began. Use this when the user asks about "
                 "their budget, savings, monthly expenses, income, or whether they "
                 "can afford something based on their current financial situation."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_contracts",
+            "description": (
+                "Get the user's contracts (insurance, energy, phone/internet, "
+                "subscriptions, gym, loans) with cost per month and year, status "
+                "and cancellation deadlines (cancel_by = last day to cancel, "
+                "cancel_effective = date the contract then ends). Use this when the "
+                "user asks about contracts, insurance, subscriptions, fixed costs "
+                "or when something can or must be cancelled."
             ),
             "parameters": {
                 "type": "object",

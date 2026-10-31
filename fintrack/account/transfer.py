@@ -15,7 +15,7 @@ from datetime import datetime
 
 from fintrack.api import ApiError
 from fintrack.extensions import db
-from fintrack.models import (Asset, AssetTransaction, Category, ChatHistory, DailyInsight, Dividend,
+from fintrack.models import (Asset, AssetTransaction, Category, ChatHistory, Contract, DailyInsight, Dividend,
                              PortfolioAnalysis, SavingsPlan, Transaction, UserAsset, Watchlist)
 from fintrack.portfolio.analysis import parse_stored_list
 from fintrack.account.schemas import EXPORT_FORMAT, EXPORT_VERSION
@@ -23,7 +23,7 @@ from fintrack.account.schemas import EXPORT_FORMAT, EXPORT_VERSION
 # Tabellen mit Nutzerdaten, die beim Import leer sein müssen (Kategorien
 # zählen nicht - die legt jede Registrierung automatisch an)
 USER_DATA_MODELS = (Transaction, UserAsset, AssetTransaction, SavingsPlan, Watchlist,
-                    Dividend, ChatHistory, PortfolioAnalysis, DailyInsight)
+                    Dividend, ChatHistory, PortfolioAnalysis, DailyInsight, Contract)
 
 
 def _iso(value):
@@ -138,6 +138,15 @@ def export_user_data(user):
             {"content": i.content, "created_at": _iso(i.created_at)}
             for i in _by_id(DailyInsight, user_id)
         ],
+        "contracts": [
+            {"name": c.name, "provider": c.provider, "category": c.category,
+             "contract_number": c.contract_number, "amount": c.amount, "interval": c.interval,
+             "start_date": _iso(c.start_date), "min_term_months": c.min_term_months,
+             "renewal_months": c.renewal_months, "notice_value": c.notice_value,
+             "notice_unit": c.notice_unit, "cancelled_at": _iso(c.cancelled_at),
+             "end_date": _iso(c.end_date), "notes": c.notes, "created_at": _iso(c.created_at)}
+            for c in _by_id(Contract, user_id)
+        ],
     }
 
 
@@ -146,7 +155,7 @@ def ensure_account_is_empty(user_id):
     for model in USER_DATA_MODELS:
         if model.query.filter_by(user_id=user_id).count():
             raise ApiError(409, 'Import ist nur in ein leeres Konto möglich. '
-                                'Dein Konto enthält bereits Buchungen oder Portfolio-Daten.')
+                                'Dein Konto enthält bereits Buchungen, Verträge oder Portfolio-Daten.')
 
 
 def _find_or_create_asset(entry):
@@ -236,6 +245,8 @@ def import_user_data(user, data):
                 allocation=json.dumps(entry.allocation, ensure_ascii=False), created_at=entry.created_at)
     for entry in data.insights:
         _create(DailyInsight, user_id=user_id, content=entry.content, created_at=entry.created_at)
+    for entry in data.contracts:
+        _create(Contract, user_id=user_id, **entry.model_dump())
 
     db.session.commit()
 
@@ -245,5 +256,6 @@ def import_user_data(user, data):
         "savings_plans": len(data.savings_plans), "watchlist": len(data.watchlist),
         "dividends": len(data.dividends), "chat_history": len(data.chat_history),
         "analyses": len(data.analyses), "insights": len(data.insights),
+        "contracts": len(data.contracts),
     }
     return counts, new_assets
