@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { type Category, useCategories, useMonthBookings, useTogglePause } from '../../api/budget';
 import { type Booking, useBudgetSummary, useSavingsPlans } from '../../api/overview';
+import { CountUp } from '../../components/CountUp';
 import { Icon } from '../../components/Icon';
 import { Loaded } from '../../components/Loaded';
 import { MonthFlow } from '../../components/MonthFlow';
@@ -68,10 +69,10 @@ export function BudgetPage() {
       <div className="grid grid-3">
         <section className="panel hero span-2" aria-labelledby="h-left">
           <h2 className="lead-label" id="h-left">Übrig im {monthOnly(month)}</h2>
-          <Loaded queries={[bookings]}>
+          <Loaded queries={[bookings]} shape="figure">
             {() => (
               <>
-                <div className={`lead-figure${totals!.left < 0 ? ' neg' : ''}`}>{eur(totals!.left)}</div>
+                <div className={`lead-figure${totals!.left < 0 ? ' neg' : ''}`}><CountUp value={totals!.left} format={eur} /></div>
                 <p className="lead-sub num">
                   {totals!.income > 0 && <>{Math.round((totals!.left / totals!.income) * 100)} % der Einnahmen · </>}
                   {summary.data ? <>Cash-Bestand insgesamt {eur(summary.data.cumulative_balance)}</> : 'Cash-Bestand lädt …'}
