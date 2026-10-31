@@ -1,6 +1,7 @@
 // Alle Routen unter /app. Ohne Anmeldung führt jede Seite außer /login zur Anmeldung.
 import { Navigate, Outlet, useLocation, useOutletContext, type RouteObject } from 'react-router';
 import { useMe } from './api/auth';
+import { AppStatus } from './components/AppStatus';
 import { Shell, type RootContext } from './components/Shell';
 import { ToastProvider } from './components/Toast';
 import { LoginPage } from './features/auth/LoginPage';
@@ -18,6 +19,7 @@ function Root() {
   return (
     <ToastProvider>
       <Outlet context={{ theme, toggleTheme: toggle, setTheme } satisfies RootContext} />
+      <AppStatus />
     </ToastProvider>
   );
 }

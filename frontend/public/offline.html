@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#08140f" />
+    <title>FinTrack – offline</title>
+    <!-- Zeigt der Service Worker, wenn die App ohne Netz geöffnet wird. Bewusst ohne Daten:
+         FinTrack speichert keine Kontostände auf dem Gerät. Alles steht in dieser Datei. -->
+    <style>
+      :root { color-scheme: dark; --ground: #08140f; --surface: #0f2119; --text: #edf6f0; --muted: #a6bfb0; --primary: #cdeedc; --primary-ink: #06140d; }
+      :root[data-theme="light"] { color-scheme: light; --ground: #e4eee8; --surface: #f4faf6; --text: #0d1a13; --muted: #44564b; --primary: #0f3d2b; --primary-ink: #ffffff; }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; background: var(--ground); color: var(--text);
+        font: 14px/20px system-ui, -apple-system, "Segoe UI", sans-serif; }
+      main { width: 100%; max-width: 380px; padding: 28px 24px; border-radius: 16px; background: var(--surface); display: flex; flex-direction: column; gap: 12px; }
+      img { width: 40px; height: 40px; border-radius: 10px; }
+      h1 { margin: 8px 0 0; font-size: 20px; line-height: 28px; font-weight: 600; }
+      p { margin: 0; color: var(--muted); }
+      button { margin-top: 8px; height: 40px; border: 0; border-radius: 999px; background: var(--primary); color: var(--primary-ink); font: inherit; font-weight: 500; cursor: pointer; }
+      button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    </style>
+    <script>
+      // Dasselbe Design wie in der App: gespeicherte Wahl, sonst wie das System, sonst dunkel
+      try {
+        var t = localStorage.getItem('fintrack-theme');
+        if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <main>
+      <img src="/app/icon-192.png" alt="" />
+      <h1>Du bist offline</h1>
+      <p>FinTrack braucht eine Internetverbindung, um dein Depot und dein Haushaltsbuch zu laden. Deine Daten bleiben auf dem Server und gehen nicht verloren.</p>
+      <button type="button" onclick="location.reload()">Erneut versuchen</button>
+    </main>
+  </body>
+</html>

@@ -317,6 +317,13 @@ details.older[open] .clamp-2 { display: none; }
 .btn-danger { color: var(--negative); border-color: color-mix(in srgb, var(--negative) 45%, transparent); }
 .pill-warn { background: color-mix(in srgb, var(--warning) 16%, var(--surface)); color: var(--warning-ink); }
 
+/* ─── Hinweise: offline, neue Version ─── */
+.app-notes { position: fixed; z-index: 70; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; width: max-content; max-width: calc(100% - 32px); }
+.app-note { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 16px; border-radius: 999px; background: var(--primary); color: var(--primary-ink); box-shadow: var(--shadow-float); font-weight: 500; }
+.app-note .btn-primary { background: var(--primary-ink); color: var(--primary); border-color: var(--primary-ink); }
+.app-note-offline { padding: 10px 16px; background: var(--signal); color: #1a1100; }
+.app-notes + .toasts { bottom: 80px; }
+
 /* ─── Anmeldung ─── */
 .login { min-height: 100vh; display: grid; place-items: center; padding: 24px 16px; }
 .login-box { width: 100%; max-width: 380px; display: flex; flex-direction: column; gap: 16px; }
@@ -365,6 +372,9 @@ details.older[open] .clamp-2 { display: none; }
   .dialog-overlay { place-items: end center; padding: 0; }
   .dialog-overlay .dialog { max-width: none; border-radius: 20px 20px 0 0; max-height: 92vh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); animation: sheet 200ms ease-out; }
   .toasts { bottom: calc(84px + env(safe-area-inset-bottom)); width: calc(100% - 32px); }
+  .app-notes { bottom: calc(84px + env(safe-area-inset-bottom)); width: calc(100% - 32px); }
+  .app-note { border-radius: 16px; justify-content: space-between; }
+  .app-notes + .toasts { bottom: calc(150px + env(safe-area-inset-bottom)); }
   .toast { text-align: center; }
   details.fold > summary { cursor: pointer; display: flex; align-items: center; gap: 12px; min-height: 44px; }
   details.fold > summary .panel-head { flex: 1; margin: 0; min-width: 0; }
