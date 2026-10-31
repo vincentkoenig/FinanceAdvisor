@@ -197,3 +197,15 @@ def get_chat_history():
         })
 
     return jsonify(result), 200
+
+
+@bp.route('/me/chat/history', methods=['DELETE'])
+def delete_chat_history():
+    """
+    "Neuer Chat": den gesamten Chatverlauf des angemeldeten Nutzers löschen.
+    Der Berater beginnt danach ohne Kontext. Verläufe anderer Nutzer bleiben
+    unberührt. Wer den Verlauf behalten will, exportiert vorher seine Daten.
+    """
+    deleted = ChatHistory.query.filter_by(user_id=current_user.id).delete()
+    db.session.commit()
+    return jsonify({"deleted": deleted}), 200

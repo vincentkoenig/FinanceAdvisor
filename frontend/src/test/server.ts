@@ -185,6 +185,11 @@ export const handlers = [
   }),
 
   http.get('/api/v1/me/chat/history', () => HttpResponse.json(data.chat)),
+  http.delete('/api/v1/me/chat/history', () => {
+    const deleted = data.chat.length;
+    data.chat = [];
+    return HttpResponse.json({ deleted });
+  }),
   http.post('/api/v1/me/chat', async ({ request }) => {
     const { message } = (await request.json()) as { message: string };
     sent.chat = message;

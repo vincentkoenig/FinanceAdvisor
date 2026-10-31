@@ -1,9 +1,11 @@
 // Chat mit dem KI-Berater. Frage der Seite: Was will ich über mein Geld wissen?
 // Der Berater kennt Depot, Haushaltsbuch und Anlageprofil und ruft Live-Kurse ab (siehe chat/routes.py).
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { useChatHistory, useSendMessage } from '../../api/advisor';
+import { useChatHistory, useClearChat, useSendMessage } from '../../api/advisor';
+import { Dialog } from '../../components/Dialog';
 import { Icon } from '../../components/Icon';
 import { Loaded } from '../../components/Loaded';
+import { useToast } from '../../components/Toast';
 import { Markdown } from '../../lib/markdown';
 import { useMoney } from '../../lib/privacy';
 
@@ -19,6 +21,7 @@ export function ChatPage() {
   const send = useSendMessage();
   const [text, setText] = useState('');
   const [error, setError] = useState('');
+  const [confirmClear, setConfirmClear] = useState(false);
   const end = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const pending = send.isPending ? send.variables : null;
@@ -53,7 +56,13 @@ export function ChatPage() {
           <h1>Chat</h1>
           <p className="sub">Dein KI-Berater kennt Depot, Haushaltsbuch und Anlageprofil und ruft Live-Kurse ab</p>
         </div>
+        {(history.data?.length ?? 0) > 0 && (
+          <div className="actions">
+            <button className="btn" onClick={() => setConfirmClear(true)} disabled={send.isPending}><Icon name="plus" size={16} />Neuer Chat</button>
+          </div>
+        )}
       </div>
+      {confirmClear && <ClearChatDialog onClose={() => { setConfirmClear(false); input.current?.focus(); }} />}
 
       <section className="panel chat" aria-label="Unterhaltung">
         <div className="chat-scroll">
@@ -97,5 +106,28 @@ export function ChatPage() {
         </div>
       </section>
     </>
+  );
+}
+
+function ClearChatDialog({ onClose }: { onClose: () => void }) {
+  const clear = useClearChat();
+  const notify = useToast();
+  const [error, setError] = useState('');
+  const confirm = () => clear.mutate(undefined, {
+    onSuccess: () => { notify('Neuer Chat gestartet'); onClose(); },
+    onError: (e) => setError(e.message),
+  });
+  return (
+    <Dialog title="Neuen Chat beginnen?" onClose={onClose} busy={clear.isPending}>
+      <p className="muted">
+        Der bisherige Verlauf wird gelöscht, und der Berater beginnt ohne die alte Unterhaltung. Wenn du ihn behalten
+        willst, lade vorher unter Einstellungen → Meine Daten deine Daten herunter.
+      </p>
+      {error && <p className="err" role="alert">{error}</p>}
+      <div className="dialog-actions">
+        <button className="btn" onClick={onClose} disabled={clear.isPending} data-autofocus>Abbrechen</button>
+        <button className="btn btn-danger" onClick={confirm} disabled={clear.isPending}>{clear.isPending ? 'Löscht …' : 'Verlauf löschen'}</button>
+      </div>
+    </Dialog>
   );
 }

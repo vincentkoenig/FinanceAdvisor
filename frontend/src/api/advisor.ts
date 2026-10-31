@@ -34,6 +34,15 @@ export function useSendMessage() {
   });
 }
 
+// "Neuer Chat": Verlauf auf dem Server löschen, danach ist er hier sofort leer
+export function useClearChat() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api<{ deleted: number }>('/me/chat/history', { method: 'DELETE' }),
+    onSuccess: () => client.setQueryData<ChatEntry[]>(advisorKeys.chat, []),
+  });
+}
+
 export const useAnalyses = () =>
   useQuery({ queryKey: advisorKeys.analyses, queryFn: () => api<Analysis[]>('/me/analyses'), staleTime: 10 * 60_000 });
 
