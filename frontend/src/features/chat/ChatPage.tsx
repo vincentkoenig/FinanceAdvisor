@@ -5,6 +5,7 @@ import { useChatHistory, useSendMessage } from '../../api/advisor';
 import { Icon } from '../../components/Icon';
 import { Loaded } from '../../components/Loaded';
 import { Markdown } from '../../lib/markdown';
+import { useMoney } from '../../lib/privacy';
 
 const SUGGESTIONS = [
   'Wie viel habe ich diesen Monat übrig?',
@@ -13,6 +14,7 @@ const SUGGESTIONS = [
 ];
 
 export function ChatPage() {
+  const { text: mask } = useMoney();
   const history = useChatHistory();
   const send = useSendMessage();
   const [text, setText] = useState('');
@@ -63,8 +65,8 @@ export function ChatPage() {
                     <p className="muted">Frag etwas zu deinem Depot oder deinen Ausgaben. Der Berater antwortet allgemein und gibt keine Kauf- oder Verkaufsempfehlungen.</p>
                   )}
                   {history.data!.map((entry, i) => (entry.role === 'user'
-                    ? <div className="msg-user" key={i}>{entry.message}</div>
-                    : <div className="msg-ai" key={i}><Markdown text={entry.message} /></div>))}
+                    ? <div className="msg-user" key={i}>{mask(entry.message)}</div>
+                    : <div className="msg-ai" key={i}><Markdown text={mask(entry.message)} /></div>))}
                   {pending && (
                     <>
                       <div className="msg-user">{pending}</div>

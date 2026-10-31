@@ -9,7 +9,8 @@ import { Fold } from '../../components/Fold';
 import { Loaded } from '../../components/Loaded';
 import { MonthFlow } from '../../components/MonthFlow';
 import { useToast } from '../../components/Toast';
-import { dayShort, eur, monthName, parseDay, pct, qty, tone } from '../../lib/format';
+import { dayShort, monthName, parseDay, pct, tone } from '../../lib/format';
+import { useMoney } from '../../lib/privacy';
 import {
   dayChange, largestPositions, monthFlow, planDates, portfolioTotals, recentBookings, signedAmount, token,
 } from './model';
@@ -24,6 +25,7 @@ export function HomePage() {
   const insight = useInsight();
   const execute = useExecutePlan();
   const notify = useToast();
+  const { eur, qty, text } = useMoney();
   const today = new Date();
   const month = monthName(today);
 
@@ -31,6 +33,8 @@ export function HomePage() {
   const change = history.data && trades.data && totals ? dayChange(history.data, totals.value, trades.data, today) : null;
   const dates = plans.data ? planDates(plans.data, today) : null;
   const flow = summary.data && plans.data ? monthFlow(summary.data, plans.data, today) : null;
+
+  const bookingAmount = (b: Booking) => eur(signedAmount(b), { sign: signedAmount(b) > 0 });
 
   const runPlan = (id: number) => execute.mutate(id, {
     onSuccess: (result) => notify(`Sparplan ausgeführt: ${qty(result.quantity)} Stück zu ${eur(result.price)}`),
@@ -159,7 +163,7 @@ export function HomePage() {
           action={insight.data?.created_at && <span className="meta">KI · {dayShort(insight.data.created_at)}</span>}>
           <Loaded queries={[insight]}>
             {() => insight.data!.content
-              ? <p className="insight">{insight.data!.content}</p>
+              ? <p className="insight">{text(insight.data!.content)}</p>
               : <p className="empty-line">Das Tages-Update erscheint jeden Morgen, sobald es Daten zu deinem Depot oder Haushaltsbuch gibt.</p>}
           </Loaded>
         </Fold>
@@ -219,8 +223,4 @@ export function HomePage() {
       </div>
     </>
   );
-}
-
-function bookingAmount(b: Booking) {
-  return eur(signedAmount(b), { sign: signedAmount(b) > 0 });
 }
