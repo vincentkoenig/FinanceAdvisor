@@ -181,6 +181,17 @@ details.fold .fold-peek, details.fold .fold-chev { display: none; }
 .value-chart .dot-mark { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
 .chart-tip { position: absolute; top: 0; pointer-events: none; padding: 6px 8px; border-radius: 6px; background: var(--surface); color: var(--text); box-shadow: var(--shadow-float); font-size: var(--fs-small); line-height: 16px; white-space: nowrap; }
 .chart-tip b { font-weight: 600; }
+.value-chart .trade-buy { fill: var(--positive); stroke: var(--surface); stroke-width: 1.5; }
+.value-chart .trade-sell { fill: var(--surface); stroke: var(--negative); stroke-width: 2.5; }
+.tip-trade { margin-top: 4px; padding-left: 12px; position: relative; }
+.tip-trade::before { content: ""; position: absolute; left: 0; top: 5px; width: 7px; height: 7px; border-radius: 50%; }
+.tip-trade.trade-buy::before { background: var(--positive); }
+.tip-trade.trade-sell::before { box-shadow: inset 0 0 0 2px var(--negative); }
+.chart-legend { display: flex; gap: 14px; margin-top: 6px; color: var(--muted); font-size: var(--fs-small); }
+.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend i { width: 8px; height: 8px; border-radius: 50%; }
+.chart-legend .trade-buy { background: var(--positive); }
+.chart-legend .trade-sell { box-shadow: inset 0 0 0 2px var(--negative); }
 .kpi-value.kpi-small { font-size: 18px; line-height: 24px; }
 .alloc-bar { display: flex; gap: 2px; height: 16px; }
 .alloc-bar span { height: 100%; min-width: 4px; }

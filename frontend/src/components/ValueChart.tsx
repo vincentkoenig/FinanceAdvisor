@@ -1,11 +1,13 @@
 // Wertverlauf als Linie mit leichter Fläche, wie Charts.line im Prototyp: 4 ruhige Gitterlinien mit
 // runden Werten, 2px-Linie ohne Punkte, beim Zeigen eine senkrechte Linie mit schlichtem Tooltip.
-// Farben aus den Tokens, damit die Linie auch auf der grünen Leitfläche passt.
+// Farben aus den Tokens, damit die Linie auch auf der grünen Leitfläche passt. Käufe und Verkäufe
+// sitzen auf der Linie und stehen im Tooltip: Kauf als gefüllter Punkt, Verkauf als Ring (auch ohne
+// Farbe unterscheidbar), an Tagen mit beidem der Punkt im Ring.
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import type { HistoryPoint } from '../api/overview';
-import { niceTicks } from '../features/portfolio/model';
+import type { HistoryPoint, Trade } from '../api/overview';
+import { niceTicks, type TradeMark } from '../features/portfolio/model';
 import { eur, parseDay } from '../lib/format';
-import { MASK, usePrivacy } from '../lib/privacy';
+import { MASK, useMoney, usePrivacy } from '../lib/privacy';
 
 const PAD_TOP = 8;
 const PAD_BOTTOM = 26;
@@ -34,10 +36,20 @@ function useWidth(fallback: number) {
   return [ref, width] as const;
 }
 
-export function ValueChart({ points, height = 240 }: { points: HistoryPoint[]; height?: number }) {
+function tradeWord(trades: Trade[]) {
+  const buys = trades.filter((t) => t.type === 'buy').length;
+  const sells = trades.length - buys;
+  return [buys && `${buys} ${buys === 1 ? 'Kauf' : 'Käufe'}`, sells && `${sells} ${sells === 1 ? 'Verkauf' : 'Verkäufe'}`]
+    .filter(Boolean).join(' und ');
+}
+
+type Props = { points: HistoryPoint[]; marks?: TradeMark[]; height?: number };
+
+export function ValueChart({ points, marks = [], height = 240 }: Props) {
   const [ref, width] = useWidth(600);
   const [hover, setHover] = useState<number | null>(null);
   const { hidden } = usePrivacy();
+  const { qty } = useMoney();
   const money = (value: number) => (hidden ? `${MASK} €` : eur(value));
 
   const values = points.map((p) => p.value);
@@ -67,8 +79,11 @@ export function ValueChart({ points, height = 240 }: { points: HistoryPoint[]; h
   };
 
   const first = points[0], last = points[points.length - 1];
-  const label = `Depotwert vom ${dayLong(first.date)} bis ${dayLong(last.date)}, zuletzt ${money(last.value)}`;
+  const allTrades = marks.flatMap((m) => m.trades);
+  const label = `Depotwert vom ${dayLong(first.date)} bis ${dayLong(last.date)}, zuletzt ${money(last.value)}`
+    + (allTrades.length ? `, ${tradeWord(allTrades)} im Zeitraum` : '');
   const hovered = hover === null ? null : points[hover];
+  const hoveredTrades = marks.find((m) => m.index === hover)?.trades ?? [];
 
   return (
     <div className="value-chart" ref={ref}>
@@ -85,13 +100,24 @@ export function ValueChart({ points, height = 240 }: { points: HistoryPoint[]; h
         ))}
         <path d={area} className="area" />
         <path d={line} className="line" />
+        {marks.map(({ index, trades }) => {
+          const buy = trades.some((t) => t.type === 'buy'), sell = trades.some((t) => t.type === 'sell');
+          const cx = x(index), cy = y(points[index].value);
+          return (
+            <g key={index} className="trade-mark">
+              {sell && <circle cx={cx} cy={cy} r={buy ? 7 : 5} className="trade-sell" />}
+              {buy && <circle cx={cx} cy={cy} r={sell ? 3.5 : 4.5} className="trade-buy" />}
+            </g>
+          );
+        })}
         {hovered && (
           <>
             <line x1={x(hover!)} x2={x(hover!)} y1={PAD_TOP} y2={height - PAD_BOTTOM} className="rule" />
             <circle cx={x(hover!)} cy={y(hovered.value)} r={3.5} className="dot-mark" />
           </>
         )}
-        <rect x={padLeft} y={PAD_TOP} width={plotWidth} height={height - PAD_TOP - PAD_BOTTOM} fill="transparent"
+        {/* etwas über den letzten Punkt hinaus, damit er sich am Rand gut treffen lässt */}
+        <rect x={padLeft} y={PAD_TOP} width={plotWidth + 12} height={height - PAD_TOP - PAD_BOTTOM} fill="transparent"
           onPointerMove={onMove} onPointerDown={onMove} onPointerLeave={() => setHover(null)} />
       </svg>
       {hovered && (
@@ -102,7 +128,17 @@ export function ValueChart({ points, height = 240 }: { points: HistoryPoint[]; h
         }}>
           <div className="muted">{dayLong(hovered.date)}</div>
           <b>{money(hovered.value)}</b>
+          {hoveredTrades.map((t) => (
+            <div key={t.id} className={`tip-trade trade-${t.type}`}>
+              {t.type === 'buy' ? 'Kauf' : 'Verkauf'} {t.asset_symbol || t.asset_name} · {qty(t.quantity)} Stück · {money(t.total)}
+            </div>
+          ))}
         </div>
+      )}
+      {marks.length > 0 && (
+        <p className="chart-legend" aria-hidden="true">
+          <span><i className="trade-buy" />Kauf</span><span><i className="trade-sell" />Verkauf</span>
+        </p>
       )}
     </div>
   );

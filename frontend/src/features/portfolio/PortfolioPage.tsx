@@ -20,7 +20,7 @@ import { type PositionRow, planDates, portfolioTotals, positionRows, token } fro
 import { AddAssetDialog, DeletePlanDialog, type PlanAsset, PlanDialog, PositionDialog, WatchDialog } from './dialogs';
 import {
   type Range, RANGES, type Slice, type Sort, type SortKey,
-  allocation, dividendsThisYear, finding, rangeChange, rangeSeries, sortRows,
+  allocation, dividendsThisYear, finding, rangeChange, rangeSeries, sortRows, tradeMarks,
 } from './model';
 
 type AllocView = 'bar' | 'ring';
@@ -81,6 +81,7 @@ export function PortfolioPage() {
   const totals = positions.data ? portfolioTotals(positions.data) : null;
   const series = history.data && totals ? rangeSeries(history.data, range, today, totals.value) : null;
   const change = series && trades.data ? rangeChange(series, trades.data) : null;
+  const marks = series && trades.data ? tradeMarks(series, trades.data) : [];
   const found = rows ? finding(rows) : null;
   const counts: Record<Tab, number | undefined> = {
     positions: positions.data?.length, watchlist: watchlist.data?.length, trades: trades.data?.length,
@@ -135,7 +136,7 @@ export function PortfolioPage() {
           <div className="chart-slot">
             <Loaded queries={[history, positions]} shape="chart">
               {() => series!.length >= 2
-                ? <ValueChart points={series!} height={phone ? 200 : 240} />
+                ? <ValueChart points={series!} marks={marks} height={phone ? 200 : 240} />
                 : <p className="empty-line">Der Wertverlauf erscheint, sobald dein Depot einen Tag alt ist.</p>}
             </Loaded>
           </div>

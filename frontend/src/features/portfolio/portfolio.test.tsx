@@ -52,6 +52,24 @@ describe('Portfolio', () => {
     expect(within(panel).getByRole('button', { name: '1W' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('markiert Käufe und Verkäufe im Wertverlauf', async () => {
+    data.history = [
+      { date: '2026-09-15', value: 11000 },
+      { date: '2026-10-22', value: 13000 },
+      { date: '2026-10-29', value: 13800 },
+    ];
+    data.trades = [
+      ...data.trades,
+      { id: 22, asset_id: 1, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', type: 'buy', quantity: 10, price: 100, total: 1000, date: '2026-10-20' },
+      { id: 23, asset_id: 2, asset_name: 'Bitcoin', asset_symbol: 'BTC-EUR', type: 'sell', quantity: 0.01, price: 90000, total: 900, date: '2026-10-29' },
+    ];
+    renderApp('/portfolio');
+    const panel = await hero();
+    expect(await within(panel).findByRole('img', { name: /, 1 Kauf und 1 Verkauf im Zeitraum$/ })).toBeInTheDocument();
+    expect(panel.querySelectorAll('.trade-mark')).toHaveLength(2);
+    expect(panel).toHaveTextContent('KaufVerkauf');
+  });
+
   it('teilt das Depot nach Anlageart auf, als Balken oder Ring', async () => {
     renderApp('/portfolio');
     const panel = await screen.findByRole('region', { name: 'Aufteilung' });
