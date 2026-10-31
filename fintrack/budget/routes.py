@@ -153,6 +153,8 @@ def get_transactions():
             "end_date": transaction.end_date.strftime('%Y-%m-%d') if transaction.end_date else None,
             "is_recurring": transaction.is_recurring,
             "is_paused": transaction.is_paused,
+            # Ab wann pausiert: frühere Monate zählen die Buchung weiter mit
+            "paused_at": transaction.paused_at.strftime('%Y-%m-%d') if transaction.paused_at else None,
             "category_id": transaction.category_id,
             "category_name": category.name if category else None,
             "category_type": category.type if category else None

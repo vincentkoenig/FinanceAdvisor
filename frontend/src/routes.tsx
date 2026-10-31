@@ -4,6 +4,7 @@ import { useMe } from './api/auth';
 import { Shell, type RootContext } from './components/Shell';
 import { ToastProvider } from './components/Toast';
 import { LoginPage } from './features/auth/LoginPage';
+import { BudgetPage } from './features/budget/BudgetPage';
 import { HomePage } from './features/home/HomePage';
 import { NotFoundPage } from './features/NotFoundPage';
 import { PortfolioPage } from './features/portfolio/PortfolioPage';
@@ -42,6 +43,7 @@ export const routes: RouteObject[] = [
             children: [
               { index: true, element: <HomePage /> },
               { path: 'portfolio', element: <PortfolioPage /> },
+              { path: 'budget', element: <BudgetPage /> },
               { path: 'settings', element: <SettingsPage /> },
               { path: '*', element: <NotFoundPage /> },
             ],
