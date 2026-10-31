@@ -4,6 +4,8 @@ Während des Umbaus laufen die bisherigen Seiten unter / weiter.
 
 - Dateien mit Hash im Namen (/app/assets/...) ändern sich nie und dürfen
   ein Jahr im Browser-Cache bleiben.
+- Der Service Worker (sw.js) und das Manifest werden nie gecacht, damit der
+  Browser ein Update sofort bemerkt.
 - Jede andere Adresse unter /app bekommt index.html (das Frontend entscheidet
   selbst, welche Seite es zeigt) und wird nie gecacht, damit nach einem
   Deploy sofort die neue Version lädt.
@@ -18,6 +20,10 @@ from flask import Blueprint, current_app, redirect, send_from_directory
 bp = Blueprint('spa', __name__)
 
 ONE_YEAR = 365 * 24 * 60 * 60
+
+# Python kennt .webmanifest nicht überall; Browser erwarten diesen Typ
+MIMETYPES = {'.webmanifest': 'application/manifest+json'}
+NEVER_CACHED = {'sw.js', 'manifest.webmanifest'}
 
 
 def _dist():
@@ -36,9 +42,12 @@ def frontend(path):
     if path and os.path.isfile(os.path.join(dist, path)):
         # send_from_directory verhindert Ausbrüche aus dem Ordner (../)
         max_age = ONE_YEAR if path.startswith('assets/') else 0
-        response = send_from_directory(dist, path, max_age=max_age)
+        mimetype = MIMETYPES.get(os.path.splitext(path)[1])
+        response = send_from_directory(dist, path, max_age=max_age, mimetype=mimetype)
         if max_age:
             response.cache_control.immutable = True
+        if path in NEVER_CACHED:
+            response.cache_control.no_cache = True
         return response
 
     if path.startswith('assets/'):

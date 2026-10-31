@@ -11,9 +11,13 @@ import '@fontsource/barlow-semi-condensed/600.css';
 import './styles/tokens.css';
 import './styles/app.css';
 import { createQueryClient } from './api/auth';
+import { registerServiceWorker } from './lib/pwa';
 import { routes } from './routes';
 
 const router = createBrowserRouter(routes, { basename: '/app' });
+
+// Im Dev-Server ohne Service Worker, sonst liefert er alte Dateien aus
+if (import.meta.env.PROD) window.addEventListener('load', () => registerServiceWorker());
 const queryClient = createQueryClient();
 
 createRoot(document.getElementById('root')!).render(

@@ -16,6 +16,8 @@ def dist(tmp_path):
     (tmp_path / 'index.html').write_text('<!doctype html><title>FinTrack</title>', encoding='utf-8')
     (tmp_path / 'assets' / 'index-abc123.js').write_text('console.log(1)', encoding='utf-8')
     (tmp_path / 'icon.svg').write_text('<svg/>', encoding='utf-8')
+    (tmp_path / 'sw.js').write_text('// sw', encoding='utf-8')
+    (tmp_path / 'manifest.webmanifest').write_text('{}', encoding='utf-8')
     return tmp_path
 
 
@@ -49,6 +51,18 @@ def test_other_files_are_not_cached_long(client):
     response = client.get('/app/icon.svg')
     assert response.status_code == 200
     assert 'max-age=31536000' not in response.headers.get('Cache-Control', '')
+
+
+@pytest.mark.parametrize('path', ['/app/sw.js', '/app/manifest.webmanifest'])
+def test_service_worker_and_manifest_are_never_cached(client, path):
+    """Sonst bemerkt der Browser ein Update der App erst nach Tagen"""
+    response = client.get(path)
+    assert response.status_code == 200
+    assert 'no-cache' in response.headers['Cache-Control']
+
+
+def test_manifest_has_its_media_type(client):
+    assert client.get('/app/manifest.webmanifest').mimetype == 'application/manifest+json'
 
 
 def test_missing_asset_is_404_not_index(client):
