@@ -1,5 +1,5 @@
 // Rahmen jeder Seite: Top-Leiste über einer zentrierten Spalte, auf dem Handy eine Leiste unten.
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router';
 import { useLogout, useMe } from '../api/auth';
 import { usePrivacy } from '../lib/privacy';
@@ -17,6 +17,15 @@ export const NAV: NavItem[] = [
   { label: 'Chat', short: 'Chat', icon: 'chat', to: '/chat' },
   { label: 'Analyse', short: 'Analyse', icon: 'chart', to: '/analyse' },
 ];
+
+const TITLES: Record<string, string> = { settings: 'Einstellungen' };
+
+/** Titel des Browser-Tabs zur Seite, z. B. "Portfolio · FinTrack" */
+export function pageTitle(pathname: string) {
+  const page = pathname.split('/')[1] ?? '';
+  const name = TITLES[page] ?? NAV.find((item) => item.to === `/${page}`)?.label ?? 'Seite nicht gefunden';
+  return `${name} · FinTrack`;
+}
 
 function NavEntry({ item, compact }: { item: NavItem; compact?: boolean }) {
   const content = compact ? <><Icon name={item.icon} size={22} />{item.short}</> : item.label;
@@ -48,6 +57,19 @@ export function Shell() {
   useEffect(() => {
     const page = location.pathname.split('/')[1] || 'home';
     document.documentElement.dataset.page = page;
+    document.title = pageTitle(location.pathname);
+  }, [location.pathname]);
+
+  // Nach einem Seitenwechsel steht der Fokus auf der Überschrift, damit Screenreader und Tastatur
+  // auf der neuen Seite oben beginnen. Beim ersten Laden nicht, da beginnt der Browser selbst oben.
+  const shownPath = useRef(location.pathname);
+  useEffect(() => {
+    if (shownPath.current === location.pathname) return;
+    shownPath.current = location.pathname;
+    const heading = document.querySelector<HTMLElement>('#main h1');
+    if (!heading) return;
+    heading.tabIndex = -1;
+    heading.focus({ preventScroll: true });
   }, [location.pathname]);
 
   useEffect(() => {
@@ -78,6 +100,10 @@ export function Shell() {
 
   return (
     <>
+      <a className="skip-link" href="#main" onClick={(event) => {
+        event.preventDefault();
+        document.getElementById('main')?.focus();
+      }}>Zum Inhalt springen</a>
       <header className={`topbar${scrolled ? ' scrolled' : ''}`}>
         <div className="topbar-inner">
           <NavLink className="mark" to="/" aria-label="FinTrack, Übersicht"><Mark /><span>FinTrack</span></NavLink>
@@ -106,11 +132,11 @@ export function Shell() {
         </div>
       </header>
 
-      <main className="canvas">
+      <main className="canvas" id="main" tabIndex={-1}>
         <Outlet context={context} />
       </main>
 
-      <nav className="bottom-nav" aria-label="Hauptnavigation">
+      <nav className="bottom-nav" aria-label="Navigation unten">
         {NAV.slice(0, 4).map((item) => <NavEntry key={item.label} item={item} compact />)}
         <button onClick={() => setMoreOpen(true)} aria-haspopup="dialog"><Icon name="more" size={22} />Mehr</button>
       </nav>

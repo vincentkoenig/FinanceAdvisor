@@ -15,6 +15,8 @@
   /* hell */
   --ground: #e4eee8; --surface: #f4faf6; --raised: #e2ece6; --active: #d4e2d9;
   --rule: #dbe7df; --rule-strong: #cbd9d0; --control: #adbfb3;
+  /* Rand von Eingabefeldern und Schaltern: mindestens 3:1 zur Fläche (WCAG 1.4.11) */
+  --field-edge: #7d9486;
   --text: #0d1a13; --muted: #44564b; --faint: #53665a;
   --accent: #0a8455; --on-accent: #ffffff;
   --primary: #0f3d2b; --primary-ink: #ffffff;
@@ -44,6 +46,7 @@
 :root[data-theme="dark"] {
   --ground: #08140f; --surface: #0f2119; --raised: #172f25; --active: #1c372b;
   --rule: #1a3127; --rule-strong: #244034; --control: #3b5a4b;
+  --field-edge: #5b7d6e;
   --text: #edf6f0; --muted: #a6bfb0; --faint: #8ea898;
   --accent: #4fd394; --on-accent: #06140d;
   --primary: #cdeedc; --primary-ink: #06140d;
