@@ -15,7 +15,6 @@ afterEach(() => vi.useRealTimers());
 
 // Die Seite erscheint erst nach der Anmeldeprüfung, deshalb mit find… warten
 const section = (name: string) => screen.findByRole('region', { name });
-const group = (name: string) => screen.findByRole('group', { name });
 
 describe('Übersicht', () => {
   it('zeigt Gesamtvermögen aus Depot und Cash mit den Kennzahlen', async () => {
@@ -58,18 +57,18 @@ describe('Übersicht', () => {
 
   it('teilt den Monat in Fixkosten, Variabel, Sparplan und Frei übrig', async () => {
     renderApp('/');
-    const flow = await group('Oktober im Haushaltsbuch');
+    const flow = await section('Oktober im Haushaltsbuch');
     expect(await within(flow).findByRole('img', { name: 'Fixkosten 40 %, Variable Ausgaben 27 %, Investiert per Sparplan 2 %, Frei übrig 32 %' })).toBeInTheDocument();
     expect(flow).toHaveTextContent('Frei übrig950,00 €32 %');
   });
 
   it('listet größte Positionen, letzte Buchungen und das Tages-Update', async () => {
     renderApp('/');
-    const positions = await group('Größte Positionen');
+    const positions = await section('Größte Positionen');
     expect(await within(positions).findByText('iShares Core MSCI World')).toBeInTheDocument();
     expect(positions).toHaveTextContent('+25,0 %');
     expect(positions).toHaveTextContent('−20,0 %');
-    const bookings = await group('Letzte Buchungen');
+    const bookings = await section('Letzte Buchungen');
     expect(await within(bookings).findByText('Wocheneinkauf')).toBeInTheDocument();
     expect(bookings).toHaveTextContent('−54,90 €');
     expect(bookings).toHaveTextContent('+3.000,00 €');
@@ -102,7 +101,7 @@ describe('Übersicht', () => {
     server.use(http.get('/api/v1/me/insight', () =>
       fail ? HttpResponse.json({ error: 'kaputt' }, { status: 503 }) : HttpResponse.json(data.insight)));
     renderApp('/');
-    const insight = await group('Tages-Update');
+    const insight = await section('Tages-Update');
     expect(await within(insight).findByText('Konnte nicht geladen werden.')).toBeInTheDocument();
     fail = false;
     await userEvent.setup().click(within(insight).getByRole('button', { name: 'Erneut versuchen' }));

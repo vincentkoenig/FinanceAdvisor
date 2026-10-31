@@ -1,5 +1,5 @@
 // Anmeldung mit E-Mail und Passwort. Fehlermeldungen kommen auf Deutsch von der API.
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router';
 import { useLogin, useMe } from '../../api/auth';
 import { Mark } from '../../components/Icon';
@@ -13,6 +13,10 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    document.title = 'Anmelden · FinTrack';
+  }, []);
 
   if (user) return <Navigate to={from} replace />;
 
