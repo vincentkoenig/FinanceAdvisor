@@ -8,6 +8,7 @@ import {
   useDividends, useExecutePlan, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
 } from '../../api/overview';
 import { type WatchItem, useWatchlist } from '../../api/portfolio';
+import { CountUp } from '../../components/CountUp';
 import { Icon } from '../../components/Icon';
 import { Loaded } from '../../components/Loaded';
 import { useToast } from '../../components/Toast';
@@ -112,10 +113,10 @@ export function PortfolioPage() {
           <div className="hero-head">
             <div className="grow">
               <h2 className="lead-label" id="h-value">Depotwert</h2>
-              <Loaded queries={[positions]}>
+              <Loaded queries={[positions]} shape="figure">
                 {() => (
                   <>
-                    <div className="lead-figure">{eur(totals!.value)}</div>
+                    <div className="lead-figure"><CountUp value={totals!.value} format={eur} /></div>
                     <p className="lead-sub num">
                       {change
                         ? <><span className={tone(change.abs)}>{eur(change.abs, { sign: true })}{change.pct !== null && ` (${pct(change.pct)})`}</span> {RANGES.find((r) => r.key === range)!.words}</>
@@ -132,7 +133,7 @@ export function PortfolioPage() {
             </div>
           </div>
           <div className="chart-slot">
-            <Loaded queries={[history, positions]}>
+            <Loaded queries={[history, positions]} shape="chart">
               {() => series!.length >= 2
                 ? <ValueChart points={series!} height={phone ? 200 : 240} />
                 : <p className="empty-line">Der Wertverlauf erscheint, sobald dein Depot einen Tag alt ist.</p>}
@@ -182,7 +183,7 @@ export function PortfolioPage() {
           </button>
         ))}
       </div>
-      <section className="panel" role="tabpanel" id="tab-panel" aria-labelledby={`tab-${tab}`}>
+      <section className="panel tab-panel" role="tabpanel" id="tab-panel" aria-labelledby={`tab-${tab}`} key={tab}>
         {tab === 'positions' && (
           <Loaded queries={[positions]}>
             {() => <Positions rows={rows!} onOpen={(row) => setOpen({ type: 'position', row })} />}

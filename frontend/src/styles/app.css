@@ -84,7 +84,24 @@ h2 { font-size: var(--fs-section); line-height: 24px; font-weight: 600; }
 .trunc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 .token { width: 32px; height: 32px; flex: none; border-radius: 999px; display: grid; place-items: center; background: var(--raised); color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.01em; }
 .panel-head .meta { color: var(--muted); font-size: var(--fs-small); }
-.loading { padding: 8px 0; }
+.count-up::before { content: attr(data-value); }
+
+/* ─── Laden: ruhige Balken in der Form des Inhalts, auf Flächen und auf der grünen Leitkarte ─── */
+.skeleton { display: flex; flex-direction: column; gap: 10px; padding: 6px 0; }
+.skeleton span { display: block; height: 12px; border-radius: 6px; background: color-mix(in srgb, currentColor 12%, transparent); animation: breathe 1.4s ease-in-out infinite; }
+.skeleton .w-50 { width: 50%; } .skeleton .w-60 { width: 60%; } .skeleton .w-70 { width: 70%; } .skeleton .w-80 { width: 80%; }
+.skeleton .figure { width: 46%; height: 40px; margin: 4px 0 6px; border-radius: 10px; }
+.skeleton .chart { height: 200px; border-radius: 12px; }
+@keyframes breathe { 50% { opacity: 0.45; } }
+
+/* ─── Bewegung: Seiten und Reiter blenden kurz ein ─── */
+.canvas > * { animation: rise 260ms ease-out both; }
+.canvas > :nth-child(2) { animation-delay: 40ms; }
+.canvas > :nth-child(3) { animation-delay: 80ms; }
+.canvas > :nth-child(n+4) { animation-delay: 120ms; }
+.tab-panel { animation: fade 180ms ease-out; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+@keyframes fade { from { opacity: 0; } }
 .load-error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 8px; background: var(--raised); color: var(--muted); }
 .insight { line-height: 22px; white-space: pre-line; }
 .sub-line { display: block; color: var(--muted); font-size: var(--fs-small); line-height: 16px; margin-top: 2px; }
@@ -388,5 +405,5 @@ details.older[open] .clamp-2 { display: none; }
   details.fold[open] > summary { margin-bottom: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+  *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }

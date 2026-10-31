@@ -5,6 +5,7 @@ import { Link } from 'react-router';
 import {
   type Booking, useBookings, useBudgetSummary, useExecutePlan, useInsight, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
 } from '../../api/overview';
+import { CountUp } from '../../components/CountUp';
 import { Fold } from '../../components/Fold';
 import { Loaded } from '../../components/Loaded';
 import { MonthFlow } from '../../components/MonthFlow';
@@ -64,7 +65,7 @@ export function HomePage() {
       <div className="grid grid-3">
         <section className="panel hero span-2" aria-labelledby="h-net">
           <h2 className="lead-label" id="h-net">Gesamtvermögen</h2>
-          <Loaded queries={[positions, summary]}>
+          <Loaded queries={[positions, summary]} shape="figure">
             {() => {
               const depot = totals!.value;
               const cash = summary.data!.cumulative_balance;
@@ -72,7 +73,7 @@ export function HomePage() {
               const showShare = depot > 0 && cash > 0;
               return (
                 <>
-                  <div className="lead-figure">{eur(total)}</div>
+                  <div className="lead-figure"><CountUp value={total} format={eur} /></div>
                   {showShare && (
                     <div className="share-bar" role="img"
                       aria-label={`Depot ${Math.round((depot / total) * 100)} %, Cash ${Math.round((cash / total) * 100)} %`}>
