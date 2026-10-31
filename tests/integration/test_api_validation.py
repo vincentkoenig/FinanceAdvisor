@@ -6,14 +6,14 @@ mit der neuen API dazugekommen sind.
 
 import sys
 import os
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 import pytest
 
 from fintrack.extensions import db
-from fintrack.models import Asset, AssetTransaction, Category, Transaction, UserAsset
+from fintrack.models import Asset, AssetTransaction, Category, FxRate, PriceHistory, Transaction, UserAsset
 from fintrack.portfolio.analysis import parse_stored_list
 
 
@@ -154,6 +154,34 @@ class TestPortfolioRules:
         positions = client.get('/api/v1/me/positions').get_json()
 
         assert [p['asset_type'] for p in positions] == ['unknown']
+
+    def test_positions_include_previous_close_in_eur(self, client, monkeypatch):
+        """Für die Tagesänderung: letzter Schlusskurs vor heute, mit dem Wechselkurs seines Tages"""
+        monkeypatch.setattr('fintrack.portfolio.routes.get_current_price', lambda a, **kw: 21.0)
+        asset = Asset(name='US-Aktie', symbol='USX', asset_type='stock', currency='USD')
+        db.session.add(asset)
+        db.session.commit()
+        today = date.today()
+        midnight = lambda d: datetime.combine(d, datetime.min.time())
+        db.session.add_all([
+            PriceHistory(asset_id=asset.id, date=midnight(today - timedelta(days=3)), price=20.0, currency='USD'),
+            PriceHistory(asset_id=asset.id, date=midnight(today - timedelta(days=1)), price=25.0, currency='USD'),
+            # Der heutige Zwischenstand zählt nicht als Vortag
+            PriceHistory(asset_id=asset.id, date=midnight(today), price=30.0, currency='USD'),
+            FxRate(currency='USD', date=today - timedelta(days=3), rate_to_eur=0.9),
+            FxRate(currency='USD', date=today - timedelta(days=1), rate_to_eur=0.8),
+        ])
+        db.session.commit()
+        client.post('/api/v1/me/positions', json={'asset_id': asset.id, 'quantity': 2, 'avg_buy_price': 10, 'bought_at': '2026-10-01'})
+
+        positions = client.get('/api/v1/me/positions').get_json()
+
+        assert positions[0]['previous_close'] == 20.0
+
+    def test_previous_close_is_none_without_prices(self, client, asset):
+        client.post('/api/v1/me/positions', json={'asset_id': asset.id, 'quantity': 2, 'avg_buy_price': 10, 'bought_at': '2026-10-01'})
+
+        assert client.get('/api/v1/me/positions').get_json()[0]['previous_close'] is None
 
     def test_watchlist_includes_name_and_price(self, client, asset, monkeypatch):
         """Die Watchlist im neuen Frontend braucht keinen Request pro Zeile"""

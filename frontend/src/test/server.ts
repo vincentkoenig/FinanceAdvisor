@@ -12,8 +12,8 @@ export const session = { loggedIn: false };
 
 const initialData = () => ({
   positions: [
-    { asset_id: 1, name: 'iShares Core MSCI World', symbol: 'EUNL.DE', asset_type: 'etf', quantity: 100, avg_buy_price: 80, current_price: 100, bought_at: null, status: 'owned' },
-    { asset_id: 2, name: 'Bitcoin', symbol: 'BTC-EUR', asset_type: 'crypto', quantity: 0.1, avg_buy_price: 50000, current_price: 40000, bought_at: null, status: 'owned' },
+    { asset_id: 1, name: 'iShares Core MSCI World', symbol: 'EUNL.DE', asset_type: 'etf', quantity: 100, avg_buy_price: 80, current_price: 100, previous_close: null as number | null, bought_at: null, status: 'owned' },
+    { asset_id: 2, name: 'Bitcoin', symbol: 'BTC-EUR', asset_type: 'crypto', quantity: 0.1, avg_buy_price: 50000, current_price: 40000, previous_close: null as number | null, bought_at: null, status: 'owned' },
   ],
   summary: {
     cumulative_balance: 2000, current_month_balance: 1000, current_month_income: 3000,

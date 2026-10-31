@@ -42,6 +42,11 @@ export function tone(value: number) {
   return value > 0 ? 'pos' : value < 0 ? 'neg' : 'muted';
 }
 
+/** Klasse für einen Prozentwert, nach dem angezeigten Wert: −0,04 % wird zu "0,0 %" und bleibt grau */
+export function pctTone(value: number) {
+  return tone(Number(value.toFixed(1)));
+}
+
 /** "2026-10-03" → Datum um 12 Uhr Ortszeit (keine Verschiebung durch Zeitzonen) */
 export function parseDay(iso: string) {
   return new Date(iso.slice(0, 10) + 'T12:00:00');

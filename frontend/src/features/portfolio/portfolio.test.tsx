@@ -70,6 +70,16 @@ describe('Portfolio', () => {
     expect(panel).toHaveTextContent('KaufVerkauf');
   });
 
+  it('zeigt die Tagesänderung pro Position und in Summe', async () => {
+    data.positions[0].previous_close = 98;
+    renderApp('/portfolio');
+    const table = (await screen.findByRole('button', { name: 'Heute' })).closest('table')!;
+    const [, etf, btc, total] = within(table).getAllByRole('row');
+    expect(etf).toHaveTextContent('+2,0 %+200,00 €');
+    expect(btc).toHaveTextContent('–');
+    expect(total).toHaveTextContent('Gesamt+200,00 €');
+  });
+
   it('teilt das Depot nach Anlageart auf, als Balken oder Ring', async () => {
     renderApp('/portfolio');
     const panel = await screen.findByRole('region', { name: 'Aufteilung' });
