@@ -48,6 +48,26 @@ export function rangeChange(series: HistoryPoint[], trades: Trade[]) {
   return changeSince(series[0], series[series.length - 1].value, trades);
 }
 
+export type TradeMark = { index: number; trades: Trade[] };
+
+/**
+ * Käufe und Verkäufe im Zeitraum als Markierungen auf dem Wertverlauf: jeder auf dem ersten Punkt, in
+ * dem er im Wert steckt (erster Punkt am oder nach dem Handelstag, z. B. Montag für einen Kauf am
+ * Samstag). Der erste Punkt ist der Tag vor dem Zeitraum, Käufe an diesem Tag gehören nicht dazu.
+ */
+export function tradeMarks(series: HistoryPoint[], trades: Trade[]): TradeMark[] {
+  if (series.length < 2) return [];
+  const first = series[0].date, last = series[series.length - 1].date;
+  const byIndex = new Map<number, Trade[]>();
+  for (const trade of trades) {
+    const day = trade.date.slice(0, 10);
+    if (day <= first || day > last) continue;
+    const index = series.findIndex((point) => point.date >= day);
+    byIndex.set(index, [...(byIndex.get(index) ?? []), trade]);
+  }
+  return [...byIndex].sort(([a], [b]) => a - b).map(([index, list]) => ({ index, trades: list }));
+}
+
 const TYPE_LABELS: Record<string, string> = { etf: 'ETFs', stock: 'Aktien', crypto: 'Krypto', metal: 'Edelmetalle' };
 
 export type Slice = { key: string; label: string; value: number; share: number; color: string };

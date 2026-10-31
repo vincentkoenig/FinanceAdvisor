@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Dividend, Position, Trade } from '../../api/overview';
 import { positionRows } from '../home/model';
-import { allocation, dividendsThisYear, finding, niceTicks, rangeChange, rangeSeries, sortRows } from './model';
+import { allocation, dividendsThisYear, finding, niceTicks, rangeChange, rangeSeries, sortRows, tradeMarks } from './model';
 
 const OCT_30 = new Date(2026, 9, 30, 10);
 
@@ -85,5 +85,27 @@ describe('Dividenden', () => {
   it('summiert nur das laufende Jahr', () => {
     const d = (date: string, total: number) => ({ ex_dividend_date: date, total_amount: total }) as Dividend;
     expect(dividendsThisYear([d('2026-03-01', 10), d('2026-09-01', 5.5), d('2025-12-01', 99)], OCT_30)).toBe(15.5);
+  });
+});
+
+describe('tradeMarks', () => {
+  const series = [
+    { date: '2026-10-02', value: 100 },
+    { date: '2026-10-05', value: 110 },
+    { date: '2026-10-06', value: 120 },
+    { date: '2026-10-30', value: 130 },
+  ];
+  const trade = (id: number, date: string, type: 'buy' | 'sell' = 'buy'): Trade =>
+    ({ id, asset_id: 1, asset_name: 'X', asset_symbol: 'X', type, quantity: 1, price: 10, total: 10, date });
+
+  it('setzt jeden Handel auf den ersten Punkt ab seinem Tag und fasst Tage zusammen', () => {
+    const marks = tradeMarks(series, [
+      trade(1, '2026-10-04'), trade(2, '2026-10-05', 'sell'), trade(3, '2026-10-06T09:30:00'), trade(4, '2026-10-30'),
+    ]);
+    expect(marks.map((m) => [m.index, m.trades.map((t) => t.id)])).toEqual([[1, [1, 2]], [2, [3]], [3, [4]]]);
+  });
+
+  it('lässt Käufe vor oder am Ausgangstag und nach dem letzten Punkt weg', () => {
+    expect(tradeMarks(series, [trade(1, '2026-09-01'), trade(2, '2026-10-02'), trade(3, '2026-11-01')])).toEqual([]);
   });
 });
