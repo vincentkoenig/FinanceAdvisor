@@ -11,7 +11,16 @@ if errorlevel 1 (
     exit /b 1
 )
 
-start "" http://127.0.0.1:5000
+rem Frontend bauen: Flask liefert frontend\dist unter /app aus
+if not exist frontend\node_modules call npm ci --prefix frontend
+call npm run build --prefix frontend
+if errorlevel 1 (
+    echo Frontend-Build fehlgeschlagen - Server wird nicht gestartet.
+    pause
+    exit /b 1
+)
+
+start "" http://127.0.0.1:5000/app/
 python app.py
 
 pause

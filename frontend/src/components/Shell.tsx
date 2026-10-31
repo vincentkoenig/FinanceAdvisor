@@ -1,30 +1,25 @@
 // Rahmen jeder Seite: Top-Leiste über einer zentrierten Spalte, auf dem Handy eine Leiste unten.
-// Bereiche, die noch nicht im neuen Frontend sind, verlinken auf die bisherigen Seiten.
 import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation, useNavigate, useOutletContext } from 'react-router';
 import { useLogout, useMe } from '../api/auth';
-import { AREAS } from '../lib/areas';
 import type { Theme } from '../lib/theme';
-import { AreaLink } from './AreaLink';
 import { Icon, Mark, type IconName } from './Icon';
 
 export type RootContext = { theme: Theme; toggleTheme: () => void; setTheme: (theme: Theme) => void };
 
-type NavItem = { label: string; short: string; icon: IconName } & ({ to: string } | { href: string });
+type NavItem = { label: string; short: string; icon: IconName; to: string };
 
-// Wohin ein Eintrag führt, steht in lib/areas.ts (noch nicht umgezogene Bereiche: bisherige Seite)
 export const NAV: NavItem[] = [
-  { label: 'Übersicht', short: 'Übersicht', icon: 'home', ...AREAS.home },
-  { label: 'Portfolio', short: 'Portfolio', icon: 'chart', ...AREAS.portfolio },
-  { label: 'Haushaltsbuch', short: 'Budget', icon: 'wallet', ...AREAS.budget },
-  { label: 'Chat', short: 'Chat', icon: 'chat', ...AREAS.chat },
-  { label: 'Analyse', short: 'Analyse', icon: 'chart', ...AREAS.analyse },
+  { label: 'Übersicht', short: 'Übersicht', icon: 'home', to: '/' },
+  { label: 'Portfolio', short: 'Portfolio', icon: 'chart', to: '/portfolio' },
+  { label: 'Haushaltsbuch', short: 'Budget', icon: 'wallet', to: '/budget' },
+  { label: 'Chat', short: 'Chat', icon: 'chat', to: '/chat' },
+  { label: 'Analyse', short: 'Analyse', icon: 'chart', to: '/analyse' },
 ];
 
 function NavEntry({ item, compact }: { item: NavItem; compact?: boolean }) {
   const content = compact ? <><Icon name={item.icon} size={22} />{item.short}</> : item.label;
-  if ('to' in item) return <NavLink to={item.to} end>{content}</NavLink>;
-  return <a href={item.href}>{content}</a>;
+  return <NavLink to={item.to} end>{content}</NavLink>;
 }
 
 function initials(email: string) {
@@ -122,7 +117,7 @@ export function Shell() {
               <button className="icon-btn" onClick={() => setMoreOpen(false)} aria-label="Schließen"><Icon name="close" /></button>
             </div>
             <div className="rows">
-              <AreaLink area="analyse" className="row"><Icon name="chart" /><span className="grow">Analyse</span><Icon name="right" size={16} /></AreaLink>
+              <Link to="/analyse" className="row"><Icon name="chart" /><span className="grow">Analyse</span><Icon name="right" size={16} /></Link>
               <Link className="row" to="/settings"><Icon name="gear" /><span className="grow">Einstellungen</span><Icon name="right" size={16} /></Link>
               <button className="row" onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'moon'} /><span className="grow">{themeLabel}</span></button>
               <button className="row" onClick={signOut} disabled={logout.isPending}><Icon name="logout" /><span className="grow">Abmelden</span></button>

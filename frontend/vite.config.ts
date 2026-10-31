@@ -22,7 +22,7 @@ function serviceWorker(): Plugin {
   };
 }
 
-// Das neue Frontend läuft während des Umbaus unter /app, die alten Seiten bleiben unter /.
+// Das Frontend läuft unter /app (Flask leitet / dorthin weiter).
 // Im Dev-Server leitet Vite /api an Flask weiter. Der Host-Header bleibt dabei unverändert,
 // damit Origin und Host übereinstimmen und der Cross-Site-Schutz von Flask nicht anschlägt.
 export default defineConfig({

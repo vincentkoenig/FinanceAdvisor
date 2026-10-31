@@ -1,10 +1,10 @@
 // Übersicht. Frage der Seite: Wie viel habe ich, und was ist heute zu tun?
 // Oben das Gesamtvermögen als grüne Leitfläche und daneben das Fällige, darunter Monatsfluss,
 // Tages-Update, größte Positionen und letzte Buchungen (auf dem Handy eingeklappt).
+import { Link } from 'react-router';
 import {
   type Booking, useBookings, useBudgetSummary, useExecutePlan, useInsight, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
 } from '../../api/overview';
-import { AreaLink } from '../../components/AreaLink';
 import { Fold } from '../../components/Fold';
 import { Loaded } from '../../components/Loaded';
 import { MonthFlow } from '../../components/MonthFlow';
@@ -114,7 +114,7 @@ export function HomePage() {
           </div>
           <Loaded queries={[plans]}>
             {() => dates!.due.length + dates!.upcoming.length === 0
-              ? <p className="empty-line">Nichts zu tun. Sparpläne legst du im <AreaLink area="portfolio" className="link">Portfolio</AreaLink> an.</p>
+              ? <p className="empty-line">Nichts zu tun. Sparpläne legst du im <Link to="/portfolio" className="link">Portfolio</Link> an.</p>
               : (
                 <div className="rows">
                   {dates!.due.map(({ plan, date }) => (
@@ -148,7 +148,7 @@ export function HomePage() {
       <div className="grid grid-3">
         <Fold id="h-flow" className="span-2" title={`${month[0].toUpperCase()}${month.slice(1)} im Haushaltsbuch`}
           peek={flow ? eur(flow.left) : ''}
-          action={<AreaLink area="budget" className="btn btn-text btn-sm">Öffnen</AreaLink>}>
+          action={<Link to="/budget" className="btn btn-text btn-sm">Öffnen</Link>}>
           <Loaded queries={[summary, plans]}>
             {() => <MonthFlow flow={flow!} />}
           </Loaded>
@@ -168,10 +168,10 @@ export function HomePage() {
       <div className="grid grid-2">
         <Fold id="h-positions" title="Größte Positionen"
           peek={positions.data?.length ? `${positions.data.length} im Depot` : ''}
-          action={positions.data?.length ? <AreaLink area="portfolio" className="btn btn-text btn-sm">Alle {positions.data.length}</AreaLink> : null}>
+          action={positions.data?.length ? <Link to="/portfolio" className="btn btn-text btn-sm">Alle {positions.data.length}</Link> : null}>
           <Loaded queries={[positions]}>
             {() => positions.data!.length === 0
-              ? <p className="empty-line">Noch keine Positionen. Im <AreaLink area="portfolio" className="link">Portfolio</AreaLink> legst du die erste an.</p>
+              ? <p className="empty-line">Noch keine Positionen. Im <Link to="/portfolio" className="link">Portfolio</Link> legst du die erste an.</p>
               : (
                 <div className="rows">
                   {largestPositions(positions.data!).map((p) => (
@@ -194,10 +194,10 @@ export function HomePage() {
 
         <Fold id="h-bookings" title="Letzte Buchungen"
           peek={bookings.data?.length ? bookingAmount(recentBookings(bookings.data, 1)[0]) : ''}
-          action={bookings.data?.length ? <AreaLink area="budget" className="btn btn-text btn-sm">Alle {bookings.data.length}</AreaLink> : null}>
+          action={bookings.data?.length ? <Link to="/budget" className="btn btn-text btn-sm">Alle {bookings.data.length}</Link> : null}>
           <Loaded queries={[bookings]}>
             {() => bookings.data!.length === 0
-              ? <p className="empty-line">Noch keine Buchungen. Im <AreaLink area="budget" className="link">Haushaltsbuch</AreaLink> trägst du Einnahmen und Ausgaben ein.</p>
+              ? <p className="empty-line">Noch keine Buchungen. Im <Link to="/budget" className="link">Haushaltsbuch</Link> trägst du Einnahmen und Ausgaben ein.</p>
               : (
                 <div className="rows">
                   {recentBookings(bookings.data!).map((b) => (
