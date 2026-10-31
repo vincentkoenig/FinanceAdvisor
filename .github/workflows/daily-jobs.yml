@@ -1,10 +1,10 @@
 name: Täglicher Lauf
 
-# Weckt den Server auf und startet den täglichen Lauf (Kurse und
-# Wechselkurse, Dividenden, Insights). Auf dem kostenlosen Render-Tarif
-# schläft der Server nach 15 Minuten ohne Besuch - dann kann der Scheduler
-# im Server selbst nicht laufen. Läuft er doch, verhindern die Sperre im
-# Server und die Insight-Prüfung pro Tag, dass etwas doppelt passiert.
+# Startet den täglichen Lauf (Kurse und Wechselkurse, Dividenden, Insights)
+# als Absicherung zum eingebauten Scheduler auf dem eigenen Server: Fällt der
+# Scheduler aus (z.B. Neustart genau zur Uhrzeit), holt dieser Lauf es nach.
+# Laufen beide, verhindern die Sperre im Server und die Insight-Prüfung pro
+# Tag, dass etwas doppelt passiert; der zweite Start bekommt 409 und wartet.
 
 on:
   schedule:
@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      APP_URL: ${{ vars.APP_URL || 'https://financeadvisor-snxz.onrender.com' }}
+      APP_URL: ${{ vars.APP_URL || 'https://fintrack.vincentkoenig.ai' }}
       ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
 
     steps:
@@ -34,12 +34,11 @@ jobs:
             exit 1
           fi
 
-      - name: Server aufwecken
-        # Der erste Aufruf nach dem Schlafen dauert bis zu einer Minute
+      - name: Server erreichbar?
         run: |
           for attempt in $(seq 1 10); do
-            if curl -fsS -o /dev/null --max-time 90 "$APP_URL/"; then
-              echo "Server ist wach."
+            if curl -fsS -o /dev/null --max-time 90 "$APP_URL/healthz"; then
+              echo "Server ist erreichbar."
               exit 0
             fi
             echo "Noch nicht erreichbar (Versuch $attempt) - warte 15 Sekunden."
