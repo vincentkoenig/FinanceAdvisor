@@ -1,6 +1,9 @@
 """
-spa.py - Liefert das neue React-Frontend (frontend/dist) unter /app aus.
-Während des Umbaus laufen die bisherigen Seiten unter / weiter.
+spa.py - Liefert das React-Frontend (frontend/dist) unter /app aus.
+
+- / und die Adressen der früheren Seiten (/home-page, /portfolio-page, ...)
+  leiten auf die passende Seite unter /app weiter, damit Lesezeichen und eine
+  früher installierte App weiter funktionieren.
 
 - Dateien mit Hash im Namen (/app/assets/...) ändern sich nie und dürfen
   ein Jahr im Browser-Cache bleiben.
@@ -28,6 +31,28 @@ NEVER_CACHED = {'sw.js', 'manifest.webmanifest'}
 
 def _dist():
     return current_app.config['FRONTEND_DIST']
+
+
+# Frühere Seiten -> Seite im React-Frontend. 302 statt 301, damit Browser die
+# Weiterleitung nicht für immer speichern, falls das Frontend einmal unter / zieht.
+LEGACY_PAGES = {
+    '/': '/app/',
+    '/home-page': '/app/',
+    '/portfolio-page': '/app/portfolio',
+    '/budget-page': '/app/budget',
+    '/chat-page': '/app/chat',
+    '/analyse-page': '/app/analyse',
+    '/settings-page': '/app/settings',
+}
+
+
+def _legacy_redirect(target):
+    return lambda: redirect(target, code=302)
+
+
+for _path, _target in LEGACY_PAGES.items():
+    bp.add_url_rule(_path, endpoint='legacy_' + (_path.strip('/').replace('-', '_') or 'root'),
+                    view_func=_legacy_redirect(_target))
 
 
 @bp.route('/app')

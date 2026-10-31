@@ -48,12 +48,12 @@ class TestSession:
 
         assert client.get('/api/v1/me').status_code == 401
 
-    def test_pages_redirect_depending_on_login(self, app, make_user, login_client):
-        """Ohne Login führt /home-page zum Login, mit Login führt / zu Home"""
+    def test_start_page_leads_to_frontend_with_or_without_login(self, app, make_user, login_client):
+        """Ob jemand angemeldet ist, prüft das Frontend selbst über /api/v1/me"""
         make_user('a@test.com')
 
-        assert app.test_client().get('/home-page').headers['Location'].endswith('/')
-        assert login_client('a@test.com').get('/').headers['Location'].endswith('/home-page')
+        assert app.test_client().get('/').headers['Location'].endswith('/app/')
+        assert login_client('a@test.com').get('/home-page').headers['Location'].endswith('/app/')
 
     def test_unknown_email_and_wrong_password_look_identical(self, app, make_user):
         """Man kann nicht herausfinden, welche E-Mails registriert sind"""

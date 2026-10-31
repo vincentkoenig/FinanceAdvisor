@@ -1,15 +1,16 @@
 # FinTrack (ehemals FinanceAdvisor) 💹
 
 
-Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwalte dein Investment-Portfolio, führe ein Haushaltsbuch, chatte mit einem KI-Finanzberater und lass dir strukturierte Portfolio-Analysen erstellen — installierbar als mobile App (PWA), live deployed auf Render, und über einen eigenen MCP-Server auch für Claude Desktop nutzbar.
+Eine KI-gestützte Finanz-Web-App mit **Flask**-API, **React**-Frontend und **OpenAI**. Verwalte dein Investment-Portfolio, führe ein Haushaltsbuch, chatte mit einem KI-Finanzberater und lass dir strukturierte Portfolio-Analysen erstellen — installierbar als mobile App (PWA), live deployed auf Render, und über einen eigenen MCP-Server auch für Claude Desktop nutzbar.
 
-**Live-Demo:** https://financeadvisor-snxz.onrender.com *(kostenloser Tarif — nach Inaktivität kann der erste Aufruf 30-60 Sekunden dauern, während der Server aufwacht)*
+**Live-Demo:** https://financeadvisor-snxz.onrender.com/app/ *(kostenloser Tarif — nach Inaktivität kann der erste Aufruf 30-60 Sekunden dauern, während der Server aufwacht)*
 
 ## Features
 
-### 🏠 Home-Übersicht
-- Zentrales Dashboard mit Portfolio-Wert, kumuliertem Cash-Bestand und Gesamtvermögen
-- Kombiniert die live bewertete Portfolio-Position mit dem laufenden Saldo aus dem Haushaltsbuch
+### 🏠 Übersicht
+- Gesamtvermögen aus live bewertetem Depot und kumuliertem Cash-Bestand, dazu die Veränderung seit gestern (Käufe und Verkäufe herausgerechnet) und der Gewinn seit Kauf
+- „Zu tun“: fällige Sparpläne direkt ausführen, geplante mit ihrem nächsten Termin
+- Monatsfluss: wohin das Einkommen des Monats geht (Fixkosten, Variabel, Sparplan, frei übrig), dazu Tages-Update der KI, größte Positionen und letzte Buchungen
 
 ### 📊 Portfolio & Watchlist
 - Aktien, ETFs, Kryptowährungen und Edelmetalle hinzufügen, kaufen und verkaufen
@@ -19,22 +20,22 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 - Historische Schlusskurse werden beim Hinzufügen eines neuen Assets für 1 Jahr geladen und in der Handelswährung gespeichert, dazu die täglichen Wechselkurse — im Chart wird jeder Tag mit seinem eigenen Wechselkurs in Euro umgerechnet
 - Ein täglicher Lauf (abends nach US-Börsenschluss) lädt die letzten 7 Tage neu und überschreibt sie: Zwischenstände werden so durch Schlusskurse ersetzt und ausgefallene Läufe automatisch nachgeholt. Danach werden Dividenden (mit dem Wechselkurs am Ex-Tag) verbucht und die KI-Insights erzeugt
 - Interaktiver Portfolio-Wert-Chart mit wählbaren Zeiträumen (1W / 1M / YTD / 1J / Max), aus den echten Käufen und Verkäufen rekonstruiert: Jeder Tag zählt die Stückzahl, die an diesem Tag im Depot lag, auch von inzwischen verkauften Positionen. An Wochenenden und Feiertagen gilt der letzte Schlusskurs
-- Sortierbare Positionstabelle (nach Titel, Kaufpreis, Positionswert, Gewinn/Verlust)
-- Allokations-Donut-Chart mit dynamisch generierten, eindeutigen Farben pro Asset sowie dem Gesamtportfoliowert in der Mitte
-- Privatsphäre-Umschalter — alle Beträge mit einem Klick hinter Sternchen verstecken
-- **Watchlist als Tab auf derselben Seite** — Assets beobachten, die man noch nicht besitzt, Preis beim Hinzufügen im Vergleich zum aktuellen Preis sehen, und direkt aus der Watchlist heraus kaufen (das Asset wandert dabei automatisch ins Portfolio)
+- Die Entwicklung im gewählten Zeitraum rechnet Käufe und Verkäufe heraus, damit ein Kauf nicht als Gewinn erscheint
+- Sortierbare Positionstabelle (auf dem Handy als Liste); ein Klick auf eine Position öffnet Kauf und Verkauf
+- Aufteilung nach Anlageart (ETFs, Aktien, Krypto, Edelmetalle) als Balken oder Ring
+- Reiter für Watchlist (beobachten, aus der Watchlist kaufen), Transaktionen, Sparpläne (anlegen, ausführen, löschen) und Dividenden
 
 ### 💰 Haushaltsbuch
 - Einnahmen, Fixkosten und variable Ausgaben in einer dreistufigen Kategorienstruktur (Einkommen / Fixkosten / Variable Ausgaben), jeweils mit anpassbaren Haupt- und Unterkategorien
 - Standardkategorien werden für jeden neuen Nutzer automatisch angelegt und können danach frei bearbeitet oder gelöscht werden
 - Einmalige und wiederkehrende Buchungen (z.B. monatliches Gehalt oder Miete) mit optionalem Enddatum — wiederkehrende Einträge werden pro Monat live berechnet, statt in der Datenbank dupliziert zu werden
-- Monatsweise Navigation mit Kennzahlen-Karten für Einnahmen, Fixkosten, Variable Ausgaben und Saldo
-- Kategorien-Aufschlüsselung je Bereich mit Prozentanteil sowie ein Donut-Chart zur Visualisierung der Ausgaben nach Kategorie
-- Vollständige Buchungsliste mit Löschfunktion
+- Monatsweise Navigation: „Übrig im Monat“ mit Monatsfluss, Ausgaben nach Hauptkategorie mit Tagesschnitt
+- Wiederkehrende Buchungen lassen sich pausieren und fortsetzen; eine pausierte Buchung zählt in den Monaten vor ihrer Pause weiter mit
+- Vollständige Buchungsliste mit Löschfunktion (mit Rückfrage)
 - Kumulierter Cash-Bestand über alle Monate seit der ersten Buchung, der auch in die Home-Übersicht einfließt
 
 ### 🤖 KI-Finanzberater (Chat)
-- Chat mit einem GPT-4o-mini-gestützten Finanzberater, verfügbar als schwebendes Widget auf jeder Seite (Desktop) sowie als eigene Vollbild-Chat-Seite
+- Chat mit einem GPT-4o-mini-gestützten Finanzberater als eigene Seite; Antworten mit Listen, Tabellen und Links werden formatiert, ohne dass HTML aus der Antwort in die Seite gelangt
 - **Function Calling** — die KI ruft eigenständig Live-Preise ab (Aktien, Krypto, Edelmetalle) und verarbeitet auch mehrere gleichzeitige Tool-Aufrufe in einem Zug korrekt
 - **Websuche über Tavily** — die KI sucht bei Bedarf aktuelle Marktnachrichten, statt sich nur auf veraltetes Trainingswissen zu verlassen
 - Adaptives Antwortformat (kurze Antworten bei Preisfragen, Tabellen bei Vergleichen, Beispiele bei Erklärungen) — kein starres Einheitsformat
@@ -48,14 +49,14 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 - Alle vorherigen Analysen werden gespeichert und können auf der Analyse-Seite eingesehen werden
 
 ### 👤 Nutzerverwaltung
-- Registrierung und Login mit E-Mail und gehashtem Passwort (`werkzeug.security`), Anmeldung über ein sicheres Session-Cookie (Flask-Login: HttpOnly, SameSite, in Produktion nur über HTTPS, 30 Tage gültig)
+- Login mit E-Mail und gehashtem Passwort (`werkzeug.security`), Anmeldung über ein sicheres Session-Cookie (Flask-Login: HttpOnly, SameSite, in Produktion nur über HTTPS, 30 Tage gültig)
 - Jeder Nutzer sieht und ändert nur seine eigenen Daten — automatisch für jede Route geprüft
 - Schutz gegen Durchprobieren: Begrenzung der Login-, Registrierungs- und Code-Versuche (Flask-Limiter), Verifizierungscode nach 5 Fehlversuchen gesperrt, einheitliche Fehlermeldung bei falscher E-Mail oder falschem Passwort
 - Registrierung abschaltbar (`ALLOW_REGISTRATION`), Konten und Passwörter alternativ per Kommandozeile
 - **Export und Import aller eigenen Daten** als JSON-Datei (Einstellungen → Meine Daten) — unabhängig von der Datenbank, damit ein Umzug auf einen anderen Server oder Anbieter jederzeit möglich ist
 - Persönliche Einstellungen: Risikoprofil, Anlageerfahrung, monatliches Budget, Anlagehorizont
 - Nutzerprofil-Daten fließen in jeden System-Prompt der KI ein, für personalisierte Beratung
-- Dark-/Light-Mode-Umschalter, seiten- und sitzungsübergreifend gespeichert
+- Dunkles und helles Design, pro Gerät gespeichert
 
 ### 🔌 MCP-Server
 - Eigenständiger Model-Context-Protocol-Server, der FinTrack-Daten für MCP-fähige Clients wie Claude Desktop bereitstellt
@@ -65,14 +66,14 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 - Details siehe [`mcp_server/`](./mcp_server)
 
 ### 📱 Mobile & PWA
-- Durchgängig responsives Layout auf jeder Seite — untere Tab-Navigation unter 768px Bildschirmbreite, kartenbasierte Tabellen statt gequetschter Spalten, sowie ein „Mehr"-Menü für sekundäre Seiten
-- Installierbar als Progressive Web App: eigenes App-Icon, Standalone-Anzeigemodus (ohne Browserleiste), nutzbar wie eine native App vom Homescreen aus
-- Service Worker für die Installierbarkeit registriert (bewusst ohne aggressives Offline-Caching, da die App auf Live-Kurs- und Chat-Daten angewiesen ist)
+- Eine Oberfläche für Laptop und Handy: auf dem Handy eine untere Navigation mit „Mehr“-Blatt, Listen statt breiter Tabellen, eingeklappte Nebenbereiche und Dialoge als Blatt von unten
+- Installierbar als Progressive Web App mit eigenem Icon (auch „maskable“ und für den iPhone-Homescreen)
+- Eigener Service Worker: speichert nur Programmdateien, nie Konto- oder Depotdaten; ohne Netz erscheint eine Offline-Seite, nach einem Deploy der Hinweis „Neue Version verfügbar“
 
 ### 🎨 UI / Design
-- Eigenes „Liquid Glass"-Interface — durchscheinende, geblurrte Karten über einem sanften radialen Farbverlauf, konsistent auf jeder Seite, in Modals und im Chat-Widget
-- Vollständig theme-fähig: alle Glas-Effekt-Farben sind als CSS-Variablen mit separaten Dark- und Light-Mode-Werten definiert
-- Toast-Benachrichtigungen statt Browser-Alerts, Ladeindikatoren bei allen asynchronen Datenabrufen, clientseitige Validierung in jedem Formular
+- Design „Tanne“: Mint und Waldgrün, nachts Wald mit Jade; die Leitkarte jeder Seite ist eine grüne Farbfläche, Bernstein nur für Fälliges
+- Alle Farben als Design-Tokens (CSS Custom Properties) mit Werten für Hell und Dunkel
+- Toast-Benachrichtigungen, Ladezustände, erklärende leere Zustände und „Erneut versuchen“ bei Ladefehlern
 
 ### ☁️ Deployment
 - Live auf **Render**, läuft unter **Gunicorn** mit einem einzigen Worker (nötig, damit der Preis-Update-Scheduler nicht mehrfach parallel läuft)
@@ -87,11 +88,12 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat&logo=postgresql&logoColor=white)
 ![SQLite](https://img.shields.io/badge/SQLite-003B57?style=flat&logo=sqlite&logoColor=white)
 ![OpenAI](https://img.shields.io/badge/OpenAI_API-412991?style=flat&logo=openai&logoColor=white)
-![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white)
-![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black)
+![React](https://img.shields.io/badge/React-20232A?style=flat&logo=react&logoColor=61DAFB)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-646CFF?style=flat&logo=vite&logoColor=white)
 ![Render](https://img.shields.io/badge/Render-46E3B7?style=flat&logo=render&logoColor=white)
 
-- **Flask** — REST-API-Backend & HTML-Seiten-Rendering
+- **Flask** — REST-API-Backend, liefert außerdem das gebaute Frontend aus
 - **SQLAlchemy** — ORM, PostgreSQL im Live-Betrieb / SQLite für die lokale Entwicklung
 - **OpenAI API** — GPT-4o-mini für Chat (Function Calling) und Portfolio-Analyse (Structured Output)
 - **Tavily** — Echtzeit-Websuche für aktuelle Finanznachrichten, als LLM-Tool eingebunden
@@ -103,9 +105,9 @@ Eine KI-gestützte Finanz-Web-App auf Basis von **Flask** und **OpenAI**. Verwal
 - **Gunicorn** — Produktions-WSGI-Server
 - **werkzeug** — Passwort-Hashing und Sicherheit
 - **python-dotenv** — sichere Verwaltung der API-Keys
-- **Chart.js** — Portfolio-Wert-Chart, Allokations-Donut und Budget-Ausgaben-Donut
-- **marked.js** — Markdown-Rendering für die KI-Chat-Antworten
-- **Web App Manifest + Service Worker** — PWA-Installierbarkeit
+- **React 19, TypeScript, Vite** — Frontend unter `/app`, mit React Router und TanStack Query; Diagramme als eigenes SVG, Styling mit reinem CSS und Design-Tokens
+- **Vitest, Testing Library, MSW** — Frontend-Tests gegen eine nachgebaute API
+- **Web App Manifest + eigener Service Worker** — PWA mit Offline-Seite und Update-Hinweis
 
 ## Projektstruktur
 
@@ -120,7 +122,7 @@ FinTrack/
 │   ├── database.py             # flask upgrade-db: Migrationen ausführen, alte Datenbanken übernehmen
 │   ├── models.py               # SQLAlchemy-Modelle + Pydantic-Schemas für Structured Output
 │   ├── jobs.py                 # Täglicher Lauf (Kurse, Dividenden, Insights) im Hintergrund, Scheduler
-│   ├── pages.py                # Routen, die die HTML-Seiten ausliefern
+│   ├── spa.py                  # Liefert das React-Frontend unter /app aus, / und alte Seitenadressen leiten dorthin
 │   ├── auth/                   # Registrierung, Login/Session, Verifizierung, Profil, CLI (create-user, set-password)
 │   ├── account/                # Export und Import aller eigenen Daten
 │   ├── portfolio/              # Assets, Positionen, Watchlist, Sparpläne, Dividenden, KI-Analyse
@@ -129,50 +131,17 @@ FinTrack/
 │   ├── insights/               # Täglicher KI-Insight
 │   ├── admin/                  # Geschützte Endpoints zum manuellen Anstoßen der Jobs
 │   └── market/                 # Marktdaten (yfinance, CoinGecko, Tavily) + zentraler Preis-Service
-├── frontend/                     # Neues React-Frontend (React, TypeScript, Vite), ausgeliefert unter /app
+├── frontend/                     # React-Frontend (React, TypeScript, Vite), ausgeliefert unter /app
 ├── migrations/                   # Alembic-Migrationen (Schemaänderungen der Datenbank)
 ├── tests/                        # pytest: Unit- und Integrationstests (u.a. Zugriffsschutz für jede Route)
 ├── requirements.txt              # Abhängigkeiten der Haupt-App, alle Versionen fest gepinnt
 ├── requirements-dev.txt          # Zusätzlich für Tests (pytest, MCP-SDK)
-├── start.bat                     # Windows-Starter — migriert die Datenbank, startet den Server und öffnet den Browser
+├── start.bat                     # Windows-Starter — migriert die Datenbank, baut das Frontend, startet den Server und öffnet den Browser
 ├── mcp_server/
 │   ├── server.py                  # MCP-Server, stellt Portfolio-/Budget-Tools für Claude Desktop bereit
 │   └── requirements.txt            # Abhängigkeiten der App plus MCP-SDK
 ├── docs/                          # Backup-Anleitung (BACKUP.md), Screenshots, Demo-Video
-├── .github/workflows/             # CI-Tests (inkl. PostgreSQL) und nächtliches Datenbank-Backup
-├── static/
-│   ├── manifest.json               # PWA-Manifest (Name, Icons, Anzeigemodus)
-│   ├── service-worker.js            # Minimaler Service Worker für PWA-Installierbarkeit
-│   ├── icons/                       # App-Icons (192px/512px, Standard + maskable)
-│   ├── css/
-│   │   ├── base.css                  # Gemeinsames Layout, Sidebar, Mobile-Nav, Glas-Effekt-Variablen, Modal, Chat-Widget
-│   │   ├── home.css
-│   │   ├── portfolio.css               # Enthält den Watchlist-Tab samt mobilem Karten-Layout
-│   │   ├── budget.css
-│   │   ├── chat.css
-│   │   ├── analyse.css
-│   │   └── settings.css
-│   └── js/
-│       ├── home.js
-│       ├── portfolio.js                # Enthält die komplette Watchlist-Logik (aus der früheren eigenen Seite übernommen)
-│       ├── budget.js
-│       ├── chat.js
-│       ├── analyse.js
-│       ├── settings.js
-│       ├── widget.js                    # Schwebendes Chat-Widget (nur Desktop)
-│       ├── theme.js                      # Dark-/Light-Mode-Umschalter
-│       ├── toast.js                      # Toast-Benachrichtigungs-Helfer
-│       ├── mobile-nav.js                  # Mobile Bottom-Nav + „Mehr"-Menü-Umschalter
-│       ├── utils.js                       # Gemeinsame Hilfsfunktionen: HTML maskieren, Markdown bereinigen, Farben, Umleitung bei abgelaufener Anmeldung
-│       └── logout.js
-└── templates/
-    ├── index.html                # Login / Registrierung
-    ├── home.html                  # Vermögensübersicht
-    ├── portfolio.html              # Portfolio-Übersicht, Chart und Watchlist-Tab
-    ├── budget.html                  # Haushaltsbuch
-    ├── chat.html                     # Vollbild-Chat-Oberfläche
-    ├── analyse.html                   # Portfolio-Analyse & Verlauf
-    └── settings.html                   # Nutzerprofil-Einstellungen, Export und Import der Daten
+└── .github/workflows/             # CI-Tests (inkl. PostgreSQL) und nächtliches Datenbank-Backup
 ```
 
 ## API-Übersicht
@@ -270,20 +239,17 @@ python -m flask --app "fintrack:create_app()" create-user deine@email.de
 python -m flask --app "fintrack:create_app()" set-password deine@email.de
 ```
 
-**5. Im Browser öffnen**
-```
-http://localhost:5000
-```
-Auf dem Smartphone bietet Chrome an, die App über „Zum Startbildschirm hinzufügen" bzw. den Installations-Prompt als PWA zu installieren.
+**5. Frontend bauen und im Browser öffnen**
 
-**Neues Frontend (im Aufbau):** Das neue React-Frontend (React, TypeScript, Vite) liegt in `frontend/` und läuft unter `/app`, die bisherigen Seiten bleiben bis zum Ende des Umbaus unter `/`. Es braucht Node 24 (siehe `.node-version`):
+Das Frontend (React, TypeScript, Vite) liegt in `frontend/` und braucht Node 24 (siehe `.node-version`). `start.bat` baut es unter Windows automatisch; von Hand:
 ```bash
 cd frontend
-npm install
+npm ci
+npm run build    # baut nach frontend/dist; Flask liefert das unter http://localhost:5000/app/ aus
 npm run dev      # Entwicklungsserver auf http://localhost:5280/app/, leitet /api an Flask auf Port 5000 weiter
 npm test         # Tests (Vitest, Testing Library, MSW)
-npm run build    # baut nach frontend/dist; Flask liefert das dann unter http://localhost:5000/app/ aus
 ```
+Danach http://localhost:5000 öffnen (leitet nach `/app/`). Auf dem Smartphone lässt sich die App über „App installieren“ (Chrome) bzw. „Zum Home-Bildschirm“ (Safari) als PWA installieren.
 
 **6. (Optional) MCP-Server mit Claude Desktop verbinden**
 
@@ -292,7 +258,7 @@ Die komplette Anleitung dazu findet sich in [`mcp_server/`](./mcp_server) — ku
 ## Deployment
 
 Die App läuft live auf [Render](https://render.com):
-- **Build-Befehl** `pip install -r requirements.txt && npm ci --prefix frontend && npm run build --prefix frontend` — baut neben den Python-Abhängigkeiten auch das neue Frontend nach `frontend/dist` (Node-Version aus `.node-version`)
+- **Build-Befehl** `pip install -r requirements.txt && npm ci --prefix frontend && npm run build --prefix frontend` — baut neben den Python-Abhängigkeiten auch das Frontend nach `frontend/dist` (Node-Version aus `.node-version`)
 - **Web Service** mit dem Startbefehl `python -m flask --app "fintrack:create_app()" upgrade-db && gunicorn app:app --workers=1` — erst werden ausstehende Datenbank-Migrationen ausgeführt, dann startet der Server (ein einzelner Worker ist nötig, damit der Preis-Update-Scheduler nicht mehrfach parallel läuft)
 - **PostgreSQL**-Datenbank bei [Neon](https://neon.tech) (kostenloser Tarif, läuft im Gegensatz zur kostenlosen Render-Datenbank nicht ab), verbunden über die Umgebungsvariable `DATABASE_URL`
 - Umgebungsvariablen (`OPENAI_API_KEY`, `COINGECKO_API_KEY`, `TAVILY_API_KEY`, `DATABASE_URL`) direkt im Render-Dashboard hinterlegt, nie im Repository gespeichert
@@ -318,4 +284,5 @@ Die App läuft live auf [Render](https://render.com):
 - Umbau der App in eine installierbare Progressive Web App mit eigenem Manifest, generiertem Icon-Set und einem bewusst minimalen Service Worker (kein Offline-Caching, da die App auf Live-Kurs- und Chat-Daten angewiesen ist)
 - Zusammenführung einer eigenständigen Seite (Watchlist) in eine bestehende Seite als Tab-Ansicht, ohne das Backend anzufassen, mit sorgfältiger Konsolidierung von Navigation und JavaScript-Zustand zur Vermeidung von Variablenkonflikten
 - Migration von SQLite zu einem dualen SQLite/PostgreSQL-Setup, gesteuert über eine Umgebungsvariable, sowie Deployment auf Render mit Gunicorn, inklusive Behebung eines Schedulers, der beim Wechsel vom Flask-Entwicklungsserver zu einem WSGI-Server stillschweigend aufgehört hatte zu laufen
-- Trennung von Verantwortlichkeiten über mehrere Module hinweg (Routen, Modelle, Services, Scheduler, Tools, Budget-Logik) sowie Aufteilung von Frontend-CSS/JS pro Seite zur besseren Wartbarkeit
+- Trennung von Verantwortlichkeiten über mehrere Module hinweg (Routen, Modelle, Services, Scheduler, Tools, Budget-Logik)
+- Schrittweiser Umbau der Jinja-Seiten zu einer React-/TypeScript-PWA in kleinen Pull Requests, parallel unter `/app`, bis zur Umstellung — mit klickbarem Prototyp vorab, Tests gegen eine nachgebaute API (MSW) und einem eigenen Service Worker, der bewusst keine Finanzdaten auf dem Gerät speichert

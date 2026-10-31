@@ -27,12 +27,14 @@ from tests.conftest import flask_app
 
 # Routen, die bewusst ohne Anmeldung erreichbar sind
 PUBLIC_ENDPOINTS = {
-    'static', 'pages.home',
     'auth.register', 'auth.login', 'auth.logout',
     'auth.verify_email', 'auth.resend_verification',
     # Das React-Frontend unter /app: reine Dateien ohne Nutzerdaten,
     # die Anmeldung prüft es selbst über /api/v1/me
     'spa.app_root', 'spa.frontend',
+    # Weiterleitungen von / und den früheren Seiten nach /app
+    'spa.legacy_root', 'spa.legacy_home_page', 'spa.legacy_portfolio_page', 'spa.legacy_budget_page',
+    'spa.legacy_chat_page', 'spa.legacy_analyse_page', 'spa.legacy_settings_page',
 }
 
 # Texte, die nur in den Daten von Nutzer B vorkommen - tauchen sie in einer
@@ -67,20 +69,17 @@ class TestAnonymousAccess:
     @pytest.mark.parametrize('endpoint,rule,method', PROTECTED_ROUTES,
                              ids=[f'{m} {r}' for _, r, m in PROTECTED_ROUTES])
     def test_every_protected_route_requires_login(self, app, endpoint, rule, method):
-        """Jede nicht-öffentliche Route verweigert den Zugriff: Seiten leiten
-        zum Login um, API-Routen antworten mit 401"""
+        """Jede nicht-öffentliche Route antwortet ohne Anmeldung mit 401"""
         client = app.test_client()
 
         response = client.open(fill(rule), method=method, json={})
 
-        if endpoint.startswith('pages.'):
-            assert response.status_code == 302
-            assert response.headers['Location'].endswith('/')
-        else:
-            assert response.status_code == 401
+        assert response.status_code == 401
 
-    def test_login_page_is_public(self, app):
-        assert app.test_client().get('/').status_code == 200
+    def test_start_page_leads_to_the_frontend(self, app):
+        response = app.test_client().get('/')
+        assert response.status_code == 302
+        assert response.headers['Location'].endswith('/app/')
 
     def test_no_user_ids_in_api_urls(self):
         """Die API nimmt nie eine User-ID aus der URL - wer gemeint ist,

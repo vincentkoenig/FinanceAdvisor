@@ -14,7 +14,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from fintrack.config import get_config
 from fintrack.extensions import db, limiter, login_manager, migrate
 
-# templates/, static/ und migrations/ liegen im Projektordner, nicht im Paket
+# migrations/, instance/ und frontend/ liegen im Projektordner, nicht im Paket
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -30,10 +30,10 @@ def create_app(config_name=None, config_overrides=None):
     Tabellen werden ebenfalls nicht angelegt: Das Schema verwaltet
     ausschließlich Alembic über "flask upgrade-db".
     """
+    # Kein static-Ordner: alle Dateien der Oberfläche liefert spa.py aus frontend/dist
     app = Flask(
         __name__,
-        template_folder=os.path.join(PROJECT_ROOT, 'templates'),
-        static_folder=os.path.join(PROJECT_ROOT, 'static'),
+        static_folder=None,
         instance_path=os.path.join(PROJECT_ROOT, 'instance'),
     )
     app.config.from_object(get_config(config_name))
@@ -85,7 +85,7 @@ def create_app(config_name=None, config_overrides=None):
         }
         click.echo(messages[action])
 
-    from fintrack import pages, spa
+    from fintrack import spa
     from fintrack.account import routes as account_routes
     from fintrack.admin import routes as admin_routes
     from fintrack.auth import routes as auth_routes
@@ -94,12 +94,11 @@ def create_app(config_name=None, config_overrides=None):
     from fintrack.insights import routes as insights_routes
     from fintrack.portfolio import analysis, routes as portfolio_routes
 
-    # Seiten liegen direkt unter /, das neue Frontend unter /app, die JSON-API unter /api/v1.
+    # Das React-Frontend liegt unter /app (/ leitet dorthin), die JSON-API unter /api/v1.
     # Jeder Blueprint schützt sich selbst: Bereiche mit Nutzerdaten über
     # protect_blueprint() (nur mit Anmeldung, Daten immer von current_user),
-    # Seiten über eine Login-Umleitung, Auth über login_required_api an den
-    # /me-Routen, Admin über den X-Admin-Key
-    app.register_blueprint(pages.bp)
+    # Auth über login_required_api an den /me-Routen, Admin über den X-Admin-Key.
+    # Das Frontend selbst enthält keine Nutzerdaten und prüft die Anmeldung über /api/v1/me.
     app.register_blueprint(spa.bp)
     for blueprint in (auth_routes.bp, portfolio_routes.bp, analysis.bp, budget_routes.bp,
                       chat_routes.bp, insights_routes.bp, account_routes.bp):

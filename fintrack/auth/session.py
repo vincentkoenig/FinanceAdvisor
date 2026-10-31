@@ -7,7 +7,7 @@ sie dem angemeldeten Nutzer gehören.
 from functools import wraps
 from urllib.parse import urlparse
 
-from flask import jsonify, redirect, request
+from flask import jsonify, request
 from flask_login import current_user
 
 from fintrack.extensions import db, login_manager
@@ -37,11 +37,8 @@ def load_user(cookie_id):
 @login_manager.unauthorized_handler
 def unauthorized():
     """
-    Nicht angemeldet: Seiten leiten zur Anmeldung um, API-Routen
-    antworten mit 401, damit das Frontend reagieren kann.
+    Nicht angemeldet: 401, das React-Frontend zeigt dann die Anmeldung.
     """
-    if request.blueprint == 'pages':
-        return redirect('/')
     return jsonify({"error": "Bitte melde dich an"}), 401
 
 

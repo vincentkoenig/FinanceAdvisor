@@ -26,6 +26,26 @@ def client(dist):
     return create_app('testing', {'FRONTEND_DIST': str(dist)}).test_client()
 
 
+@pytest.mark.parametrize('old,new', [
+    ('/', '/app/'),
+    ('/home-page', '/app/'),
+    ('/portfolio-page', '/app/portfolio'),
+    ('/budget-page', '/app/budget'),
+    ('/chat-page', '/app/chat'),
+    ('/analyse-page', '/app/analyse'),
+    ('/settings-page', '/app/settings'),
+])
+def test_old_pages_lead_to_the_new_frontend(client, old, new):
+    """Lesezeichen und eine früher installierte App (start_url /home-page) funktionieren weiter"""
+    response = client.get(old)
+    assert response.status_code == 302
+    assert response.headers['Location'].endswith(new)
+
+
+def test_no_static_folder_anymore(client):
+    assert client.get('/static/js/main.js').status_code == 404
+
+
 def test_app_without_slash_redirects(client):
     response = client.get('/app')
     assert response.status_code == 308
