@@ -6,7 +6,7 @@ export const AREAS: Record<Area, { to: string } | { href: string }> = {
   home: { to: '/' },
   portfolio: { to: '/portfolio' },
   budget: { to: '/budget' },
-  chat: { href: '/chat-page' },
-  analyse: { href: '/analyse-page' },
+  chat: { to: '/chat' },
+  analyse: { to: '/analyse' },
   settings: { to: '/settings' },
 };

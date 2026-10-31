@@ -4,7 +4,9 @@ import { useMe } from './api/auth';
 import { Shell, type RootContext } from './components/Shell';
 import { ToastProvider } from './components/Toast';
 import { LoginPage } from './features/auth/LoginPage';
+import { AnalysePage } from './features/analyse/AnalysePage';
 import { BudgetPage } from './features/budget/BudgetPage';
+import { ChatPage } from './features/chat/ChatPage';
 import { HomePage } from './features/home/HomePage';
 import { NotFoundPage } from './features/NotFoundPage';
 import { PortfolioPage } from './features/portfolio/PortfolioPage';
@@ -44,6 +46,8 @@ export const routes: RouteObject[] = [
               { index: true, element: <HomePage /> },
               { path: 'portfolio', element: <PortfolioPage /> },
               { path: 'budget', element: <BudgetPage /> },
+              { path: 'chat', element: <ChatPage /> },
+              { path: 'analyse', element: <AnalysePage /> },
               { path: 'settings', element: <SettingsPage /> },
               { path: '*', element: <NotFoundPage /> },
             ],
