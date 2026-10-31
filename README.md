@@ -138,6 +138,7 @@ FinTrack/
 ├── requirements.txt              # Abhängigkeiten der Haupt-App, alle Versionen fest gepinnt
 ├── requirements-dev.txt          # Zusätzlich für Tests (pytest, MCP-SDK)
 ├── Dockerfile                    # Container mit Frontend-Build und Gunicorn (Start über docker-entrypoint.sh)
+├── deploy/                       # Eigener Server: Compose-Datei, Deploy-Skript, Einrichtung (deploy/README.md)
 ├── start.bat                     # Windows-Starter — migriert die Datenbank, baut das Frontend, startet den Server und öffnet den Browser
 ├── mcp_server/
 │   ├── server.py                  # MCP-Server, stellt Portfolio-/Budget-Tools für Claude Desktop bereit
