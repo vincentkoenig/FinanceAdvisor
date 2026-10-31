@@ -129,6 +129,7 @@ FinTrack/
 │   ├── portfolio/              # Assets, Positionen, Watchlist, Sparpläne, Dividenden, KI-Analyse
 │   ├── budget/                 # Haushaltsbuch: Routen + Berechnungslogik (auch vom MCP-Server genutzt)
 │   ├── chat/                   # KI-Chat mit Function-Calling-Tools
+│   ├── contracts/              # Verträge: Routen + Berechnung von Laufzeit und Kündigungsfrist
 │   ├── insights/               # Täglicher KI-Insight
 │   ├── admin/                  # Geschützte Endpoints zum manuellen Anstoßen der Jobs
 │   └── market/                 # Marktdaten (yfinance, CoinGecko, Tavily) + zentraler Preis-Service
@@ -176,6 +177,9 @@ Alle Routen liegen unter `/api/v1` und antworten mit JSON. Persönliche Daten li
 | `GET` · `POST` | `/me/transactions` | Buchungen (optional `?month=JJJJ-MM`) · neue Buchung |
 | `DELETE` · `POST` | `/me/transactions/<id>` · `/toggle-pause` | Buchung löschen · wiederkehrende Buchung pausieren/fortsetzen |
 | `GET` | `/me/budget/summary` | Cash-Bestand und aktueller Monat |
+| `GET` · `POST` | `/me/contracts` | Verträge mit Status, Kündigungstag und Kosten pro Monat/Jahr (sortiert nach Frist) · neuer Vertrag |
+| `PUT` · `DELETE` | `/me/contracts/<id>` | Vertrag bearbeiten · löschen |
+| `POST` · `DELETE` | `/me/contracts/<id>/cancel` | Als gekündigt markieren (ohne `end_date` zum nächstmöglichen Termin) · Kündigung zurücknehmen |
 | `POST` · `GET` | `/me/chat` · `/me/chat/history` | KI-Chat · Verlauf |
 | `GET` | `/me/insight` | Letzter täglicher KI-Insight |
 | `GET` | `/me/export` | Alle eigenen Daten als JSON-Datei herunterladen |

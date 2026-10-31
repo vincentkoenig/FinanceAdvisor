@@ -11,7 +11,7 @@ Beim Import prüft dasselbe Schema die Datei, bevor irgendetwas
 gespeichert wird.
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, NonNegativeFloat, PositiveInt, model_validator
@@ -121,6 +121,24 @@ class ExportInsight(_Entry):
     created_at: Optional[datetime] = None
 
 
+class ExportContract(_Entry):
+    name: str = Field(min_length=1, max_length=80)
+    provider: Optional[str] = None
+    category: Literal['insurance', 'energy', 'telecom', 'subscription', 'fitness', 'loan', 'other']
+    contract_number: Optional[str] = None
+    amount: float = Field(gt=0)
+    interval: Literal['monthly', 'quarterly', 'half_yearly', 'yearly']
+    start_date: date
+    min_term_months: Optional[PositiveInt] = None
+    renewal_months: Optional[PositiveInt] = None
+    notice_value: int = Field(ge=0)
+    notice_unit: Literal['days', 'weeks', 'months']
+    cancelled_at: Optional[date] = None
+    end_date: Optional[date] = None
+    notes: Optional[str] = None
+    created_at: Optional[datetime] = None
+
+
 class ExportFile(_Entry):
     format: Literal['fintrack-export']
     version: Literal[1]
@@ -137,6 +155,8 @@ class ExportFile(_Entry):
     chat_history: List[ExportChatMessage] = []
     analyses: List[ExportAnalysis] = []
     insights: List[ExportInsight] = []
+    # Seit Verträge dazukamen; ältere Dateien haben den Abschnitt nicht
+    contracts: List[ExportContract] = []
 
     @model_validator(mode='after')
     def references_exist(self):

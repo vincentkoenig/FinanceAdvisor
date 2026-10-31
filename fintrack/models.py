@@ -293,6 +293,39 @@ class Transaction(db.Model):
     paused_at = db.Column(db.DateTime)
 
 
+# ─── VERTRÄGE ─────────────────────────────────────────────────────────────────
+
+class Contract(db.Model):
+    """
+    Contract Tabelle - laufende Verträge des Nutzers (Versicherungen, Strom,
+    Handy, Abos, ...), damit Kosten und Kündigungsfristen im Blick bleiben.
+    Laufzeit: Die erste Laufzeit dauert min_term_months ab start_date (leer =
+    gleich lang wie eine Verlängerung), danach verlängert sich der Vertrag
+    jeweils um renewal_months (leer = endet nach der ersten Laufzeit von selbst).
+    Kündigen muss man notice_value Tage/Wochen/Monate vor dem Laufzeitende.
+    Die Fristen selbst werden nicht gespeichert, sondern in contracts/terms.py
+    immer neu berechnet.
+    cancelled_at/end_date: wann gekündigt wurde und wann der Vertrag dadurch endet.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String, nullable=False)
+    provider = db.Column(db.String)
+    category = db.Column(db.String, nullable=False)  # insurance, energy, telecom, subscription, ...
+    contract_number = db.Column(db.String)
+    amount = db.Column(db.Float, nullable=False)
+    interval = db.Column(db.String, nullable=False)  # monthly, quarterly, half_yearly, yearly
+    start_date = db.Column(db.Date, nullable=False)
+    min_term_months = db.Column(db.Integer)
+    renewal_months = db.Column(db.Integer)
+    notice_value = db.Column(db.Integer, nullable=False)
+    notice_unit = db.Column(db.String, nullable=False)  # days, weeks, months
+    cancelled_at = db.Column(db.Date)
+    end_date = db.Column(db.Date)
+    notes = db.Column(db.String)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+
 # ─── PYDANTIC SCHEMAS ─────────────────────────────────────────────────────────
 
 class AllocationItem(PydanticBaseModel):

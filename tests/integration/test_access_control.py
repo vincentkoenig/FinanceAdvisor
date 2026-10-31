@@ -13,7 +13,7 @@ Route dazu, wird sie automatisch mitgeprüft.
 import sys
 import os
 import re
-from datetime import datetime
+from datetime import date, datetime
 from types import SimpleNamespace
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import pytest
 
 from fintrack.extensions import db
-from fintrack.models import (Asset, Category, ChatHistory, SavingsPlan, Transaction,
+from fintrack.models import (Asset, Category, ChatHistory, Contract, SavingsPlan, Transaction,
                              UserAsset, Watchlist)
 from tests.conftest import flask_app
 
@@ -41,7 +41,7 @@ PUBLIC_ENDPOINTS = {
 
 # Texte, die nur in den Daten von Nutzer B vorkommen - tauchen sie in einer
 # Antwort an Nutzer A auf, sind fremde Daten durchgerutscht
-FOREIGN_MARKERS = [b'geheime Frage von B', b'B-Haupt', b'B-Unter', b'B-Buchung', b'Testaktie von B']
+FOREIGN_MARKERS = [b'geheime Frage von B', b'B-Haupt', b'B-Unter', b'B-Buchung', b'Testaktie von B', b'B-Vertrag']
 
 
 def all_routes():
@@ -112,8 +112,11 @@ def two_users(make_user, login_client):
     b_transaction = Transaction(user_id=user_b.id, category_id=b_category.id, amount=50,
                                 description='B-Buchung', date=datetime(2026, 10, 1), is_recurring=True)
     b_plan = SavingsPlan(user_id=user_b.id, asset_id=asset.id, amount=100, day_of_month=1)
+    b_contract = Contract(user_id=user_b.id, name='B-Vertrag', category='insurance', amount=10,
+                          interval='monthly', start_date=date(2026, 1, 1), renewal_months=12,
+                          notice_value=3, notice_unit='months')
     db.session.add_all([
-        b_transaction, b_plan,
+        b_transaction, b_plan, b_contract,
         UserAsset(user_id=user_b.id, asset_id=asset.id, quantity=3, avg_buy_price=10, status='owned'),
         Watchlist(user_id=user_b.id, asset_id=asset.id, price_added=10),
         ChatHistory(user_id=user_b.id, role='user', message='geheime Frage von B'),
@@ -121,7 +124,7 @@ def two_users(make_user, login_client):
     db.session.commit()
 
     b_data = SimpleNamespace(asset=asset, parent=b_parent, category=b_category,
-                             transaction=b_transaction, plan=b_plan)
+                             transaction=b_transaction, plan=b_plan, contract=b_contract)
     return login_client('a@test.com'), user_a, user_b, b_data
 
 
@@ -147,14 +150,21 @@ class TestForeignUserData:
         ('DELETE', '/api/v1/me/savings-plans/{plan}'),
         ('POST', '/api/v1/me/savings-plans/{plan}/execute'),
         ('DELETE', '/api/v1/me/watchlist/{asset}'),
+        ('PUT', '/api/v1/me/contracts/{contract}'),
+        ('DELETE', '/api/v1/me/contracts/{contract}'),
+        ('POST', '/api/v1/me/contracts/{contract}/cancel'),
+        ('DELETE', '/api/v1/me/contracts/{contract}/cancel'),
     ])
     def test_foreign_objects_cannot_be_changed(self, two_users, method, url_template):
         """Objekte von B lassen sich über ihre ID weder ändern noch löschen"""
         client, _, user_b, b_data = two_users
         url = url_template.format(transaction=b_data.transaction.id, category=b_data.category.id,
-                                  plan=b_data.plan.id, asset=b_data.asset.id)
+                                  plan=b_data.plan.id, asset=b_data.asset.id, contract=b_data.contract.id)
+        # Gültiger Vertrags-Body, damit die Prüfung nicht schon an der Eingabe scheitert
+        body = {'name': 'von A', 'category': 'other', 'amount': 1, 'interval': 'monthly',
+                'start_date': '2026-01-01'} if 'contracts' in url else None
 
-        response = client.open(url, method=method)
+        response = client.open(url, method=method, json=body)
 
         assert response.status_code == 404
         db.session.expire_all()
@@ -162,6 +172,8 @@ class TestForeignUserData:
         assert db.session.get(Category, b_data.category.id) is not None
         assert db.session.get(SavingsPlan, b_data.plan.id).last_executed is None
         assert Watchlist.query.filter_by(user_id=user_b.id).count() == 1
+        b_contract = db.session.get(Contract, b_data.contract.id)
+        assert b_contract.name == 'B-Vertrag' and b_contract.end_date is None
 
     def test_cannot_sell_foreign_position(self, two_users):
         """A kann die Position von B nicht verkaufen - für A existiert sie nicht"""

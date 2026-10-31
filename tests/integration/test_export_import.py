@@ -11,7 +11,7 @@ sichergestellt, dass beim Umzug in eine andere Datenbank nichts verloren geht.
 import sys
 import os
 import json
-from datetime import datetime
+from datetime import date, datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -19,7 +19,7 @@ import pytest
 
 from fintrack.budget.service import create_default_categories
 from fintrack.extensions import db
-from fintrack.models import (Asset, AssetTransaction, Category, ChatHistory, DailyInsight, Dividend,
+from fintrack.models import (Asset, AssetTransaction, Category, ChatHistory, Contract, DailyInsight, Dividend,
                              PortfolioAnalysis, SavingsPlan, Transaction, UserAsset, Watchlist)
 
 
@@ -83,6 +83,14 @@ def full_account(make_user):
                           allocation=json.dumps([{"asset": "Apple", "value": 634.38, "percentage": 100.0}]),
                           created_at=datetime(2026, 10, 1)),
         DailyInsight(user_id=user.id, content='Dein Depot liegt 2 % im Plus.', created_at=datetime(2026, 10, 2)),
+        Contract(user_id=user.id, name='Kfz "Golf"', provider='Beispiel AG', category='insurance',
+                 contract_number='K-123', amount=412.5, interval='yearly', start_date=date(2023, 1, 1),
+                 renewal_months=12, notice_value=1, notice_unit='months', notes='Teilkasko',
+                 created_at=datetime(2026, 10, 3)),
+        Contract(user_id=user.id, name='Handy', category='telecom', amount=19.99, interval='monthly',
+                 start_date=date(2025, 3, 15), min_term_months=24, renewal_months=1, notice_value=4,
+                 notice_unit='weeks', cancelled_at=date(2026, 10, 1), end_date=date(2027, 3, 14),
+                 created_at=datetime(2026, 10, 4)),
     ])
     db.session.commit()
     return user
@@ -114,6 +122,7 @@ class TestExport:
         assert {a['symbol'] for a in data['assets']} == {'AAPL', 'BTC-EUR'}
         assert data['analyses'][0]['recommendations'] == ["Das geht's besser streuen"]
         assert data['profile']['monthly_budget'] == 750.0
+        assert [c['name'] for c in data['contracts']] == ['Kfz "Golf"', 'Handy']
 
     def test_export_contains_no_password_or_email(self, full_account, login_client):
         raw = login_client('a@test.com').get('/api/v1/me/export').data
