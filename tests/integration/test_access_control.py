@@ -35,6 +35,8 @@ PUBLIC_ENDPOINTS = {
     # Weiterleitungen von / und den früheren Seiten nach /app
     'spa.legacy_root', 'spa.legacy_home_page', 'spa.legacy_portfolio_page', 'spa.legacy_budget_page',
     'spa.legacy_chat_page', 'spa.legacy_analyse_page', 'spa.legacy_settings_page',
+    # Statuspunkt für Docker und Überwachung, ohne Nutzerdaten
+    'health.healthz',
 }
 
 # Texte, die nur in den Daten von Nutzer B vorkommen - tauchen sie in einer

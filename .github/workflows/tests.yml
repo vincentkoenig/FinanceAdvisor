@@ -65,3 +65,26 @@ jobs:
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           TEST_POSTGRES_URL: postgresql://postgres:postgres@localhost:5432/fintrack_test
         run: pytest --cov=fintrack --cov=app --cov-report=term-missing
+
+      # Container bauen und kurz starten (Rauchtest): ein kaputtes Dockerfile
+      # fällt so auf, bevor es auf den Server geht. SQLite statt Neon, ohne Scheduler.
+      - name: Container bauen und prüfen
+        run: |
+          docker build -t fintrack:ci .
+          docker run -d --name fintrack -p 8000:8000             -e SECRET_KEY=nur-fuer-den-ci-test             -e DATABASE_URL=sqlite:////app/instance/ci.db             -e SCHEDULER_ENABLED=0             fintrack:ci
+          for attempt in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8000/healthz && break
+            sleep 2
+          done
+          echo
+          curl -fsS "http://127.0.0.1:8000/healthz?db=1"; echo
+          curl -fsS http://127.0.0.1:8000/app/ | grep -q '<div id="root">'
+          curl -fsS http://127.0.0.1:8000/app/sw.js | grep -q "const VERSION = '[0-9a-f]"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/api/v1/me)" = 401
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/)" = 302
+          test "$(docker exec fintrack id -u)" = 10001
+          echo "Container läuft."
+
+      - name: Container-Log bei Fehler
+        if: failure()
+        run: docker logs fintrack || true
