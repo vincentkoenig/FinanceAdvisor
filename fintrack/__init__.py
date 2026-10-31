@@ -85,7 +85,7 @@ def create_app(config_name=None, config_overrides=None):
         }
         click.echo(messages[action])
 
-    from fintrack import spa
+    from fintrack import health, spa
     from fintrack.account import routes as account_routes
     from fintrack.admin import routes as admin_routes
     from fintrack.auth import routes as auth_routes
@@ -99,6 +99,7 @@ def create_app(config_name=None, config_overrides=None):
     # protect_blueprint() (nur mit Anmeldung, Daten immer von current_user),
     # Auth über login_required_api an den /me-Routen, Admin über den X-Admin-Key.
     # Das Frontend selbst enthält keine Nutzerdaten und prüft die Anmeldung über /api/v1/me.
+    app.register_blueprint(health.bp)
     app.register_blueprint(spa.bp)
     for blueprint in (auth_routes.bp, portfolio_routes.bp, analysis.bp, budget_routes.bp,
                       chat_routes.bp, insights_routes.bp, account_routes.bp):

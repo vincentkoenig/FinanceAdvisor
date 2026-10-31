@@ -122,6 +122,7 @@ FinTrack/
 │   ├── database.py             # flask upgrade-db: Migrationen ausführen, alte Datenbanken übernehmen
 │   ├── models.py               # SQLAlchemy-Modelle + Pydantic-Schemas für Structured Output
 │   ├── jobs.py                 # Täglicher Lauf (Kurse, Dividenden, Insights) im Hintergrund, Scheduler
+│   ├── health.py               # Statuspunkt /healthz für Docker und Überwachung
 │   ├── spa.py                  # Liefert das React-Frontend unter /app aus, / und alte Seitenadressen leiten dorthin
 │   ├── auth/                   # Registrierung, Login/Session, Verifizierung, Profil, CLI (create-user, set-password)
 │   ├── account/                # Export und Import aller eigenen Daten
@@ -136,6 +137,7 @@ FinTrack/
 ├── tests/                        # pytest: Unit- und Integrationstests (u.a. Zugriffsschutz für jede Route)
 ├── requirements.txt              # Abhängigkeiten der Haupt-App, alle Versionen fest gepinnt
 ├── requirements-dev.txt          # Zusätzlich für Tests (pytest, MCP-SDK)
+├── Dockerfile                    # Container mit Frontend-Build und Gunicorn (Start über docker-entrypoint.sh)
 ├── start.bat                     # Windows-Starter — migriert die Datenbank, baut das Frontend, startet den Server und öffnet den Browser
 ├── mcp_server/
 │   ├── server.py                  # MCP-Server, stellt Portfolio-/Budget-Tools für Claude Desktop bereit
@@ -250,6 +252,15 @@ npm run dev      # Entwicklungsserver auf http://localhost:5280/app/, leitet /ap
 npm test         # Tests (Vitest, Testing Library, MSW)
 ```
 Danach http://localhost:5000 öffnen (leitet nach `/app/`). Auf dem Smartphone lässt sich die App über „App installieren“ (Chrome) bzw. „Zum Home-Bildschirm“ (Safari) als PWA installieren.
+
+**Als Container (Docker)**
+
+Das `Dockerfile` baut Frontend und Backend in ein Image; die Datenbank bleibt außerhalb (z.B. Neon). Die Umgebungsvariablen kommen zur Laufzeit dazu, nie ins Image:
+```bash
+docker build -t fintrack .
+docker run --env-file .env -p 8000:8000 fintrack   # http://localhost:8000/app/
+```
+Beim Start laufen zuerst die Migrationen, dann Gunicorn mit einem Worker (wegen des Schedulers) und vier Threads. `GET /healthz` meldet, ob die App läuft, ohne die Datenbank zu wecken; `GET /healthz?db=1` prüft zusätzlich die Datenbankverbindung.
 
 **6. (Optional) MCP-Server mit Claude Desktop verbinden**
 
