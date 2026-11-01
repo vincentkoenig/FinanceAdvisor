@@ -236,7 +236,6 @@ describe('Verträge', () => {
     expect(await screen.findByText(/^Beispiel AG gespeichert/)).toBeInTheDocument();
     expect(sent.contract).toMatchObject({ name: 'Beispiel AG', category: 'insurance', amount: 34.38, interval: 'monthly', renewal_months: 12 });
     expect(sent.link).toBeUndefined();
-    localStorage.clear();
   });
 
   it('erklärt die leere Seite', async () => {

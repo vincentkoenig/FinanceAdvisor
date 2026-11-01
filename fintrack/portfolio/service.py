@@ -44,10 +44,10 @@ def record_buy(user_id, asset_id, quantity, price, date=None):
     return position
 
 
-def record_sell(user_id, asset_id, quantity, price=None):
+def record_sell(user_id, asset_id, quantity, price=None, date=None):
     """
     Verbucht einen Verkauf. Ohne Verkaufspreis wird der
-    Durchschnittskaufpreis verbucht. Der Aufrufer committet.
+    Durchschnittskaufpreis verbucht, ohne Datum gilt jetzt. Der Aufrufer committet.
     """
     position = UserAsset.query.filter_by(user_id=user_id, asset_id=asset_id).first()
 
@@ -64,6 +64,6 @@ def record_sell(user_id, asset_id, quantity, price=None):
     # Datenbank-Uhr zu nutzen - sonst können Kauf und Verkauf je nach
     # Zeitzone in falscher Reihenfolge in der Historie stehen
     db.session.add(AssetTransaction(user_id=user_id, asset_id=asset_id, type='sell',
-                                    quantity=quantity, date=datetime.now(),
+                                    quantity=quantity, date=date or datetime.now(),
                                     price=price if price is not None else position.avg_buy_price))
     return position

@@ -18,6 +18,7 @@ const PAGES = [
   ['/budget', 'Haushaltsbuch'],
   ['/contracts', 'Verträge'],
   ['/budget/import', 'Umsätze importieren'],
+  ['/portfolio/import', 'Abrechnungen importieren'],
   ['/chat', 'Chat'],
   ['/analyse', 'Analyse'],
   ['/settings', 'Einstellungen'],
