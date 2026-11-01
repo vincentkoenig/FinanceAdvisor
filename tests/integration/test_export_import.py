@@ -57,7 +57,7 @@ def full_account(make_user):
 
     db.session.add_all([
         Transaction(user_id=user.id, category_id=own_sub.id, amount=499.99, description='Lissabon "Frühling"',
-                    date=datetime(2026, 4, 2)),
+                    date=datetime(2026, 4, 2), import_hash='a' * 40),
         Transaction(user_id=user.id, category_id=dividend_category.id, amount=3000, date=datetime(2026, 1, 1),
                     is_recurring=True, is_paused=True, paused_at=datetime(2026, 9, 30, 12, 0),
                     end_date=datetime(2027, 12, 31)),
