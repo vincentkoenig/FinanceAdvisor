@@ -88,7 +88,7 @@ def export_user_data(user):
             {"ref": transaction_ref[t.id], "category_ref": category_ref.get(t.category_id),
              "amount": t.amount, "description": t.description, "date": _iso(t.date),
              "is_recurring": bool(t.is_recurring), "end_date": _iso(t.end_date),
-             "is_paused": bool(t.is_paused), "paused_at": _iso(t.paused_at)}
+             "is_paused": bool(t.is_paused), "paused_at": _iso(t.paused_at), "import_hash": t.import_hash}
             for t in transactions
         ],
         "assets": [
@@ -205,7 +205,7 @@ def import_user_data(user, data):
         transaction = _create(Transaction, user_id=user_id, category_id=category_ids[entry.category_ref],
                               amount=entry.amount, description=entry.description, date=entry.date,
                               is_recurring=entry.is_recurring, end_date=entry.end_date,
-                              is_paused=entry.is_paused, paused_at=entry.paused_at)
+                              is_paused=entry.is_paused, paused_at=entry.paused_at, import_hash=entry.import_hash)
         db.session.flush()
         transaction_ids[entry.ref] = transaction.id
 

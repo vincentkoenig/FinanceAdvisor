@@ -291,6 +291,11 @@ class Transaction(db.Model):
     end_date = db.Column(db.DateTime)
     is_paused = db.Column(db.Boolean, default=False)
     paused_at = db.Column(db.DateTime)
+    # Fingerabdruck eines importierten Kontoumsatzes (imports/bank_service.py), damit
+    # derselbe Umsatz bei einem zweiten Import nicht doppelt gebucht wird
+    import_hash = db.Column(db.String(40))
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'import_hash'),)
 
 
 # ─── VERTRÄGE ─────────────────────────────────────────────────────────────────

@@ -49,6 +49,7 @@ class ExportTransaction(_Entry):
     end_date: Optional[datetime] = None
     is_paused: bool = False
     paused_at: Optional[datetime] = None
+    import_hash: Optional[str] = Field(default=None, max_length=40)
 
 
 class ExportAsset(_Entry):

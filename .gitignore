@@ -5,3 +5,6 @@ instance/
 .pytest_cache/
 .coverage
 .taste-skill/
+
+# Echte Bankexporte zum Ausprobieren des Imports - bleiben lokal
+import-samples/
