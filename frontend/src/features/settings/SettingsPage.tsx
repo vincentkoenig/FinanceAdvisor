@@ -91,11 +91,13 @@ function ProfileForm({ user }: { user: User }) {
 }
 
 const COUNT_LABELS: [string, string][] = [
-  ['transactions', 'Buchungen'], ['positions', 'Positionen'], ['categories', 'Kategorien'], ['savings_plans', 'Sparpläne'],
+  ['transactions', 'Buchungen'], ['positions', 'Positionen'], ['categories', 'Kategorien'], ['savings_plans', 'Sparpläne'], ['contracts', 'Verträge'],
 ];
 
 function importSummary(counts: ImportCounts) {
-  return COUNT_LABELS.map(([key, label]) => `${counts[key] ?? 0} ${label}`).join(', ');
+  // Verträge nur nennen, wenn welche dabei waren (ältere Exportdateien haben keine)
+  return COUNT_LABELS.filter(([key]) => key !== 'contracts' || counts[key])
+    .map(([key, label]) => `${counts[key] ?? 0} ${label}`).join(', ');
 }
 
 function DataSection() {

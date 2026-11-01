@@ -23,6 +23,7 @@ const PATHS = {
   play: 'M7 5l12 7-12 7z',
   trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   bars: 'M3 9h18v6H3zM11 9v6M17 9v6',
+  doc: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6',
   ring: 'M21 12a9 9 0 1 1-9-9M16.5 12A4.5 4.5 0 1 1 12 7.5',
 } as const;
 

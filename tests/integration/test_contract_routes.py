@@ -54,6 +54,12 @@ class TestCreate:
         assert contract['days_to_cancel'] == 60
         assert contract['yearly_cost'] == 60
         assert contract['monthly_cost'] == 5
+        assert contract['min_term_end'] is None
+
+    def test_minimum_term_end_is_reported(self, client):
+        contract = create(client, category='telecom', start_date='2025-03-15', min_term_months=24, renewal_months=1)
+
+        assert contract['min_term_end'] == '2027-03-14'
 
     def test_empty_optional_texts_are_stored_as_null(self, client):
         contract = create(client, provider='  ', notes='')

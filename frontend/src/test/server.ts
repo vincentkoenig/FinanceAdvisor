@@ -58,8 +58,36 @@ const initialData = () => ({
     { id: 2, total_value: 14000, risk_assessment: 'Mittleres Risiko durch den Bitcoin-Anteil.', diversification_score: 5, summary: 'Das Depot ist breit über einen Welt-ETF gestreut.', recommendations: ['Krypto-Anteil im Blick behalten', 'Notgroschen prüfen'], created_at: '30.10.2026 08:00' },
     { id: 1, total_value: 12000, risk_assessment: 'Hohes Risiko.', diversification_score: 3, summary: 'Ältere Einschätzung.', recommendations: [], created_at: '01.09.2026 10:30' },
   ],
+  // Fristen wie vom Server berechnet, Stand 30.10.2026
+  contracts: [
+    contract({ id: 51, name: 'Haftpflicht', provider: 'Beispiel Versicherung', category: 'insurance', amount: 60, interval: 'yearly', start_date: '2024-01-01', cancel_by: '2026-11-30', cancel_effective: '2026-12-31', next_term_end: '2026-12-31', days_to_cancel: 31 }),
+    contract({ id: 52, name: 'Handy', category: 'telecom', amount: 19.99, interval: 'monthly', start_date: '2025-03-15', min_term_months: 24, renewal_months: 1, notice_value: 1, cancel_by: '2027-02-14', cancel_effective: '2027-03-14', next_term_end: '2027-03-14', days_to_cancel: 107, min_term_end: '2027-03-14' }),
+    contract({ id: 54, name: 'Streaming', category: 'subscription', amount: 13.99, interval: 'monthly', start_date: '2022-05-03', renewal_months: 1, notice_value: 0, notice_unit: 'days', cancel_by: '2026-11-02', cancel_effective: '2026-11-02', next_term_end: '2026-11-02', days_to_cancel: 3 }),
+    contract({ id: 53, name: 'Fitnessstudio', category: 'fitness', amount: 29.9, interval: 'monthly', start_date: '2025-01-01', renewal_months: 1, notice_value: 1, status: 'cancelled', cancelled_at: '2026-10-01', end_date: '2026-12-31', ends_on: '2026-12-31' }),
+  ] as Contract[],
   insight: { content: 'Dein Depot hat diese Woche 1,4 % zugelegt.', created_at: '2026-10-30 07:00' } as { content: string | null; created_at?: string },
 });
+
+const PER_YEAR: Record<string, number> = { monthly: 12, quarterly: 4, half_yearly: 2, yearly: 1 };
+
+type Contract = {
+  id: number; name: string; provider: string | null; category: string; contract_number: string | null;
+  amount: number; interval: string; start_date: string; min_term_months: number | null; renewal_months: number | null;
+  notice_value: number; notice_unit: string; notes: string | null; cancelled_at: string | null; end_date: string | null;
+  min_term_end: string | null; status: string; next_term_end: string | null; cancel_by: string | null; cancel_effective: string | null;
+  days_to_cancel: number | null; ends_on: string | null; yearly_cost: number; monthly_cost: number;
+};
+
+// Vertrag mit üblichen Werten; Kosten aus Beitrag und Zahlweise
+function contract(fields: Partial<Contract> & Pick<Contract, 'id' | 'name' | 'category' | 'amount' | 'interval' | 'start_date'>): Contract {
+  const yearly = Math.round(fields.amount * PER_YEAR[fields.interval] * 100) / 100;
+  return {
+    provider: null, contract_number: null, min_term_months: null, renewal_months: 12, notice_value: 3, notice_unit: 'months',
+    notes: null, cancelled_at: null, end_date: null, status: 'active', next_term_end: null, cancel_by: null,
+    cancel_effective: null, days_to_cancel: null, ends_on: null, min_term_end: null, yearly_cost: yearly, monthly_cost: Math.round((yearly / 12) * 100) / 100,
+    ...fields,
+  };
+}
 
 type Txn = {
   id: number; amount: number; description: string | null; date: string; end_date: string | null;
@@ -82,7 +110,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -199,6 +227,42 @@ export const handlers = [
   http.post('/api/v1/me/analyses', () => {
     data.analyses.unshift({ id: 3, total_value: 14000, risk_assessment: 'Neu bewertet.', diversification_score: 6, summary: 'Frische Analyse.', recommendations: ['Weiter so'], created_at: '31.10.2026 09:00' });
     return HttpResponse.json({ disclaimer: 'Keine Anlageberatung' });
+  }),
+
+  http.get('/api/v1/me/contracts', () => {
+    const yearly = data.contracts.filter((c) => c.status !== 'ended').reduce((sum, c) => sum + c.yearly_cost, 0);
+    return HttpResponse.json({ contracts: data.contracts, yearly_total: Math.round(yearly * 100) / 100, monthly_total: Math.round((yearly / 12) * 100) / 100 });
+  }),
+  http.post('/api/v1/me/contracts', async ({ request }) => {
+    const body = (await request.json()) as Omit<Contract, 'id'>;
+    sent.contract = body;
+    // Ein neuer Vertrag ist im Test immer zum 31.12.2027 kündbar; eine Mindestlaufzeit endet dann
+    const saved = contract({ ...body, id: nextId++, cancel_by: '2027-09-30', cancel_effective: '2027-12-31', days_to_cancel: 335, min_term_end: body.min_term_months ? '2027-12-31' : null });
+    data.contracts.push(saved);
+    return HttpResponse.json({ message: 'Vertrag angelegt', contract: saved }, { status: 201 });
+  }),
+  http.put('/api/v1/me/contracts/:id', async ({ params, request }) => {
+    const body = (await request.json()) as Omit<Contract, 'id'>;
+    sent.contract = body;
+    const index = data.contracts.findIndex((c) => c.id === Number(params.id));
+    data.contracts[index] = contract({ ...data.contracts[index], ...body, id: Number(params.id) });
+    return HttpResponse.json({ message: 'Vertrag gespeichert', contract: data.contracts[index] });
+  }),
+  http.post('/api/v1/me/contracts/:id/cancel', async ({ params, request }) => {
+    const { end_date } = (await request.json()) as { end_date: string };
+    sent.cancel = { id: Number(params.id), end_date };
+    const c = data.contracts.find((x) => x.id === Number(params.id))!;
+    Object.assign(c, { status: 'cancelled', cancelled_at: '2026-10-30', end_date, ends_on: end_date, cancel_by: null, cancel_effective: null, days_to_cancel: null });
+    return HttpResponse.json({ message: 'Vertrag gekündigt', contract: c });
+  }),
+  http.delete('/api/v1/me/contracts/:id/cancel', ({ params }) => {
+    const c = data.contracts.find((x) => x.id === Number(params.id))!;
+    Object.assign(c, { status: 'active', cancelled_at: null, end_date: null, ends_on: null, cancel_by: '2026-11-30', cancel_effective: '2026-12-31', days_to_cancel: 31 });
+    return HttpResponse.json({ message: 'Kündigung zurückgenommen', contract: c });
+  }),
+  http.delete('/api/v1/me/contracts/:id', ({ params }) => {
+    data.contracts = data.contracts.filter((c) => c.id !== Number(params.id));
+    return HttpResponse.json({ message: 'Vertrag gelöscht' });
   }),
 
   http.put('/api/v1/me/settings', async ({ request }) => {
