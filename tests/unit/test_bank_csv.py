@@ -56,7 +56,7 @@ class TestReadBankCsv:
             (date(2026, 10, 2), -1200.0, 'Vermieter Müller'),
             (date(2026, 10, 5), -54.9, 'REWE Markt'),
         ]
-        assert [s['reason'] for s in skipped] == ['Währung GBP', 'kein Umsatz']
+        assert [(s['line'], s['reason']) for s in skipped] == [(8, 'Währung GBP'), (9, 'kein Umsatz')]
 
     def test_debit_and_credit_columns(self):
         _, _, rows, _ = read_bank_csv(DEBIT_CREDIT)

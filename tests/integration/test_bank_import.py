@@ -100,6 +100,18 @@ class TestPreview:
         assert mapped.status_code == 200
         assert mapped.get_json()['rows'][0]['amount'] == -10.0
 
+    def test_file_as_request_body_with_mapping_in_url(self, account):
+        """So schickt das Frontend die Datei: roh, Windows-1252 bleibt erhalten"""
+        client, _, _ = account
+        data = 'Tag;Wer;Wie viel\n01.10.2026;Café;-10,00\n'.encode('cp1252')
+        mapping = json.dumps({'columns': {'date': 0, 'counterparty': 1, 'amount': 2}})
+
+        response = client.post(f'/api/v1/me/import/bank/preview?mapping={mapping}', data=data,
+                               content_type='text/csv')
+
+        assert response.status_code == 200
+        assert response.get_json()['rows'][0]['counterparty'] == 'Café'
+
     def test_bad_mapping_and_missing_file(self, account):
         client, _, _ = account
 
