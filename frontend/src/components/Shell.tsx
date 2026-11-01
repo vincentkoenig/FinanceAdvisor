@@ -16,10 +16,13 @@ export const NAV: NavItem[] = [
   { label: 'Übersicht', short: 'Übersicht', icon: 'home', to: '/' },
   { label: 'Portfolio', short: 'Portfolio', icon: 'chart', to: '/portfolio' },
   { label: 'Haushaltsbuch', short: 'Budget', icon: 'wallet', to: '/budget' },
-  { label: 'Chat', short: 'Chat', icon: 'chat', to: '/chat' },
   { label: 'Verträge', short: 'Verträge', icon: 'doc', to: '/contracts' },
+  { label: 'Chat', short: 'Chat', icon: 'chat', to: '/chat' },
   { label: 'Analyse', short: 'Analyse', icon: 'chart', to: '/analyse' },
 ];
+
+// Auf dem Handy passen fünf Bereiche in die Leiste unten; der Rest steht im Kontomenü oben rechts
+const BOTTOM_COUNT = 5;
 
 const TITLES: Record<string, string> = { settings: 'Einstellungen' };
 
@@ -49,11 +52,8 @@ export function Shell() {
   const location = useLocation();
   // Menüs merken sich die Seite, auf der sie geöffnet wurden: nach einem Seitenwechsel sind sie zu
   const [menuAt, setMenuAt] = useState<string | null>(null);
-  const [moreAt, setMoreAt] = useState<string | null>(null);
   const menuOpen = menuAt === location.pathname;
-  const moreOpen = moreAt === location.pathname;
   const setMenuOpen = (open: boolean) => setMenuAt(open ? location.pathname : null);
-  const setMoreOpen = (open: boolean) => setMoreAt(open ? location.pathname : null);
   const [scrolled, setScrolled] = useState(false);
 
   // Seite am Wurzelelement, damit die Leitkarte den Grünton der Seite bekommt
@@ -93,9 +93,9 @@ export function Shell() {
   }, []);
 
   useEffect(() => {
-    if (!menuOpen && !moreOpen) return;
+    if (!menuOpen) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { setMenuAt(null); setMoreAt(null); }
+      if (event.key === 'Escape') setMenuAt(null);
     };
     // Klick außerhalb des Kontomenüs schließt es
     const onPointer = (event: PointerEvent) => {
@@ -107,7 +107,7 @@ export function Shell() {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('pointerdown', onPointer);
     };
-  }, [menuOpen, moreOpen]);
+  }, [menuOpen]);
 
   const signOut = () => logout.mutate(undefined, { onSettled: () => navigate('/login', { replace: true }) });
   const themeLabel = theme === 'dark' ? 'Helles Design' : 'Dunkles Design';
@@ -136,6 +136,10 @@ export function Shell() {
             {menuOpen && (
               <div className="menu" role="menu">
                 <div className="menu-head">{user?.email}</div>
+                {NAV.slice(BOTTOM_COUNT).map((item) => (
+                  <Link key={item.to} to={item.to} role="menuitem" className="menu-phone"><Icon name={item.icon} size={16} />{item.label}</Link>
+                ))}
+                <div className="menu-sep menu-phone" />
                 <Link to="/settings" role="menuitem"><Icon name="gear" size={16} />Einstellungen</Link>
                 <button role="menuitem" onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'moon'} size={16} />{themeLabel}</button>
                 <div className="menu-sep" />
@@ -153,28 +157,8 @@ export function Shell() {
       </main>
 
       <nav className="bottom-nav" aria-label="Navigation unten">
-        {NAV.slice(0, 4).map((item) => <NavEntry key={item.label} item={item} compact />)}
-        <button onClick={() => setMoreOpen(true)} aria-haspopup="dialog"><Icon name="more" size={22} />Mehr</button>
+        {NAV.slice(0, BOTTOM_COUNT).map((item) => <NavEntry key={item.label} item={item} compact />)}
       </nav>
-
-      {moreOpen && (
-        <div className="overlay" onClick={(event) => event.target === event.currentTarget && setMoreOpen(false)}>
-          <div className="sheet" role="dialog" aria-modal="true" aria-labelledby="more-title">
-            <div className="sheet-head">
-              <h2 id="more-title">Mehr</h2>
-              <button className="icon-btn" onClick={() => setMoreOpen(false)} aria-label="Schließen"><Icon name="close" /></button>
-            </div>
-            <div className="rows">
-              {NAV.slice(4).map((item) => (
-                <Link key={item.to} to={item.to} className="row"><Icon name={item.icon} /><span className="grow">{item.label}</span><Icon name="right" size={16} /></Link>
-              ))}
-              <Link className="row" to="/settings"><Icon name="gear" /><span className="grow">Einstellungen</span><Icon name="right" size={16} /></Link>
-              <button className="row" onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'moon'} /><span className="grow">{themeLabel}</span></button>
-              <button className="row" onClick={signOut} disabled={logout.isPending}><Icon name="logout" /><span className="grow">Abmelden</span></button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

@@ -14,11 +14,13 @@ afterEach(() => vi.useRealTimers());
 const region = (name: string) => screen.findByRole('region', { name });
 
 describe('Verträge', () => {
-  it('ist über "Mehr" erreichbar', async () => {
+  it('ist über die Leiste unten erreichbar', async () => {
     const { router } = renderApp('/');
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Mehr' }));
-    await user.click(within(await screen.findByRole('dialog', { name: 'Mehr' })).getByRole('link', { name: /Verträge/ }));
+    const bottom = await screen.findByRole('navigation', { name: 'Navigation unten' });
+    expect(within(bottom).getAllByRole('link').map((l) => l.textContent)).toEqual(['Übersicht', 'Portfolio', 'Budget', 'Verträge', 'Chat']);
+    expect(within(bottom).queryByRole('button', { name: 'Mehr' })).not.toBeInTheDocument();
+    await user.click(within(bottom).getByRole('link', { name: 'Verträge' }));
     expect(await screen.findByRole('heading', { name: 'Verträge', level: 1 })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/contracts');
   });

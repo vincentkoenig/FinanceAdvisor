@@ -47,6 +47,8 @@ h2 { font-size: var(--fs-section); line-height: 24px; font-weight: 600; }
 .menu a:hover, .menu button:hover { background: var(--raised); }
 .menu-head { padding: 8px 10px 10px; color: var(--muted); font-size: var(--fs-small); }
 .menu-sep { height: 1px; background: var(--rule); margin: 6px 4px; }
+/* Bereiche, die auf dem Handy nicht in die Leiste unten passen; am Laptop stehen sie oben in der Navigation */
+.menu .menu-phone { display: none; }
 
 .canvas { max-width: calc(var(--col) + 2 * var(--pad)); margin: 0 auto; padding: 24px var(--pad) 64px; display: flex; flex-direction: column; gap: var(--gap); }
 .title-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 16px; padding-bottom: 8px; }
@@ -401,6 +403,8 @@ details.older[open] .clamp-2 { display: none; }
   .settings-row { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 }
 @media (max-width: 767px) {
+  .menu .menu-phone { display: flex; }
+  .menu div.menu-phone { display: block; }
   :root { --pad: 16px; --card-pad: 16px; --fs-lead: 40px; }
   .toplinks, .hide-phone, .desktop-only { display: none; }
   .title-row .actions { width: 100%; }
