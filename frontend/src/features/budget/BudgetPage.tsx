@@ -2,6 +2,7 @@
 // Oben "Übrig im Monat" als Leitfläche mit dem Monatsfluss, daneben die Ausgaben nach Kategorie,
 // darunter alle Buchungen des Monats. Mit den Pfeilen geht es in andere Monate.
 import { useState } from 'react';
+import { Link } from 'react-router';
 import { type Category, useCategories, useMonthBookings, useTogglePause } from '../../api/budget';
 import { type Booking, useBudgetSummary, useSavingsPlans } from '../../api/overview';
 import { CountUp } from '../../components/CountUp';
@@ -62,6 +63,7 @@ export function BudgetPage() {
         </div>
         <div className="actions">
           {switcher}
+          <Link to="/budget/import" className="btn"><Icon name="upload" size={16} />Importieren</Link>
           <button className="btn btn-primary" onClick={() => setOpen({ type: 'add' })}><Icon name="plus" size={16} />Buchung</button>
         </div>
       </div>

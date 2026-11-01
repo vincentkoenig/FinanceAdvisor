@@ -113,7 +113,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -285,6 +285,37 @@ export const handlers = [
   http.delete('/api/v1/me/contracts/:id', ({ params }) => {
     data.contracts = data.contracts.filter((c) => c.id !== Number(params.id));
     return HttpResponse.json({ message: 'Vertrag gelöscht' });
+  }),
+
+  // Kontoimport: Dateien, deren erste Zeile "Tag;Wer;Wie viel" ist, haben unbekannte Spalten
+  http.post('/api/v1/me/import/bank/preview', async ({ request }) => {
+    const text = await request.text();
+    const mapping = new URL(request.url).searchParams.get('mapping');
+    sent.mapping = mapping ? JSON.parse(mapping) : undefined;
+    if (text.startsWith('Tag;') && !mapping) {
+      return HttpResponse.json({ error: 'Die Spalten wurden nicht erkannt. Bitte ordne sie zu.', columns: ['Tag', 'Wer', 'Wie viel'] }, { status: 400 });
+    }
+    const row = (key: string, date: string, amount: number, counterparty: string, extra: object = {}) => ({
+      key, occurrence: 0, line: 2, date, amount, counterparty, purpose: 'Kartenzahlung', description: counterparty,
+      status: 'new', covered_by: null, category_id: null, ...extra,
+    });
+    const rows = [
+      row('a', '2026-10-02', -1200, 'Vermieter', { status: 'covered', covered_by: { id: 13, description: 'Miete', amount: 1200 } }),
+      row('b', '2026-10-05', -54.9, 'REWE Markt', { category_id: 2 }),
+      row('c', '2026-10-07', -3.2, 'Café Mitte'),
+      row('d', '2026-10-08', -4.5, 'Café Mitte'),
+      row('e', '2026-10-09', 25, 'Erstattung'),
+      row('f', '2026-09-30', -9.99, 'Streaming', { status: 'duplicate' }),
+    ];
+    return HttpResponse.json({
+      columns: ['Buchungsdatum', 'Empfänger', 'Betrag'], mapping: { date: 0, counterparty: 1, amount: 2 }, rows,
+      skipped: [{ line: 9, reason: 'kein Umsatz' }], counts: { new: 4, covered: 1, duplicate: 1 },
+    });
+  }),
+  http.post('/api/v1/me/import/bank/commit', async ({ request }) => {
+    const { rows } = (await request.json()) as { rows: unknown[] };
+    sent.bankImport = rows;
+    return HttpResponse.json({ message: `${rows.length} Umsätze übernommen`, created: rows.length, skipped: 0 }, { status: 201 });
   }),
 
   http.put('/api/v1/me/settings', async ({ request }) => {

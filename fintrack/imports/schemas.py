@@ -28,12 +28,20 @@ class ColumnMapping(RequestModel):
 
 class ImportRow(RequestModel):
     date: date
-    amount: float = Field(ne=0)
+    amount: float
     counterparty: str = Field(default='', max_length=500)
     purpose: str = Field(default='', max_length=1000)
     occurrence: int = Field(default=0, ge=0, le=999)
     description: Optional[str] = Field(default=None, max_length=200)
     category_id: PositiveInt
+
+
+    @field_validator('amount')
+    @classmethod
+    def not_zero(cls, value):
+        if value == 0:
+            raise ValueError('Ein Umsatz braucht einen Betrag')
+        return value
 
 
 class ImportCommit(RequestModel):

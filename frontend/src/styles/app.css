@@ -256,6 +256,12 @@ details.fold .fold-peek, details.fold .fold-chev { display: none; }
 .group-head { margin: 0 0 4px; font-size: var(--fs-small); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
 .row .end .sub-line { text-align: right; }
 .textarea { height: auto; min-height: 64px; padding: 8px 12px; resize: vertical; line-height: 20px; }
+/* Import: Auswahl, Umsatz, Betrag und Kategorie in einer Zeile, auf dem Handy die Kategorie darunter */
+.file-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.import-row { flex-wrap: wrap; }
+.import-category { width: 260px; flex: none; }
+.import-category .pill { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.check { width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
 .dialog-extra { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
 .table .date-col { width: 64px; }
 .table .actions-col { width: 96px; }
@@ -412,6 +418,7 @@ details.older[open] .clamp-2 { display: none; }
   .strip > div:nth-child(odd) { padding-left: 0; box-shadow: none; }
   .strip > div.full { grid-column: 1 / -1; padding-left: 0; box-shadow: none; }
   .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .import-category { width: 100%; padding-left: 30px; }
   .settings-row { padding: 24px 0; }
   .overlay.dialog-overlay { place-items: end center; padding: 0; }
   .dialog-overlay .dialog { max-width: none; border-radius: 20px 20px 0 0; max-height: 92vh; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); animation: sheet 200ms ease-out; }

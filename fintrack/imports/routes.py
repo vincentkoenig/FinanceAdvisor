@@ -26,23 +26,26 @@ protect_blueprint(bp)
 @bp.route('/me/import/bank/preview', methods=['POST'])
 def preview_bank_import():
     """
-    Liest die hochgeladene CSV-Datei (Feld "file"). Optional "mapping" als JSON
-    {"columns": {"date": 0, "amount": 3, ...}}, wenn die Spalten nicht erkannt wurden.
+    Liest die CSV-Datei: als Formularfeld "file" oder direkt als Inhalt der Anfrage
+    (so schickt sie das Frontend). Optional "mapping" (Formularfeld oder URL-Parameter)
+    als JSON {"columns": {"date": 0, "amount": 3, ...}}, wenn die Spalten nicht erkannt wurden.
     Antwort bei unbekannten Spalten: 400 mit "columns" (Namen der Spalten) zum Zuordnen.
     """
     upload = request.files.get('file')
-    if upload is None or not upload.filename:
+    data = upload.read() if upload is not None else (b'' if request.form else request.get_data())
+    if not data:
         raise ApiError(400, 'Bitte eine CSV-Datei auswählen')
 
     mapping = None
-    if request.form.get('mapping'):
+    raw_mapping = request.form.get('mapping') or request.args.get('mapping')
+    if raw_mapping:
         try:
-            mapping = ColumnMapping.model_validate(json.loads(request.form['mapping'])).columns
+            mapping = ColumnMapping.model_validate(json.loads(raw_mapping)).columns
         except json.JSONDecodeError:
             raise ApiError(400, 'Die Spaltenzuordnung ist kein gültiges JSON')
 
     try:
-        columns, used_mapping, rows, skipped = read_bank_csv(upload.read(), mapping)
+        columns, used_mapping, rows, skipped = read_bank_csv(data, mapping)
     except CsvImportError as error:
         return jsonify({"error": str(error), "columns": error.columns}), 400
 

@@ -140,10 +140,12 @@ def read_bank_csv(data: bytes, mapping: Optional[dict] = None):
     Gibt (spalten, zuordnung, umsätze, übersprungene Zeilen) zurück.
     """
     text = decode(data)
-    lines = [line for line in text.splitlines() if line.strip()]
-    if not lines:
+    lines = text.splitlines()
+    filled = [line for line in lines if line.strip()]
+    if not filled:
         raise CsvImportError('Die Datei ist leer.')
-    rows = list(csv.reader(io.StringIO('\n'.join(lines)), delimiter=_delimiter(lines)))
+    # Leerzeilen bleiben stehen, damit die Zeilennummern zur Datei passen
+    rows = list(csv.reader(io.StringIO('\n'.join(lines)), delimiter=_delimiter(filled)))
 
     header_index = _find_header(rows)
     if mapping is None:
@@ -164,6 +166,8 @@ def read_bank_csv(data: bytes, mapping: Optional[dict] = None):
 
     result, skipped = [], []
     for offset, row in enumerate(rows[header_index + 1:], start=header_index + 2):
+        if not any(value.strip() for value in row):
+            continue
         if len(result) >= MAX_ROWS:
             raise CsvImportError(f'Höchstens {MAX_ROWS} Umsätze pro Datei.')
         try:
