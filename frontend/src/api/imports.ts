@@ -115,6 +115,30 @@ export async function previewDepotImport(file: File): Promise<DepotPreview> {
   return data as DepotPreview;
 }
 
+export type CryptoField = 'date' | 'type' | 'asset' | 'quantity' | 'price' | 'total' | 'fee';
+export type CryptoMapping = Partial<Record<CryptoField, number>>;
+export type CryptoPreview = { rows: DepotRow[]; skipped: { line: number; reason: string }[]; columns: string[] };
+
+/** CSV-Export einer Krypto-App (z. B. Bison), ohne KI; gebucht wird wie bei Abrechnungen */
+export async function previewCryptoImport(file: File, mapping?: CryptoMapping): Promise<CryptoPreview> {
+  const query = mapping ? `?mapping=${encodeURIComponent(JSON.stringify({ columns: mapping }))}` : '';
+  let response: Response;
+  try {
+    response = await fetch(`${API_PREFIX}/me/import/crypto/preview${query}`, {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'text/csv' }, body: await file.arrayBuffer(),
+    });
+  } catch {
+    throw new ApiError(0, 'Keine Verbindung zum Server. Bitte prüfe deine Internetverbindung.');
+  }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    const message = data?.error ?? `Unerwartete Antwort vom Server (${response.status})`;
+    if (Array.isArray(data?.columns)) throw new UnknownColumnsError(message, data.columns);
+    throw new ApiError(response.status, message, data?.fields ?? {});
+  }
+  return data as CryptoPreview;
+}
+
 export type DepotCommitTrade = { type: 'buy' | 'sell'; symbol: string; name: string; date: string; quantity: number; price: number };
 
 export function useCommitDepotImport() {

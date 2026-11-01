@@ -22,7 +22,7 @@ describe('Abrechnungen importieren', () => {
   it('liest mehrere PDFs, zeigt den gesendeten Text und bucht nur Neues', async () => {
     const { router } = renderApp('/portfolio/import');
     const user = userEvent.setup();
-    await user.upload(await screen.findByLabelText('PDFs wählen'), [pdf('kauf.pdf'), pdf('kaputt.pdf', 'kaputt')]);
+    await user.upload(await screen.findByLabelText('Dateien wählen'), [pdf('kauf.pdf'), pdf('kaputt.pdf', 'kaputt')]);
 
     const files = await screen.findByRole('region', { name: 'Dateien' });
     await waitFor(() => expect(files).toHaveTextContent('kaputt.pdfDie Datei ist kein lesbares PDF.'));
@@ -38,5 +38,23 @@ describe('Abrechnungen importieren', () => {
     expect(await screen.findByText('1 Ausführungen gebucht')).toBeInTheDocument();
     expect(sent.depotImport).toEqual([{ type: 'buy', symbol: 'EUNL.DE', name: 'iShares Core MSCI World', date: '2026-10-01', quantity: 10, price: 100.1 }]);
     await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio'));
+  });
+
+  it('liest einen Krypto-Export als CSV und fragt bei unbekannten Spalten nach', async () => {
+    renderApp('/portfolio/import');
+    const user = userEvent.setup();
+    const csv = new File(['Wann;Was;Coin;Stk;EUR\n'], 'bison.csv', { type: 'text/csv' });
+    await user.upload(await screen.findByLabelText('Dateien wählen'), csv);
+
+    const files = await screen.findByRole('region', { name: 'Dateien' });
+    expect(await within(files).findByText(/Die Spalten wurden nicht erkannt/)).toBeInTheDocument();
+    for (const [label, column] of [['Datum', 'Wann'], ['Art (Kauf/Verkauf)', 'Was'], ['Kryptowährung', 'Coin'], ['Menge', 'Stk'], ['Betrag in Euro', 'EUR']]) {
+      await user.selectOptions(within(files).getByLabelText(label), column);
+    }
+    await user.click(within(files).getByRole('button', { name: 'Vorschau laden' }));
+
+    await waitFor(() => expect(files).toHaveTextContent('bison.csv1 Ausführung · 1 übersprungen (z. B. Ein- und Auszahlungen)'));
+    expect(sent.cryptoMapping).toEqual({ columns: { date: 0, type: 1, asset: 2, quantity: 3, total: 4 } });
+    expect(screen.getByRole('region', { name: 'Vorschau' })).toHaveTextContent('KaufBTC EUR');
   });
 });

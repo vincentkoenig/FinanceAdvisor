@@ -114,7 +114,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -332,6 +332,19 @@ export const handlers = [
     return HttpResponse.json({
       is_trade_statement: true, note: null, sent_text: 'WERTPAPIERABRECHNUNG [NUMMER]',
       rows: [trade('k1', 'buy', 10, 100, 1, 'new'), trade('k2', 'sell', 5, 105, 0, 'duplicate')],
+    });
+  }),
+  // Krypto-CSV: ohne Zuordnung unbekannte Spalten, mit Zuordnung ein Kauf
+  http.post('/api/v1/me/import/crypto/preview', ({ request }) => {
+    const mapping = new URL(request.url).searchParams.get('mapping');
+    if (!mapping) {
+      return HttpResponse.json({ error: 'Die Spalten wurden nicht erkannt. Bitte ordne sie zu.', columns: ['Wann', 'Was', 'Coin', 'Stk', 'EUR'] }, { status: 400 });
+    }
+    sent.cryptoMapping = JSON.parse(mapping);
+    return HttpResponse.json({
+      columns: ['Wann', 'Was', 'Coin', 'Stk', 'EUR'], skipped: [{ line: 3, reason: 'Einzahlung' }],
+      rows: [{ key: 'c1', type: 'buy', isin: 'BTC', name: 'BTC', date: '2026-09-01', quantity: 0.01, quote: 60000, fees: 0, price: 60000,
+        symbol: 'BTC-EUR', asset_name: 'BTC EUR', asset_id: null, status: 'new' }],
     });
   }),
   http.post('/api/v1/me/import/depot/commit', async ({ request }) => {

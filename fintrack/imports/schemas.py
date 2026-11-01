@@ -9,6 +9,7 @@ from pydantic import Field, PositiveFloat, PositiveInt, field_validator
 
 from fintrack.api import RequestModel
 from fintrack.imports.bank_csv import FIELDS
+from fintrack.imports.crypto_csv import FIELDS as CRYPTO_FIELDS
 
 
 class ColumnMapping(RequestModel):
@@ -19,6 +20,21 @@ class ColumnMapping(RequestModel):
     @classmethod
     def known_fields(cls, value):
         unknown = set(value) - set(FIELDS)
+        if unknown:
+            raise ValueError(f'Unbekannte Felder: {", ".join(sorted(unknown))}')
+        if any(index < 0 for index in value.values()):
+            raise ValueError('Spaltennummern beginnen bei 0')
+        return value
+
+
+class CryptoColumnMapping(RequestModel):
+    """Zuordnung für Krypto-Exporte: Feld -> Spaltenindex."""
+    columns: Dict[str, int]
+
+    @field_validator('columns')
+    @classmethod
+    def known_fields(cls, value):
+        unknown = set(value) - set(CRYPTO_FIELDS)
         if unknown:
             raise ValueError(f'Unbekannte Felder: {", ".join(sorted(unknown))}')
         if any(index < 0 for index in value.values()):

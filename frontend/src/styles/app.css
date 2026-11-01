@@ -264,6 +264,7 @@ details.fold .fold-peek, details.fold .fold-chev { display: none; }
 .file-results { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .file-results li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; }
 .file-results details { flex-basis: 100%; font-size: var(--fs-small); color: var(--muted); }
+.file-mapping { flex-basis: 100%; display: flex; flex-direction: column; gap: 12px; }
 .sent-text { max-height: 240px; overflow: auto; margin: 8px 0 0; padding: 12px; border-radius: var(--radius-inner); background: var(--raised); white-space: pre-wrap; font-size: var(--fs-small); }
 .pill-inline-start { margin-right: 8px; vertical-align: 1px; }
 .check { width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
