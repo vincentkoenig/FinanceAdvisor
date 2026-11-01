@@ -23,9 +23,10 @@ from fintrack.api import ApiError, parse_body
 from fintrack.auth.session import protect_blueprint
 from fintrack.imports.bank_csv import CsvImportError, read_bank_csv
 from fintrack.imports.bank_service import build_preview, commit_rows
+from fintrack.imports.crypto_csv import read_crypto_csv
 from fintrack.imports.depot_pdf import PdfImportError, extract_text, mask_personal_data, read_trades
 from fintrack.imports.depot_service import build_depot_preview, commit_trades
-from fintrack.imports.schemas import ColumnMapping, DepotCommit, ImportCommit
+from fintrack.imports.schemas import ColumnMapping, CryptoColumnMapping, DepotCommit, ImportCommit
 
 logger = logging.getLogger(__name__)
 
@@ -119,3 +120,34 @@ def commit_depot_import():
     data = parse_body(DepotCommit)
     booked, skipped = commit_trades(current_user.id, data.trades)
     return jsonify({"message": f'{booked} Ausführungen gebucht', "booked": booked, "skipped": skipped}), 201
+
+
+# ─── KRYPTO (CSV) ─────────────────────────────────────────────────────────────
+
+@bp.route('/me/import/crypto/preview', methods=['POST'])
+def preview_crypto_import():
+    """
+    Liest den CSV-Export einer Krypto-App oder -Börse (z.B. Bison), ohne KI. Gleiche
+    Vorschau wie bei Depot-Abrechnungen; gebucht wird über /me/import/depot/commit.
+    Bei unbekannten Spalten: 400 mit "columns", dann "mapping" als URL-Parameter.
+    """
+    data = request.get_data()
+    if not data:
+        raise ApiError(400, 'Bitte eine CSV-Datei auswählen')
+    mapping = None
+    if request.args.get('mapping'):
+        try:
+            mapping = CryptoColumnMapping.model_validate(json.loads(request.args['mapping'])).columns
+        except json.JSONDecodeError:
+            raise ApiError(400, 'Die Spaltenzuordnung ist kein gültiges JSON')
+    try:
+        columns, used_mapping, trades, skipped = read_crypto_csv(data, mapping)
+    except CsvImportError as error:
+        return jsonify({"error": str(error), "columns": error.columns}), 400
+
+    return jsonify({
+        "columns": columns,
+        "mapping": used_mapping,
+        "rows": build_depot_preview(current_user.id, trades),
+        "skipped": skipped,
+    }), 200

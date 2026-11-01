@@ -2,7 +2,9 @@
 imports/depot_service.py - Aus Abrechnungen gelesene Käufe und Verkäufe prüfen und ins Depot übernehmen.
 
 Vorschau je Ausführung:
-- Wertpapier über die ISIN suchen (Euro-Börsen zuerst, wie die normale Suche)
+- Wertpapier über die ISIN suchen (Euro-Börsen zuerst, wie die normale Suche);
+  Kryptowährungen aus einem CSV-Export kommen mit Kürzel ("BTC") und werden als Euro-Paar
+  ("BTC-EUR") gesucht, wie überall in FinTrack
 - 'duplicate':    gleicher Kauf/Verkauf (Asset, Tag, Stück) ist schon gebucht
 - 'unknown':      zur ISIN wurde nichts gefunden - lässt sich so nicht übernehmen
 - 'insufficient': Verkauf von mehr Stück, als nach den Käufen davor im Depot wären
@@ -17,7 +19,9 @@ from datetime import datetime
 
 from fintrack.api import ApiError
 from fintrack.extensions import db
+from fintrack.imports.crypto_csv import TICKER
 from fintrack.imports.depot_pdf import ISIN
+from fintrack.market import yahoo
 from fintrack.market.search import create_asset, search_assets
 from fintrack.models import Asset, AssetTransaction, UserAsset
 from fintrack.portfolio.service import record_buy, record_sell
@@ -61,6 +65,27 @@ def _find_asset(isin, cache):
     return cache[isin]
 
 
+def _find_crypto(ticker, cache):
+    """Kryptowährung als Euro-Paar (BTC -> BTC-EUR), wenn FinTrack sie kennt oder Yahoo sie liefert."""
+    symbol = f'{ticker}-EUR'
+    if symbol not in cache:
+        known = Asset.query.filter_by(symbol=symbol).first()
+        if known:
+            cache[symbol] = {'symbol': symbol, 'name': known.name, 'asset_id': known.id}
+        else:
+            cache[symbol] = {'symbol': symbol, 'name': f'{ticker} EUR', 'asset_id': None}                 if yahoo.fetch_metadata(symbol) else None
+    return cache[symbol]
+
+
+def _identify(identifier, cache):
+    """ISIN (Wertpapier) oder Kürzel (Kryptowährung) -> Suchtreffer oder None."""
+    if ISIN.fullmatch(identifier):
+        return _find_asset(identifier, cache)
+    if TICKER.fullmatch(identifier):
+        return _find_crypto(identifier, cache)
+    return None
+
+
 def build_depot_preview(user_id, trades):
     """trades: Liste von ExtractedTrade. Gibt die Vorschau-Einträge zurück, nach Datum sortiert."""
     cache = {}
@@ -72,8 +97,8 @@ def build_depot_preview(user_id, trades):
     # Käufe vor Verkäufen am selben Tag, damit ein Verkauf die Stücke aus dem Kauf sieht
     for trade in sorted(trades, key=lambda t: (t.trade_date, t.type != 'buy')):
         isin = trade.isin.strip().upper()
-        valid = bool(ISIN.fullmatch(isin)) and trade.quantity > 0 and trade.price > 0 and trade.fees >= 0
-        match = _find_asset(isin, cache) if valid else None
+        valid = trade.quantity > 0 and trade.price > 0 and trade.fees >= 0
+        match = _identify(isin, cache) if valid else None
         price = effective_price(trade.type, trade.price, trade.fees, trade.quantity) if valid else None
         entry = {
             "key": hashlib.sha256(f'{isin}|{trade.type}|{trade.trade_date}|{trade.quantity}|{trade.price}'
