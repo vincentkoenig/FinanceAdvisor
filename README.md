@@ -182,6 +182,7 @@ Alle Routen liegen unter `/api/v1` und antworten mit JSON. Persönliche Daten li
 | `POST` | `/me/import/bank/commit` | Bestätigte Umsätze als Buchungen übernehmen (alles oder nichts, schon importierte werden übersprungen) |
 | `GET` · `POST` | `/me/contracts` | Verträge mit Status, Kündigungstag und Kosten pro Monat/Jahr (sortiert nach Frist) · neuer Vertrag |
 | `PUT` · `DELETE` | `/me/contracts/<id>` | Vertrag bearbeiten · löschen |
+| `GET` | `/me/contracts/suggestions` | Regelmäßige Abbuchungen aus importierten Umsätzen (monatlich bis jährlich, ähnlicher Betrag), die noch kein Vertrag sind |
 | `POST` · `DELETE` | `/me/contracts/<id>/cancel` | Als gekündigt markieren (ohne `end_date` zum nächstmöglichen Termin) · Kündigung zurücknehmen |
 | `POST` · `DELETE` | `/me/contracts/<id>/booking` | Mit dem Haushaltsbuch verknüpfen (`category_id`: neue Fixkosten-Buchung, Beitrag anteilig pro Monat · `transaction_id`: vorhandene wiederkehrende Buchung) · Verknüpfung lösen |
 | `POST` · `GET` | `/me/chat` · `/me/chat/history` | KI-Chat · Verlauf |

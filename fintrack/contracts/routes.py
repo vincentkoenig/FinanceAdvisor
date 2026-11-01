@@ -12,6 +12,7 @@ from flask_login import current_user
 from fintrack.api import ApiError, parse_body
 from fintrack.auth.session import get_own, protect_blueprint
 from fintrack.contracts.booking import create_booking, sync_booking_end
+from fintrack.contracts.detect import contract_suggestions
 from fintrack.contracts.schemas import ContractBooking, ContractCancel, ContractInput
 from fintrack.contracts.service import contracts_overview, serialize_contract
 from fintrack.contracts.terms import contract_status, today_berlin
@@ -34,6 +35,12 @@ def _own_contract(contract_id):
 def get_contracts():
     """Alle eigenen Verträge mit Fristen, dazu Kosten pro Monat und Jahr."""
     return jsonify(contracts_overview(current_user.id)), 200
+
+
+@bp.route('/me/contracts/suggestions', methods=['GET'])
+def get_contract_suggestions():
+    """Wiederkehrende Abbuchungen aus importierten Umsätzen, die noch kein Vertrag sind."""
+    return jsonify(contract_suggestions(current_user.id)), 200
 
 
 @bp.route('/me/contracts', methods=['POST'])

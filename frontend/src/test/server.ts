@@ -67,6 +67,7 @@ const initialData = () => ({
     contract({ id: 54, name: 'Streaming', category: 'subscription', amount: 13.99, interval: 'monthly', start_date: '2022-05-03', renewal_months: 1, notice_value: 0, notice_unit: 'days', cancel_by: '2026-11-02', cancel_effective: '2026-11-02', next_term_end: '2026-11-02', days_to_cancel: 3 }),
     contract({ id: 53, name: 'Fitnessstudio', category: 'fitness', amount: 29.9, interval: 'monthly', start_date: '2025-01-01', renewal_months: 1, notice_value: 1, status: 'cancelled', cancelled_at: '2026-10-01', end_date: '2026-12-31', ends_on: '2026-12-31' }),
   ] as Contract[],
+  contractSuggestions: [] as { key: string; name: string; amount: number; interval: string; first_date: string; last_date: string; count: number; category_id: number; category_name: string; kind: string }[],
   insight: { content: 'Dein Depot hat diese Woche 1,4 % zugelegt.', created_at: '2026-10-30 07:00' } as { content: string | null; created_at?: string },
 });
 
@@ -232,6 +233,7 @@ export const handlers = [
     return HttpResponse.json({ disclaimer: 'Keine Anlageberatung' });
   }),
 
+  http.get('/api/v1/me/contracts/suggestions', () => HttpResponse.json(data.contractSuggestions)),
   http.get('/api/v1/me/contracts', () => {
     const yearly = data.contracts.filter((c) => c.status !== 'ended').reduce((sum, c) => sum + c.yearly_cost, 0);
     return HttpResponse.json({ contracts: data.contracts, yearly_total: Math.round(yearly * 100) / 100, monthly_total: Math.round((yearly / 12) * 100) / 100 });

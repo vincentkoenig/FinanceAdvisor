@@ -31,12 +31,14 @@ function wholeNumber(text: string, min: number, max: number, errors: Errors, key
 
 type Props = {
   contract?: Contract;
+  /** Vorbelegung für einen neuen Vertrag, z. B. aus einer erkannten Abbuchung */
+  prefill?: Partial<ContractInput>;
   onClose: () => void;
   onCancelContract?: (contract: Contract) => void;
   onDelete?: (contract: Contract) => void;
 };
 
-export function ContractDialog({ contract, onClose, onCancelContract, onDelete }: Props) {
+export function ContractDialog({ contract, prefill, onClose, onCancelContract, onDelete }: Props) {
   const add = useAddContract();
   const update = useUpdateContract();
   const undo = useUndoCancel();
@@ -50,24 +52,28 @@ export function ContractDialog({ contract, onClose, onCancelContract, onDelete }
   // Neuester Stand des Vertrags, damit z. B. das Lösen der Verknüpfung sofort sichtbar ist
   const live = contracts.data?.contracts.find((c) => c.id === contract?.id) ?? contract;
   const choices = bookingChoices(categories.data ?? [], bookings.data ?? [], contracts.data?.contracts ?? []);
-  const start = contract ?? { category: 'insurance' as ContractCategory, ...TYPICAL_TERMS.insurance };
-  const [name, setName] = useState(contract?.name ?? '');
+  const kind = prefill?.category ?? 'insurance';
+  const start = contract ?? { category: kind, ...TYPICAL_TERMS[kind], ...prefill };
+  const [name, setName] = useState(contract?.name ?? prefill?.name ?? '');
   const [category, setCategory] = useState<ContractCategory>(start.category);
   const [provider, setProvider] = useState(contract?.provider ?? '');
   const [number, setNumber] = useState(contract?.contract_number ?? '');
-  const [amount, setAmount] = useState(contract ? contract.amount.toFixed(2).replace('.', ',') : '');
+  const initialAmount = contract?.amount ?? prefill?.amount;
+  const [amount, setAmount] = useState(initialAmount ? initialAmount.toFixed(2).replace('.', ',') : '');
   const [payInterval, setPayInterval] = useState<PaymentInterval>(start.interval);
-  const [startDate, setStartDate] = useState(contract?.start_date ?? isoDay(new Date()));
+  const [startDate, setStartDate] = useState(contract?.start_date ?? prefill?.start_date ?? isoDay(new Date()));
   const [minTerm, setMinTerm] = useState(start.min_term_months?.toString() ?? '');
   const [renewal, setRenewal] = useState<number | null>(start.renewal_months);
   const [notice, setNotice] = useState(String(start.notice_value));
   const [unit, setUnit] = useState<NoticeUnit>(start.notice_unit);
   const [notes, setNotes] = useState(contract?.notes ?? '');
   // Solange die Bedingungen nicht von Hand geändert wurden, folgen sie der gewählten Art
-  const [termsTouched, setTermsTouched] = useState(Boolean(contract));
+  // Erkannte Zahlweise soll ein Wechsel der Art nicht überschreiben
+  const [termsTouched, setTermsTouched] = useState(Boolean(contract || prefill));
   // Haushaltsbuch: 'none', 'c<Kategorie-ID>' für eine neue Buchung oder 't<Buchungs-ID>' für eine vorhandene.
   // Ohne eigene Wahl schlägt ein neuer Vertrag eine neue Buchung in der passendsten Fixkosten-Kategorie vor.
-  const [linkChoice, setLinkChoice] = useState<string | null>(contract ? 'none' : null);
+  // Aus Umsätzen erkannte Verträge stehen schon im Haushaltsbuch: nicht noch einmal als Fixkosten eintragen
+  const [linkChoice, setLinkChoice] = useState<string | null>(contract || prefill ? 'none' : null);
   const suggested = suggestCategory(choices.categories, name, category);
   const chosenLink = linkChoice ?? (suggested ? `c${suggested.id}` : 'none');
   const [errors, setErrors] = useState<Errors>({});

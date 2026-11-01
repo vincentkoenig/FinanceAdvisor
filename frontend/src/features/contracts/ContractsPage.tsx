@@ -1,17 +1,19 @@
 // Verträge. Frage der Seite: Was kostet mich das, und was muss ich bald kündigen?
 // Oben die Kosten aller laufenden Verträge als Leitfläche, daneben die Fristen der nächsten Wochen,
-// darunter alle Verträge nach Art. Ein Klick auf einen Vertrag öffnet ihn zum Bearbeiten und Kündigen.
+// darunter aus Kontoumsätzen erkannte Verträge und alle Verträge nach Art. Ein Klick auf einen Vertrag
+// öffnet ihn zum Bearbeiten und Kündigen.
 import { useState } from 'react';
-import { type Contract, useContracts } from '../../api/contracts';
+import { type Contract, type ContractSuggestion, useContractSuggestions, useContracts } from '../../api/contracts';
 import { CountUp } from '../../components/CountUp';
 import { Icon } from '../../components/Icon';
 import { Loaded } from '../../components/Loaded';
+import { dayShort } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import { CancelContractDialog, ContractDialog, DeleteContractDialog } from './dialogs';
-import { SOON_DAYS, STATUS_PILL, byCategory, dateLong, deadlineText, hasDeadline, inDays, intervalLabel, soonCancellable } from './model';
+import { SOON_DAYS, STATUS_PILL, byCategory, dateLong, deadlineText, hasDeadline, inDays, intervalLabel, readDismissed, saveDismissed, soonCancellable } from './model';
 
 type Open =
-  | { type: 'add' }
+  | { type: 'add'; suggestion?: ContractSuggestion }
   | { type: 'edit'; contract: Contract }
   | { type: 'cancel'; contract: Contract }
   | { type: 'delete'; contract: Contract }
@@ -25,6 +27,15 @@ export function ContractsPage() {
   const running = list.filter((c) => c.status !== 'ended');
   const soon = soonCancellable(list);
   const next = list.find(hasDeadline);
+  const suggestions = useContractSuggestions();
+  // Ausgeblendete Vorschläge merkt sich nur dieser Browser
+  const [dismissed, setDismissed] = useState(readDismissed);
+  const found = (suggestions.data ?? []).filter((s) => !dismissed.includes(s.key));
+  const dismiss = (key: string) => {
+    const keys = [...dismissed, key];
+    setDismissed(keys);
+    saveDismissed(keys);
+  };
 
   return (
     <>
@@ -83,6 +94,30 @@ export function ContractsPage() {
         </section>
       </div>
 
+      {found.length > 0 && (
+        <section className="panel" aria-labelledby="h-found">
+          <div className="panel-head">
+            <h2 id="h-found">Erkannt in deinen Umsätzen</h2>
+            <span className="meta">regelmäßige Abbuchungen</span>
+          </div>
+          <div className="rows">
+            {found.map((s) => (
+              <div className="row" key={s.key}>
+                <div className="grow">
+                  <span className="trunc">{s.name}</span>
+                  <span className="sub-line">{eur(s.amount)} {intervalLabel(s.interval)} · {s.count}× seit {dayShort(s.first_date)} · {s.category_name}</span>
+                </div>
+                <button className="btn btn-sm btn-primary" onClick={() => setOpen({ type: 'add', suggestion: s })}
+                  aria-label={`${s.name} als Vertrag anlegen`}>Als Vertrag</button>
+                <button className="icon-btn" onClick={() => dismiss(s.key)} aria-label={`${s.name} ausblenden`} title="Ausblenden">
+                  <Icon name="close" size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       <section className="panel" aria-labelledby="h-all">
         <div className="panel-head">
           <h2 id="h-all">Alle Verträge</h2>
@@ -117,7 +152,12 @@ export function ContractsPage() {
         </Loaded>
       </section>
 
-      {open?.type === 'add' && <ContractDialog onClose={() => setOpen(null)} />}
+      {open?.type === 'add' && (
+        <ContractDialog onClose={() => setOpen(null)} prefill={open.suggestion && {
+          name: open.suggestion.name, category: open.suggestion.kind, amount: open.suggestion.amount,
+          interval: open.suggestion.interval, start_date: open.suggestion.first_date,
+        }} />
+      )}
       {open?.type === 'edit' && (
         <ContractDialog contract={open.contract} onClose={() => setOpen(null)}
           onCancelContract={(contract) => setOpen({ type: 'cancel', contract })}

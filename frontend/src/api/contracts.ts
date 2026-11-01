@@ -48,7 +48,24 @@ export type Contract = ContractInput & {
 
 export type ContractsOverview = { contracts: Contract[]; yearly_total: number; monthly_total: number };
 
-export const contractKeys = { all: ['contracts'] as const };
+export const contractKeys = { all: ['contracts'] as const, suggestions: ['contracts', 'suggestions'] as const };
+
+/** Regelmäßige Abbuchung aus importierten Umsätzen, die noch kein Vertrag ist */
+export type ContractSuggestion = {
+  key: string;
+  name: string;
+  amount: number;
+  interval: PaymentInterval;
+  first_date: string;
+  last_date: string;
+  count: number;
+  category_id: number;
+  category_name: string;
+  kind: ContractCategory;
+};
+
+export const useContractSuggestions = () =>
+  useQuery({ queryKey: contractKeys.suggestions, queryFn: () => api<ContractSuggestion[]>('/me/contracts/suggestions'), staleTime: 60_000 });
 
 export const useContracts = () =>
   useQuery({ queryKey: contractKeys.all, queryFn: () => api<ContractsOverview>('/me/contracts'), staleTime: 60_000 });
