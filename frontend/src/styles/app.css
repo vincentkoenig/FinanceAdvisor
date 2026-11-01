@@ -251,6 +251,12 @@ details.fold .fold-peek, details.fold .fold-chev { display: none; }
 .total-row + .row { min-height: 40px; }
 .pill-inline { margin-left: 8px; vertical-align: 1px; }
 .is-paused { opacity: 0.6; }
+/* Verträge: Gruppen nach Art, zweizeiliger Betrag rechts */
+.contract-group + .contract-group { margin-top: 16px; }
+.group-head { margin: 0 0 4px; font-size: var(--fs-small); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.row .end .sub-line { text-align: right; }
+.textarea { height: auto; min-height: 64px; padding: 8px 12px; resize: vertical; line-height: 20px; }
+.dialog-extra { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
 .table .date-col { width: 64px; }
 .table .actions-col { width: 96px; }
 .input-lg { height: 52px; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }

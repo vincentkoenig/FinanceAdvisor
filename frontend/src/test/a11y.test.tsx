@@ -16,6 +16,7 @@ const PAGES = [
   ['/', 'Übersicht'],
   ['/portfolio', 'Portfolio'],
   ['/budget', 'Haushaltsbuch'],
+  ['/contracts', 'Verträge'],
   ['/chat', 'Chat'],
   ['/analyse', 'Analyse'],
   ['/settings', 'Einstellungen'],

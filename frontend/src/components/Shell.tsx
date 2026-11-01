@@ -17,6 +17,7 @@ export const NAV: NavItem[] = [
   { label: 'Portfolio', short: 'Portfolio', icon: 'chart', to: '/portfolio' },
   { label: 'Haushaltsbuch', short: 'Budget', icon: 'wallet', to: '/budget' },
   { label: 'Chat', short: 'Chat', icon: 'chat', to: '/chat' },
+  { label: 'Verträge', short: 'Verträge', icon: 'doc', to: '/contracts' },
   { label: 'Analyse', short: 'Analyse', icon: 'chart', to: '/analyse' },
 ];
 
@@ -164,7 +165,9 @@ export function Shell() {
               <button className="icon-btn" onClick={() => setMoreOpen(false)} aria-label="Schließen"><Icon name="close" /></button>
             </div>
             <div className="rows">
-              <Link to="/analyse" className="row"><Icon name="chart" /><span className="grow">Analyse</span><Icon name="right" size={16} /></Link>
+              {NAV.slice(4).map((item) => (
+                <Link key={item.to} to={item.to} className="row"><Icon name={item.icon} /><span className="grow">{item.label}</span><Icon name="right" size={16} /></Link>
+              ))}
               <Link className="row" to="/settings"><Icon name="gear" /><span className="grow">Einstellungen</span><Icon name="right" size={16} /></Link>
               <button className="row" onClick={toggleTheme}><Icon name={theme === 'dark' ? 'sun' : 'moon'} /><span className="grow">{themeLabel}</span></button>
               <button className="row" onClick={signOut} disabled={logout.isPending}><Icon name="logout" /><span className="grow">Abmelden</span></button>

@@ -42,6 +42,7 @@
 }
 :root[data-page="portfolio"] { --hero-bg: #0b4b42; }
 :root[data-page="budget"] { --hero-bg: #34501a; }
+:root[data-page="contracts"] { --hero-bg: #1d4a45; }
 
 :root[data-theme="dark"] {
   --ground: #08140f; --surface: #0f2119; --raised: #172f25; --active: #1c372b;
@@ -64,3 +65,4 @@
 }
 :root[data-theme="dark"][data-page="portfolio"] { --hero-bg: #0f5a50; }
 :root[data-theme="dark"][data-page="budget"] { --hero-bg: #3a5a1e; }
+:root[data-theme="dark"][data-page="contracts"] { --hero-bg: #1c5a52; }

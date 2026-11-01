@@ -3,7 +3,7 @@ contracts/service.py - Verträge mit berechneten Fristen und Summen.
 Gemeinsam genutzt von der API (contracts/routes.py) und dem Chat-Tool.
 """
 
-from fintrack.contracts.terms import contract_status, today_berlin, yearly_cost
+from fintrack.contracts.terms import contract_status, term_end, today_berlin, yearly_cost
 from fintrack.models import Contract
 
 
@@ -38,6 +38,8 @@ def serialize_contract(contract, today):
         "cancel_effective": _iso(status['cancel_effective']),
         "days_to_cancel": (cancel_by - today).days if cancel_by else None,
         "ends_on": _iso(status['ends_on']),
+        # Ende der Mindestlaufzeit: bis dahin zählt eine Frist auch bei monatlicher Verlängerung
+        "min_term_end": _iso(term_end(contract.start_date, contract.min_term_months)) if contract.min_term_months else None,
         "yearly_cost": yearly,
         "monthly_cost": round(yearly / 12, 2),
     }

@@ -13,11 +13,13 @@ function block(selector: string) {
 const light = block(':root');
 const dark = { ...light, ...block(':root[data-theme="dark"]') };
 const themes = {
-  hell: { home: light, portfolio: { ...light, ...block(':root[data-page="portfolio"]') }, budget: { ...light, ...block(':root[data-page="budget"]') } },
+  hell: { home: light, portfolio: { ...light, ...block(':root[data-page="portfolio"]') }, budget: { ...light, ...block(':root[data-page="budget"]') },
+    contracts: { ...light, ...block(':root[data-page="contracts"]') } },
   dunkel: {
     home: dark,
     portfolio: { ...dark, ...block(':root[data-theme="dark"][data-page="portfolio"]') },
     budget: { ...dark, ...block(':root[data-theme="dark"][data-page="budget"]') },
+    contracts: { ...dark, ...block(':root[data-theme="dark"][data-page="contracts"]') },
   },
 };
 
