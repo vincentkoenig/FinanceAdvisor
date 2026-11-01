@@ -16,7 +16,7 @@ const csv = (text: string) => new File([text], 'umsaetze.csv', { type: 'text/csv
 async function openWithFile(text = 'Buchungsdatum;Empfänger;Betrag\n') {
   const { router } = renderApp('/budget/import');
   const user = userEvent.setup();
-  await user.upload(await screen.findByLabelText('CSV-Datei wählen'), csv(text));
+  await user.upload(await screen.findByLabelText('Datei wählen'), csv(text));
   return { user, router };
 }
 
@@ -78,5 +78,18 @@ describe('Umsätze importieren', () => {
     expect(await preview()).toBeInTheDocument();
     expect(sent.mapping).toEqual({ columns: { date: 0, amount: 2, counterparty: 1 } });
     expect(screen.queryByRole('region', { name: 'Spalten zuordnen' })).not.toBeInTheDocument();
+  });
+
+  it('liest einen Kontoauszug als PDF und zeigt den gesendeten Text', async () => {
+    renderApp('/budget/import');
+    const user = userEvent.setup();
+    await user.upload(await screen.findByLabelText('Datei wählen'), new File(['%PDF-1.4'], 'auszug.pdf', { type: 'application/pdf' }));
+
+    const panel = await preview();
+    expect(panel).toHaveTextContent('2 neu');
+    const file = screen.getByRole('region', { name: 'Datei' });
+    expect(within(file).getByText('Gesendeter Text')).toBeInTheDocument();
+    expect(within(file).getByText('Kontoauszug [NUMMER]')).toBeInTheDocument();
+    expect(sent.mapping).toBeUndefined();
   });
 });

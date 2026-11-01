@@ -314,6 +314,13 @@ export const handlers = [
       skipped: [{ line: 9, reason: 'kein Umsatz' }], counts: { new: 4, covered: 1, duplicate: 1 },
     });
   }),
+  http.post('/api/v1/me/import/bank/pdf/preview', () => HttpResponse.json({
+    columns: [], mapping: {}, skipped: [], counts: { new: 2, covered: 0, duplicate: 0 }, note: null, sent_text: 'Kontoauszug [NUMMER]',
+    rows: [
+      { key: 'p1', occurrence: 0, line: 1, date: '2026-10-05', amount: -54.9, counterparty: 'REWE Markt', purpose: 'Kartenzahlung', description: 'REWE Markt', status: 'new', covered_by: null, category_id: 2 },
+      { key: 'p2', occurrence: 0, line: 2, date: '2026-10-07', amount: -3.2, counterparty: 'Café Mitte', purpose: 'Kartenzahlung', description: 'Café Mitte', status: 'new', covered_by: null, category_id: null },
+    ],
+  })),
   http.post('/api/v1/me/import/bank/commit', async ({ request }) => {
     const { rows } = (await request.json()) as { rows: unknown[] };
     sent.bankImport = rows;

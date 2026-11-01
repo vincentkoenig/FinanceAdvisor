@@ -1,5 +1,6 @@
 // Umsätze importieren. Frage der Seite: Welche Umsätze aus dem Bankexport sollen ins Haushaltsbuch?
-// Datei wählen → (Spalten zuordnen, falls nicht erkannt) → Vorschau prüfen, Kategorien setzen → übernehmen.
+// CSV-Export oder Kontoauszug als PDF wählen → (bei CSV Spalten zuordnen, falls nicht erkannt) →
+// Vorschau prüfen, Kategorien setzen → übernehmen.
 // Gespeichert wird erst beim Übernehmen; die Datei selbst bleibt nirgends liegen.
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
@@ -84,12 +85,22 @@ export function ImportPage() {
       <section className="panel" aria-labelledby="h-file">
         <div className="panel-head"><h2 id="h-file">Datei</h2></div>
         <div className="file-row">
-          <label className="btn btn-primary" htmlFor="bank-file"><Icon name="upload" size={16} />{file ? 'Andere Datei' : 'CSV-Datei wählen'}</label>
-          <input key={inputKey} className="sr-only" type="file" id="bank-file" accept=".csv,text/csv,text/plain"
+          <label className="btn btn-primary" htmlFor="bank-file"><Icon name="upload" size={16} />{file ? 'Andere Datei' : 'Datei wählen'}</label>
+          <input key={inputKey} className="sr-only" type="file" id="bank-file" accept=".csv,text/csv,text/plain,.pdf,application/pdf"
             onChange={(e) => pick(e.target.files?.[0])} disabled={previewImport.isPending || commit.isPending} />
-          <span className="muted trunc">{previewImport.isPending ? 'Liest …' : file?.name ?? 'Im Online-Banking: Umsätze → Export → CSV'}</span>
+          <span className="muted trunc">{previewImport.isPending ? 'Liest …' : file?.name ?? 'CSV-Export (Umsätze → Export) oder Kontoauszug als PDF'}</span>
         </div>
-        <p className="hint">Die Datei wird nur gelesen und nicht gespeichert. Umsätze, die schon im Haushaltsbuch stehen, werden erkannt.</p>
+        <p className="hint">
+          Die Datei wird nur gelesen und nicht gespeichert. Umsätze, die schon im Haushaltsbuch stehen, werden erkannt.
+          CSV liest FinTrack selbst; bei einem PDF werden zuerst dein Name, deine Adresse, IBANs sowie Konto- und
+          Kundennummern entfernt, den Rest liest OpenAI aus.
+        </p>
+        {preview?.sent_text !== undefined && (
+          <details className="sent-details">
+            <summary>Gesendeter Text{preview.note ? ` · ${preview.note}` : ''}</summary>
+            <pre className="sent-text">{preview.sent_text}</pre>
+          </details>
+        )}
         {error && !columns && <p className="err" role="alert">{error}</p>}
       </section>
 

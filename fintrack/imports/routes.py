@@ -22,6 +22,7 @@ from fintrack.extensions import limiter
 from fintrack.api import ApiError, parse_body
 from fintrack.auth.session import protect_blueprint
 from fintrack.imports.bank_csv import CsvImportError, read_bank_csv
+from fintrack.imports.bank_pdf import read_statement, to_bank_rows
 from fintrack.imports.bank_service import build_preview, commit_rows
 from fintrack.imports.crypto_csv import read_crypto_csv
 from fintrack.imports.depot_pdf import PdfImportError, extract_text, mask_personal_data, read_trades
@@ -68,6 +69,45 @@ def preview_bank_import():
         "rows": entries,
         "skipped": skipped,
         "counts": {status: sum(e['status'] == status for e in entries) for status in ('new', 'covered', 'duplicate')},
+    }), 200
+
+
+@bp.route('/me/import/bank/pdf/preview', methods=['POST'])
+@limiter.limit("40 per hour", key_func=current_user_key)
+def preview_bank_pdf_import():
+    """
+    Kontoauszug als PDF (Inhalt der Anfrage): persönliche Angaben entfernen, Umsätze
+    auslesen lassen, dann dieselbe Vorschau wie beim CSV-Import. Übernommen wird über
+    /me/import/bank/commit. "sent_text" zeigt genau den Text, der ausgewertet wurde.
+    """
+    data = request.get_data()
+    if not data:
+        raise ApiError(400, 'Bitte einen Kontoauszug als PDF auswählen')
+    try:
+        masked = mask_personal_data(extract_text(data))
+    except PdfImportError as error:
+        raise ApiError(400, str(error))
+    try:
+        statement = read_statement(masked)
+    except Exception:
+        logger.exception('Kontoauszug konnte nicht ausgewertet werden')
+        raise ApiError(502, 'Der Kontoauszug konnte gerade nicht ausgewertet werden. Bitte versuche es gleich noch einmal.')
+
+    if not statement.is_bank_statement:
+        raise ApiError(400, 'Das PDF ist kein Kontoauszug' + (f' ({statement.note})' if statement.note else '.'))
+    rows = to_bank_rows(statement)
+    if not rows:
+        raise ApiError(400, 'Im Kontoauszug wurden keine Umsätze gefunden' + (f' ({statement.note})' if statement.note else '.'))
+
+    entries = build_preview(current_user.id, rows)
+    return jsonify({
+        "columns": [],
+        "mapping": {},
+        "rows": entries,
+        "skipped": [],
+        "counts": {status: sum(e['status'] == status for e in entries) for status in ('new', 'covered', 'duplicate')},
+        "note": statement.note,
+        "sent_text": masked,
     }), 200
 
 
