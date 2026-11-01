@@ -10,11 +10,11 @@ beforeEach(() => {
 });
 
 describe('Analyse', () => {
-  it('ist über "Mehr" erreichbar', async () => {
+  it('ist über das Kontomenü erreichbar', async () => {
     const { router } = renderApp('/');
     const user = userEvent.setup();
-    await user.click(await screen.findByRole('button', { name: 'Mehr' }));
-    await user.click(within(await screen.findByRole('dialog', { name: 'Mehr' })).getByRole('link', { name: /Analyse/ }));
+    await user.click(await screen.findByRole('button', { name: 'Konto' }));
+    await user.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: 'Analyse' }));
     expect(await screen.findByRole('heading', { name: 'Analyse', level: 1 })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/analyse');
   });
