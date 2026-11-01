@@ -86,7 +86,7 @@ def full_account(make_user):
         Contract(user_id=user.id, name='Kfz "Golf"', provider='Beispiel AG', category='insurance',
                  contract_number='K-123', amount=412.5, interval='yearly', start_date=date(2023, 1, 1),
                  renewal_months=12, notice_value=1, notice_unit='months', notes='Teilkasko',
-                 created_at=datetime(2026, 10, 3)),
+                 transaction_id=dividend_booking.id, created_at=datetime(2026, 10, 3)),
         Contract(user_id=user.id, name='Handy', category='telecom', amount=19.99, interval='monthly',
                  start_date=date(2025, 3, 15), min_term_months=24, renewal_months=1, notice_value=4,
                  notice_unit='weeks', cancelled_at=date(2026, 10, 1), end_date=date(2027, 3, 14),

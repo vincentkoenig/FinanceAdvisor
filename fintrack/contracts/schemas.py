@@ -5,7 +5,7 @@ contracts/schemas.py - Eingabe-Schemas für Verträge.
 from datetime import date
 from typing import Literal, Optional
 
-from pydantic import Field, PositiveFloat, field_validator, model_validator
+from pydantic import Field, PositiveFloat, PositiveInt, field_validator, model_validator
 
 from fintrack.api import RequestModel
 
@@ -40,6 +40,18 @@ class ContractInput(RequestModel):
     def has_a_term(self):
         if not self.min_term_months and not self.renewal_months:
             raise ValueError('Mindestlaufzeit oder Verlängerung angeben')
+        return self
+
+
+class ContractBooking(RequestModel):
+    """Entweder eine neue Buchung in dieser Fixkosten-Kategorie oder eine vorhandene wiederkehrende Buchung."""
+    category_id: Optional[PositiveInt] = None
+    transaction_id: Optional[PositiveInt] = None
+
+    @model_validator(mode='after')
+    def exactly_one(self):
+        if (self.category_id is None) == (self.transaction_id is None):
+            raise ValueError('Entweder eine Kategorie für eine neue Buchung oder eine vorhandene Buchung angeben')
         return self
 
 

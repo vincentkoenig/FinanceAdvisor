@@ -306,6 +306,8 @@ class Contract(db.Model):
     Die Fristen selbst werden nicht gespeichert, sondern in contracts/terms.py
     immer neu berechnet.
     cancelled_at/end_date: wann gekündigt wurde und wann der Vertrag dadurch endet.
+    transaction_id: die wiederkehrende Fixkosten-Buchung im Haushaltsbuch, die zu
+    diesem Vertrag gehört. Endet der Vertrag, bekommt sie dasselbe Enddatum.
     """
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -323,6 +325,7 @@ class Contract(db.Model):
     cancelled_at = db.Column(db.Date)
     end_date = db.Column(db.Date)
     notes = db.Column(db.String)
+    transaction_id = db.Column(db.Integer, db.ForeignKey('transaction.id', ondelete='SET NULL'))
     created_at = db.Column(db.DateTime, default=db.func.now())
 
 

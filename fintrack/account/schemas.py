@@ -136,6 +136,7 @@ class ExportContract(_Entry):
     cancelled_at: Optional[date] = None
     end_date: Optional[date] = None
     notes: Optional[str] = None
+    transaction_ref: Optional[PositiveInt] = None
     created_at: Optional[datetime] = None
 
 
@@ -187,6 +188,9 @@ class ExportFile(_Entry):
         for dividend in self.dividends:
             if dividend.transaction_ref is not None and dividend.transaction_ref not in transaction_refs:
                 raise ValueError('Eine Dividende verweist auf eine unbekannte Buchung')
+        for contract in self.contracts:
+            if contract.transaction_ref is not None and contract.transaction_ref not in transaction_refs:
+                raise ValueError(f'Vertrag "{contract.name}" verweist auf eine unbekannte Buchung')
 
         # Pro Asset gibt es nur eine Position und einen Watchlist-Eintrag
         # (ältere Exporte von vor dieser Regel könnten Doppelte enthalten)

@@ -38,6 +38,17 @@ describe('Übersicht', () => {
     expect(screen.getByText('Sparplan iShares Core MSCI World seit 1. Okt. fällig')).toBeInTheDocument();
   });
 
+  it('nennt bald endende Kündigungsfristen in "Zu tun"', async () => {
+    renderApp('/');
+    const todo = await section('Zu tun');
+    expect(await within(todo).findByText('Haftpflicht kündbar')).toBeInTheDocument();
+    expect(todo).toHaveTextContent('bis 30.11.2026 · in 31 Tagen');
+    // Handy (in 107 Tagen) und das monatlich kündbare Streaming stehen dort nicht
+    expect(todo).not.toHaveTextContent('Handy');
+    expect(todo).not.toHaveTextContent('Streaming');
+    expect(within(todo).getByRole('link', { name: 'Haftpflicht bei den Verträgen ansehen' })).toHaveAttribute('href', '/contracts');
+  });
+
   it('führt einen fälligen Sparplan aus und lädt neu', async () => {
     renderApp('/');
     const user = userEvent.setup();
@@ -90,6 +101,7 @@ describe('Übersicht', () => {
   it('erklärt leere Bereiche bei einem neuen Konto', async () => {
     data.positions = [];
     data.savingsPlans = [];
+    data.contracts = [];
     data.transactions = [];
     data.history = [];
     data.trades = [];

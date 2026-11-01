@@ -1,8 +1,10 @@
 // Übersicht. Frage der Seite: Wie viel habe ich, und was ist heute zu tun?
-// Oben das Gesamtvermögen als grüne Leitfläche und daneben das Fällige, darunter Monatsfluss,
+// Oben das Gesamtvermögen als grüne Leitfläche und daneben das Fällige (Sparpläne, bald endende
+// Kündigungsfristen), darunter Monatsfluss,
 // Tages-Update, Bewegung heute (ohne Tageskurse: größte Positionen) und letzte Buchungen
 // (auf dem Handy eingeklappt).
 import { Link } from 'react-router';
+import { useContracts } from '../../api/contracts';
 import {
   type Booking, useBookings, useBudgetSummary, useExecutePlan, useInsight, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
 } from '../../api/overview';
@@ -13,6 +15,7 @@ import { MonthFlow } from '../../components/MonthFlow';
 import { useToast } from '../../components/Toast';
 import { dayShort, monthName, parseDay, pct, pctTone, tone } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
+import { dateLong, inDays, soonCancellable } from '../contracts/model';
 import {
   dayChange, largestPositions, monthFlow, planDates, portfolioTotals, recentBookings, signedAmount, token, topMovers,
 } from './model';
@@ -25,6 +28,7 @@ export function HomePage() {
   const plans = useSavingsPlans();
   const bookings = useBookings();
   const insight = useInsight();
+  const contracts = useContracts();
   const execute = useExecutePlan();
   const notify = useToast();
   const { eur, qty, text } = useMoney();
@@ -36,6 +40,7 @@ export function HomePage() {
   const dates = plans.data ? planDates(plans.data, today) : null;
   const flow = summary.data && plans.data ? monthFlow(summary.data, plans.data, today) : null;
   const movers = positions.data ? topMovers(positions.data) : [];
+  const soon = contracts.data ? soonCancellable(contracts.data.contracts) : [];
 
   const bookingAmount = (b: Booking) => eur(signedAmount(b), { sign: signedAmount(b) > 0 });
 
@@ -119,9 +124,9 @@ export function HomePage() {
             <h2 id="h-todo">Zu tun</h2>
             {dates && dates.due.length > 0 && <span className="pill pill-signal">{dates.due.length} fällig</span>}
           </div>
-          <Loaded queries={[plans]}>
-            {() => dates!.due.length + dates!.upcoming.length === 0
-              ? <p className="empty-line">Nichts zu tun. Sparpläne legst du im <Link to="/portfolio" className="link">Portfolio</Link> an.</p>
+          <Loaded queries={[plans, contracts]}>
+            {() => dates!.due.length + dates!.upcoming.length + soon.length === 0
+              ? <p className="empty-line">Nichts zu tun. Sparpläne legst du im <Link to="/portfolio" className="link">Portfolio</Link> an, Kündigungsfristen bei den <Link to="/contracts" className="link">Verträgen</Link>.</p>
               : (
                 <div className="rows">
                   {dates!.due.map(({ plan, date }) => (
@@ -135,6 +140,16 @@ export function HomePage() {
                         disabled={execute.isPending} aria-label={`Sparplan ${plan.asset_name} ausführen`}>
                         {execute.isPending && execute.variables === plan.id ? 'Läuft …' : 'Ausführen'}
                       </button>
+                    </div>
+                  ))}
+                  {soon.map((c) => (
+                    <div className="row" key={`contract-${c.id}`}>
+                      <span className="signal-dot" aria-hidden="true" />
+                      <div className="grow">
+                        <span className="trunc">{c.name} kündbar</span>
+                        <span className="sub-line">bis {dateLong(c.cancel_by!)} · {inDays(c.days_to_cancel!)}</span>
+                      </div>
+                      <Link to="/contracts" className="btn btn-sm" aria-label={`${c.name} bei den Verträgen ansehen`}>Ansehen</Link>
                     </div>
                   ))}
                   {dates!.upcoming.map(({ plan, date }) => (

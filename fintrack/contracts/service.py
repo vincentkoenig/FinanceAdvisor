@@ -4,11 +4,22 @@ Gemeinsam genutzt von der API (contracts/routes.py) und dem Chat-Tool.
 """
 
 from fintrack.contracts.terms import contract_status, term_end, today_berlin, yearly_cost
-from fintrack.models import Contract
+from fintrack.extensions import db
+from fintrack.models import Category, Contract, Transaction
 
 
 def _iso(value):
     return value.isoformat() if value else None
+
+
+def _booking(contract):
+    """Kurzinfo zur verknüpften Buchung im Haushaltsbuch, sonst None."""
+    booking = db.session.get(Transaction, contract.transaction_id) if contract.transaction_id else None
+    if not booking:
+        return None
+    category = db.session.get(Category, booking.category_id)
+    return {"id": booking.id, "amount": booking.amount, "category_name": category.name if category else None,
+            "end_date": _iso(booking.end_date.date() if booking.end_date else None)}
 
 
 def serialize_contract(contract, today):
@@ -40,6 +51,7 @@ def serialize_contract(contract, today):
         "ends_on": _iso(status['ends_on']),
         # Ende der Mindestlaufzeit: bis dahin zählt eine Frist auch bei monatlicher Verlängerung
         "min_term_end": _iso(term_end(contract.start_date, contract.min_term_months)) if contract.min_term_months else None,
+        "booking": _booking(contract),
         "yearly_cost": yearly,
         "monthly_cost": round(yearly / 12, 2),
     }
