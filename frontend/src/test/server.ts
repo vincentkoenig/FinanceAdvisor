@@ -39,6 +39,8 @@ const initialData = () => ({
     { id: 4, name: 'Kleidung', type: 'variable_expense', parent_id: 20 },
     { id: 30, name: 'Wohnen', type: 'fixed_expense', parent_id: null },
     { id: 3, name: 'Miete', type: 'fixed_expense', parent_id: 30 },
+    { id: 50, name: 'Versicherungen', type: 'fixed_expense', parent_id: null },
+    { id: 5, name: 'Sonstige Versicherungen', type: 'fixed_expense', parent_id: 50 },
   ] as { id: number; name: string; type: string; parent_id: number | null }[],
   trades: [
     { id: 21, asset_id: 1, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', type: 'buy', quantity: 100, price: 80, total: 8000, date: '2026-01-02' },
@@ -74,7 +76,8 @@ type Contract = {
   id: number; name: string; provider: string | null; category: string; contract_number: string | null;
   amount: number; interval: string; start_date: string; min_term_months: number | null; renewal_months: number | null;
   notice_value: number; notice_unit: string; notes: string | null; cancelled_at: string | null; end_date: string | null;
-  min_term_end: string | null; status: string; next_term_end: string | null; cancel_by: string | null; cancel_effective: string | null;
+  min_term_end: string | null; booking: { id: number; amount: number; category_name: string | null; end_date: string | null } | null;
+  status: string; next_term_end: string | null; cancel_by: string | null; cancel_effective: string | null;
   days_to_cancel: number | null; ends_on: string | null; yearly_cost: number; monthly_cost: number;
 };
 
@@ -84,7 +87,7 @@ function contract(fields: Partial<Contract> & Pick<Contract, 'id' | 'name' | 'ca
   return {
     provider: null, contract_number: null, min_term_months: null, renewal_months: 12, notice_value: 3, notice_unit: 'months',
     notes: null, cancelled_at: null, end_date: null, status: 'active', next_term_end: null, cancel_by: null,
-    cancel_effective: null, days_to_cancel: null, ends_on: null, min_term_end: null, yearly_cost: yearly, monthly_cost: Math.round((yearly / 12) * 100) / 100,
+    cancel_effective: null, days_to_cancel: null, ends_on: null, min_term_end: null, booking: null, yearly_cost: yearly, monthly_cost: Math.round((yearly / 12) * 100) / 100,
     ...fields,
   };
 }
@@ -110,7 +113,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -259,6 +262,25 @@ export const handlers = [
     const c = data.contracts.find((x) => x.id === Number(params.id))!;
     Object.assign(c, { status: 'active', cancelled_at: null, end_date: null, ends_on: null, cancel_by: '2026-11-30', cancel_effective: '2026-12-31', days_to_cancel: 31 });
     return HttpResponse.json({ message: 'Kündigung zurückgenommen', contract: c });
+  }),
+  http.post('/api/v1/me/contracts/:id/booking', async ({ params, request }) => {
+    const body = (await request.json()) as { category_id?: number; transaction_id?: number };
+    sent.link = { id: Number(params.id), ...body };
+    const c = data.contracts.find((x) => x.id === Number(params.id))!;
+    let t = data.transactions.find((x) => x.id === body.transaction_id);
+    if (body.category_id !== undefined) {
+      const category = data.categories.find((x) => x.id === body.category_id)!;
+      t = { id: nextId++, amount: c.monthly_cost, description: c.name, date: '2026-10-01', end_date: c.ends_on, is_recurring: true,
+        is_paused: false, paused_at: null, category_id: category.id, category_name: category.name, category_type: category.type };
+      data.transactions.push(t);
+    }
+    c.booking = { id: t!.id, amount: t!.amount, category_name: t!.category_name, end_date: t!.end_date };
+    return HttpResponse.json({ message: 'Buchung verknüpft', contract: c });
+  }),
+  http.delete('/api/v1/me/contracts/:id/booking', ({ params }) => {
+    const c = data.contracts.find((x) => x.id === Number(params.id))!;
+    c.booking = null;
+    return HttpResponse.json({ message: 'Verknüpfung gelöst', contract: c });
   }),
   http.delete('/api/v1/me/contracts/:id', ({ params }) => {
     data.contracts = data.contracts.filter((c) => c.id !== Number(params.id));

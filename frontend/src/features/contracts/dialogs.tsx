@@ -1,14 +1,17 @@
 // Dialoge der Verträge: anlegen/bearbeiten, kündigen und löschen.
 import { useState, type FormEvent } from 'react';
+import { useCategories } from '../../api/budget';
 import {
   type Contract, type ContractCategory, type ContractInput, type NoticeUnit, type PaymentInterval,
-  useAddContract, useCancelContract, useDeleteContract, useUndoCancel, useUpdateContract,
+  useAddContract, useCancelContract, useContracts, useDeleteContract, useLinkBooking, useUndoCancel, useUnlinkBooking, useUpdateContract,
 } from '../../api/contracts';
+import { useBookings } from '../../api/overview';
 import { Dialog } from '../../components/Dialog';
 import { Actions, type Errors, Field, apiErrors, describe, positive } from '../../components/form';
 import { useToast } from '../../components/Toast';
-import { isoDay } from '../../lib/format';
-import { CATEGORIES, INTERVALS, NOTICE_UNITS, RENEWALS, TYPICAL_TERMS, dateLong, deadlineText } from './model';
+import { isoDay, parseAmount } from '../../lib/format';
+import { useMoney } from '../../lib/privacy';
+import { CATEGORIES, INTERVALS, NOTICE_UNITS, RENEWALS, TYPICAL_TERMS, bookingChoices, dateLong, deadlineText, monthlyShare, suggestCategory } from './model';
 
 const FIELDS: Record<string, string> = {
   name: 'name', provider: 'provider', contract_number: 'number', amount: 'amount', start_date: 'start',
@@ -37,7 +40,16 @@ export function ContractDialog({ contract, onClose, onCancelContract, onDelete }
   const add = useAddContract();
   const update = useUpdateContract();
   const undo = useUndoCancel();
+  const link = useLinkBooking();
+  const unlink = useUnlinkBooking();
   const notify = useToast();
+  const { eur } = useMoney();
+  const categories = useCategories();
+  const bookings = useBookings();
+  const contracts = useContracts();
+  // Neuester Stand des Vertrags, damit z. B. das Lösen der Verknüpfung sofort sichtbar ist
+  const live = contracts.data?.contracts.find((c) => c.id === contract?.id) ?? contract;
+  const choices = bookingChoices(categories.data ?? [], bookings.data ?? [], contracts.data?.contracts ?? []);
   const start = contract ?? { category: 'insurance' as ContractCategory, ...TYPICAL_TERMS.insurance };
   const [name, setName] = useState(contract?.name ?? '');
   const [category, setCategory] = useState<ContractCategory>(start.category);
@@ -53,8 +65,17 @@ export function ContractDialog({ contract, onClose, onCancelContract, onDelete }
   const [notes, setNotes] = useState(contract?.notes ?? '');
   // Solange die Bedingungen nicht von Hand geändert wurden, folgen sie der gewählten Art
   const [termsTouched, setTermsTouched] = useState(Boolean(contract));
+  // Haushaltsbuch: 'none', 'c<Kategorie-ID>' für eine neue Buchung oder 't<Buchungs-ID>' für eine vorhandene.
+  // Ohne eigene Wahl schlägt ein neuer Vertrag eine neue Buchung in der passendsten Fixkosten-Kategorie vor.
+  const [linkChoice, setLinkChoice] = useState<string | null>(contract ? 'none' : null);
+  const suggested = suggestCategory(choices.categories, name, category);
+  const chosenLink = linkChoice ?? (suggested ? `c${suggested.id}` : 'none');
   const [errors, setErrors] = useState<Errors>({});
-  const busy = add.isPending || update.isPending || undo.isPending;
+  const busy = add.isPending || update.isPending || undo.isPending || link.isPending || unlink.isPending;
+  const share = monthlyShare(parseAmount(amount), payInterval);
+  const bookingHint = chosenLink.startsWith('c') && share
+    ? `Als Fixkosten mit ${eur(share)} pro Monat, ab diesem Monat`
+    : choices.categories.length === 0 ? 'Für eine neue Buchung fehlt im Haushaltsbuch eine Fixkosten-Kategorie' : undefined;
 
   const chooseCategory = (next: ContractCategory) => {
     setCategory(next);
@@ -85,16 +106,32 @@ export function ContractDialog({ contract, onClose, onCancelContract, onDelete }
       amount: value, interval: payInterval, start_date: startDate, min_term_months: minTermValue, renewal_months: renewal,
       notice_value: noticeValue, notice_unit: unit, notes: notes.trim() || null,
     };
+    let saved: Contract;
     try {
-      const saved = contract
-        ? await update.mutateAsync({ id: contract.id, body })
-        : await add.mutateAsync(body);
-      notify(`${body.name} gespeichert: ${deadlineText((saved as { contract: Contract }).contract)}`);
-      onClose();
+      saved = (contract ? await update.mutateAsync({ id: contract.id, body }) : await add.mutateAsync(body)).contract;
     } catch (error) {
       setErrors(apiErrors(error, FIELDS));
+      return;
     }
+    if (!saved.booking && chosenLink !== 'none') {
+      const target = Number(chosenLink.slice(1));
+      try {
+        await link.mutateAsync(chosenLink.startsWith('c') ? { id: saved.id, category_id: target } : { id: saved.id, transaction_id: target });
+        notify(`${body.name} gespeichert und im Haushaltsbuch eingetragen: ${deadlineText(saved)}`);
+      } catch (error) {
+        // Der Vertrag ist gespeichert, nur die Buchung fehlt: nicht noch einmal anlegen lassen
+        notify(`${body.name} gespeichert, aber nicht im Haushaltsbuch eingetragen: ${(error as Error).message}`, { error: true });
+      }
+    } else {
+      notify(`${body.name} gespeichert: ${deadlineText(saved)}`);
+    }
+    onClose();
   };
+
+  const unlinkBooking = () => unlink.mutate(contract!.id, {
+    onSuccess: () => notify(`Verknüpfung gelöst, die Buchung bleibt im Haushaltsbuch`),
+    onError: (error) => setErrors({ form: error.message }),
+  });
 
   const undoCancel = () => undo.mutate(contract!.id, {
     onSuccess: () => { notify(`Kündigung von ${contract!.name} zurückgenommen`); onClose(); },
@@ -161,9 +198,37 @@ export function ContractDialog({ contract, onClose, onCancelContract, onDelete }
             </Field>
           </div>
         </div>
+        {live?.booking
+          ? (
+            <div className="switch-row">
+              <div className="text">
+                <span className="strong">Im Haushaltsbuch</span>
+                <p className="hint">{[live.booking.category_name, `${eur(live.booking.amount)} pro Monat`].filter(Boolean).join(' · ')}</p>
+              </div>
+              <button type="button" className="btn btn-sm" onClick={unlinkBooking} disabled={busy}>Verknüpfung lösen</button>
+            </div>
+          )
+          : (
+            <Field id="contract-booking" label="Im Haushaltsbuch" hint={bookingHint}>
+              <select className="select" id="contract-booking" value={chosenLink} onChange={(e) => setLinkChoice(e.target.value)}
+                {...describe('contract-booking', undefined, Boolean(bookingHint))}>
+                <option value="none">Nicht eintragen</option>
+                {choices.categories.length > 0 && (
+                  <optgroup label="Neue Buchung in">
+                    {choices.categories.map((c) => <option key={c.id} value={`c${c.id}`}>{c.label}</option>)}
+                  </optgroup>
+                )}
+                {choices.bookings.length > 0 && (
+                  <optgroup label="Vorhandene Buchung">
+                    {choices.bookings.map((b) => <option key={b.id} value={`t${b.id}`}>{b.label} · {eur(b.amount)}</option>)}
+                  </optgroup>
+                )}
+              </select>
+            </Field>
+          )}
         {contract && (
           <div className="dialog-extra">
-            {contract.end_date
+            {live!.end_date
               ? <button type="button" className="btn btn-sm" onClick={undoCancel} disabled={busy}>Kündigung zurücknehmen</button>
               : <button type="button" className="btn btn-sm" onClick={() => onCancelContract?.(contract)} disabled={busy}>Als gekündigt markieren</button>}
             <button type="button" className="btn btn-sm btn-danger" onClick={() => onDelete?.(contract)} disabled={busy}>Löschen</button>

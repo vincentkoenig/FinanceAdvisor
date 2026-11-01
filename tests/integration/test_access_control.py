@@ -154,6 +154,7 @@ class TestForeignUserData:
         ('DELETE', '/api/v1/me/contracts/{contract}'),
         ('POST', '/api/v1/me/contracts/{contract}/cancel'),
         ('DELETE', '/api/v1/me/contracts/{contract}/cancel'),
+        ('DELETE', '/api/v1/me/contracts/{contract}/booking'),
     ])
     def test_foreign_objects_cannot_be_changed(self, two_users, method, url_template):
         """Objekte von B lassen sich über ihre ID weder ändern noch löschen"""
@@ -193,6 +194,21 @@ class TestForeignUserData:
             'category_id': b_data.category.id, 'amount': 10, 'date': '2026-10-01'})
 
         assert response.status_code == 404
+        assert Transaction.query.filter_by(user_id=user_a.id).count() == 0
+
+    @pytest.mark.parametrize('target', ['category', 'transaction'])
+    def test_contract_cannot_use_foreign_booking_or_category(self, two_users, target):
+        """Ein Vertrag von A lässt sich weder mit einer Buchung noch einer Kategorie von B verknüpfen"""
+        client, user_a, _, b_data = two_users
+        own = client.post('/api/v1/me/contracts', json={
+            'name': 'von A', 'category': 'other', 'amount': 1, 'interval': 'monthly', 'start_date': '2026-01-01'})
+        contract_id = own.get_json()['contract']['id']
+        body = {'category_id': b_data.category.id} if target == 'category' else {'transaction_id': b_data.transaction.id}
+
+        response = client.post(f'/api/v1/me/contracts/{contract_id}/booking', json=body)
+
+        assert response.status_code == 404
+        assert db.session.get(Contract, contract_id).transaction_id is None
         assert Transaction.query.filter_by(user_id=user_a.id).count() == 0
 
     def test_cannot_create_subcategory_under_foreign_category(self, two_users):

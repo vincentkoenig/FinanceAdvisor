@@ -6,7 +6,7 @@ die Übersicht mit Summen.
 
 import sys
 import os
-from datetime import date
+from datetime import date, datetime
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
@@ -208,3 +208,127 @@ class TestChatTool:
         tool_answer = fake_client.chat.completions.create.call_args_list[1].kwargs['messages'][-1]
         assert tool_answer['role'] == 'tool'
         assert 'Haftpflicht' in tool_answer['content'] and '2026-09-30' in tool_answer['content']
+
+
+class TestBooking:
+    """Verknüpfung mit dem Haushaltsbuch"""
+
+    @pytest.fixture
+    def categories(self, client):
+        from fintrack.models import Category, User
+        user = User.query.filter_by(email='a@test.com').one()
+        fixed = Category(user_id=user.id, name='Versicherungen', type='fixed_expense')
+        variable = Category(user_id=user.id, name='Freizeit', type='variable_expense')
+        db.session.add_all([fixed, variable])
+        db.session.commit()
+        return fixed, variable
+
+    def booking_of(self, contract):
+        from fintrack.models import Transaction
+        return db.session.get(Transaction, db.session.get(Contract, contract['id']).transaction_id)
+
+    def test_new_booking_is_monthly_share_from_this_month(self, client, categories):
+        """Jährlich 60 € werden als 5 € pro Monat gebucht, ab dem laufenden Monat statt rückwirkend ab 2024"""
+        contract = create(client)
+
+        response = client.post(f"/api/v1/me/contracts/{contract['id']}/booking", json={'category_id': categories[0].id})
+
+        assert response.status_code == 200
+        assert response.get_json()['contract']['booking'] == {
+            'id': self.booking_of(contract).id, 'amount': 5.0, 'category_name': 'Versicherungen', 'end_date': None}
+        booking = self.booking_of(contract)
+        assert booking.is_recurring and booking.description == 'Haftpflicht'
+        assert booking.date.date() == date(2026, 8, 1)
+
+    def test_fixed_term_booking_ends_with_contract(self, client, categories):
+        loan = create(client, name='Kredit', category='loan', amount=100, interval='monthly',
+                      start_date='2026-09-15', min_term_months=12, renewal_months=None)
+
+        client.post(f"/api/v1/me/contracts/{loan['id']}/booking", json={'category_id': categories[0].id})
+
+        booking = self.booking_of(loan)
+        assert booking.date.date() == date(2026, 9, 15)
+        assert booking.end_date.date() == date(2027, 9, 14)
+
+    def test_cancel_and_undo_move_the_booking_end(self, client, categories):
+        contract = create(client)
+        client.post(f"/api/v1/me/contracts/{contract['id']}/booking", json={'category_id': categories[0].id})
+
+        client.post(f"/api/v1/me/contracts/{contract['id']}/cancel", json={})
+        assert self.booking_of(contract).end_date.date() == date(2026, 12, 31)
+
+        client.delete(f"/api/v1/me/contracts/{contract['id']}/cancel")
+        assert self.booking_of(contract).end_date is None
+
+    def test_link_existing_recurring_booking(self, client, categories):
+        from fintrack.models import Transaction, User
+        user = User.query.filter_by(email='a@test.com').one()
+        existing = Transaction(user_id=user.id, category_id=categories[0].id, amount=5, description='Haftpflicht',
+                               date=datetime(2025, 1, 1), is_recurring=True)
+        db.session.add(existing)
+        db.session.commit()
+        contract = create(client)
+        client.post(f"/api/v1/me/contracts/{contract['id']}/cancel", json={})
+
+        response = client.post(f"/api/v1/me/contracts/{contract['id']}/booking", json={'transaction_id': existing.id})
+
+        assert response.status_code == 200
+        db.session.expire_all()
+        linked = db.session.get(Transaction, existing.id)
+        # Übernommen samt Vertragsende, Startdatum und Betrag bleiben
+        assert linked.end_date.date() == date(2026, 12, 31)
+        assert linked.date == datetime(2025, 1, 1) and linked.amount == 5
+
+    @pytest.mark.parametrize('kind,status,message', [
+        ('variable', 400, 'Fixkosten-Kategorie'),
+        ('one_time', 400, 'Nur wiederkehrende'),
+        ('both', 400, 'Entweder'),
+    ])
+    def test_rejects_wrong_targets(self, client, categories, kind, status, message):
+        from fintrack.models import Transaction, User
+        user = User.query.filter_by(email='a@test.com').one()
+        one_time = Transaction(user_id=user.id, category_id=categories[0].id, amount=5, date=datetime(2026, 1, 1))
+        db.session.add(one_time)
+        db.session.commit()
+        body = {'variable': {'category_id': categories[1].id}, 'one_time': {'transaction_id': one_time.id},
+                'both': {'category_id': categories[0].id, 'transaction_id': one_time.id}}[kind]
+        contract = create(client)
+
+        response = client.post(f"/api/v1/me/contracts/{contract['id']}/booking", json=body)
+
+        assert response.status_code == status
+        assert message in response.get_json()['error']
+        assert db.session.get(Contract, contract['id']).transaction_id is None
+
+    def test_one_booking_per_contract(self, client, categories):
+        first = create(client)
+        second = create(client, name='Hausrat')
+        client.post(f"/api/v1/me/contracts/{first['id']}/booking", json={'category_id': categories[0].id})
+        booking_id = self.booking_of(first).id
+
+        assert client.post(f"/api/v1/me/contracts/{first['id']}/booking",
+                           json={'category_id': categories[0].id}).status_code == 409
+        assert client.post(f"/api/v1/me/contracts/{second['id']}/booking",
+                           json={'transaction_id': booking_id}).status_code == 409
+
+    def test_unlink_keeps_booking(self, client, categories):
+        from fintrack.models import Transaction
+        contract = create(client)
+        client.post(f"/api/v1/me/contracts/{contract['id']}/booking", json={'category_id': categories[0].id})
+        booking_id = self.booking_of(contract).id
+
+        response = client.delete(f"/api/v1/me/contracts/{contract['id']}/booking")
+
+        assert response.get_json()['contract']['booking'] is None
+        assert db.session.get(Transaction, booking_id) is not None
+
+    def test_deleting_the_booking_keeps_the_contract(self, client, categories):
+        contract = create(client)
+        client.post(f"/api/v1/me/contracts/{contract['id']}/booking", json={'category_id': categories[0].id})
+        booking_id = self.booking_of(contract).id
+
+        assert client.delete(f'/api/v1/me/transactions/{booking_id}').status_code == 200
+
+        db.session.expire_all()
+        assert db.session.get(Contract, contract['id']).transaction_id is None
+        assert client.get('/api/v1/me/contracts').get_json()['contracts'][0]['booking'] is None

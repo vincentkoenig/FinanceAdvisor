@@ -1,5 +1,7 @@
 // Texte und Gruppierung der Verträge-Seite. Die Fristen selbst kommen fertig vom Server.
+import type { Category } from '../../api/budget';
 import type { Contract, ContractCategory, ContractInput, NoticeUnit, PaymentInterval } from '../../api/contracts';
+import type { Booking } from '../../api/overview';
 import { parseDay } from '../../lib/format';
 
 export const CATEGORIES: { value: ContractCategory; label: string }[] = [
@@ -12,11 +14,11 @@ export const CATEGORIES: { value: ContractCategory; label: string }[] = [
   { value: 'other', label: 'Sonstiges' },
 ];
 
-export const INTERVALS: { value: PaymentInterval; label: string; per: string }[] = [
-  { value: 'monthly', label: 'monatlich', per: 'Monat' },
-  { value: 'quarterly', label: 'vierteljährlich', per: 'Quartal' },
-  { value: 'half_yearly', label: 'halbjährlich', per: 'Halbjahr' },
-  { value: 'yearly', label: 'jährlich', per: 'Jahr' },
+export const INTERVALS: { value: PaymentInterval; label: string; perYear: number }[] = [
+  { value: 'monthly', label: 'monatlich', perYear: 12 },
+  { value: 'quarterly', label: 'vierteljährlich', perYear: 4 },
+  { value: 'half_yearly', label: 'halbjährlich', perYear: 2 },
+  { value: 'yearly', label: 'jährlich', perYear: 1 },
 ];
 
 export const NOTICE_UNITS: { value: NoticeUnit; label: string }[] = [
@@ -104,3 +106,55 @@ export const STATUS_PILL: Partial<Record<Contract['status'], string>> = {
   ending: 'läuft aus',
   ended: 'beendet',
 };
+
+/** Beitrag anteilig pro Monat, wie er im Haushaltsbuch landet (null bei ungültigem Betrag) */
+export function monthlyShare(amount: number | null, interval: PaymentInterval) {
+  if (amount === null || Number.isNaN(amount) || amount <= 0) return null;
+  const perYear = INTERVALS.find((i) => i.value === interval)!.perYear;
+  return Math.round(((amount * perYear) / 12) * 100) / 100;
+}
+
+/**
+ * Wohin ein Vertrag im Haushaltsbuch kann: Fixkosten-Kategorien für eine neue Buchung (Unterkategorien,
+ * eine Hauptkategorie ohne Unterkategorien selbst) und wiederkehrende Fixkosten-Buchungen, die noch
+ * zu keinem Vertrag gehören.
+ */
+export function bookingChoices(categories: Category[], bookings: Booking[], contracts: Contract[]) {
+  const fixed = categories.filter((c) => c.type === 'fixed_expense');
+  const mains = fixed.filter((c) => c.parent_id === null);
+  const leaves = mains.flatMap((main) => {
+    const subs = fixed.filter((c) => c.parent_id === main.id);
+    return subs.length
+      ? subs.map((sub) => ({ id: sub.id, name: sub.name, label: `${main.name} · ${sub.name}` }))
+      : [{ id: main.id, name: main.name, label: main.name }];
+  });
+  const linked = new Set(contracts.map((c) => c.booking?.id).filter(Boolean));
+  const free = bookings
+    .filter((b) => b.is_recurring && b.category_type === 'fixed_expense' && !linked.has(b.id))
+    .map((b) => ({ id: b.id, label: b.description || b.category_name || 'Buchung', amount: b.amount }));
+  return { categories: leaves, bookings: free };
+}
+
+// Wörter, an denen eine passende Fixkosten-Kategorie je Art zu erkennen ist (wie die Standardkategorien)
+const KIND_WORDS: Record<ContractCategory, string[]> = {
+  insurance: ['versicherung'],
+  energy: ['strom', 'gas', 'nebenkosten'],
+  telecom: ['handy', 'internet', 'telefon'],
+  subscription: ['streaming', 'abo'],
+  fitness: ['fitness', 'sport'],
+  loan: ['kredit', 'leasing', 'darlehen'],
+  other: ['verträge'],
+};
+
+/**
+ * Vorschlag für die Kategorie einer neuen Buchung: zuerst eine, deren Name im Vertragsnamen steckt
+ * ("KFZ" in "Kfz-Versicherung"), dann eine, die zur Art passt, dann eine unter "… Verträge", sonst die erste.
+ */
+export function suggestCategory(leaves: { id: number; name: string; label: string }[], contractName: string, kind: ContractCategory) {
+  const name = contractName.toLowerCase();
+  const label = (leaf: { label: string }) => leaf.label.toLowerCase();
+  return leaves.find((leaf) => leaf.name.length >= 3 && name.includes(leaf.name.toLowerCase()))
+    ?? leaves.find((leaf) => KIND_WORDS[kind].some((word) => label(leaf).includes(word)))
+    ?? leaves.find((leaf) => label(leaf).includes('verträge'))
+    ?? leaves[0];
+}

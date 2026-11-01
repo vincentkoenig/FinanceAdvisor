@@ -72,9 +72,11 @@ describe('Verträge', () => {
     await user.type(within(box).getByLabelText('Beitrag'), '39,99');
     await user.clear(within(box).getByLabelText('Beginn'));
     await user.type(within(box).getByLabelText('Beginn'), '2026-01-01');
+    await user.selectOptions(within(box).getByLabelText('Im Haushaltsbuch'), 'none');
     await user.click(within(box).getByRole('button', { name: 'Speichern' }));
 
     expect(await screen.findByText('Internet gespeichert: kündbar bis 30.09.2027 zum 31.12.2027')).toBeInTheDocument();
+    expect(sent.link).toBeUndefined();
     expect(sent.contract).toEqual({
       name: 'Internet', provider: 'Beispiel Telekom', category: 'telecom', contract_number: null, amount: 39.99,
       interval: 'monthly', start_date: '2026-01-01', min_term_months: 24, renewal_months: 1, notice_value: 1,
@@ -146,6 +148,66 @@ describe('Verträge', () => {
     await user.click(within(box).getByRole('button', { name: 'Löschen' }));
     expect(await screen.findByText('Handy gelöscht')).toBeInTheDocument();
     await waitFor(() => expect(within(all).getAllByRole('button')).toHaveLength(3));
+  });
+
+  it('trägt einen neuen Vertrag anteilig als Fixkosten ins Haushaltsbuch ein', async () => {
+    renderApp('/contracts');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Vertrag' }));
+    const box = await screen.findByRole('dialog');
+    await user.type(within(box).getByLabelText('Name'), 'Hausrat');
+    await user.type(within(box).getByLabelText('Beitrag'), '60');
+    // Zur Art "Versicherungen" passt die Fixkosten-Kategorie unter "Versicherungen"
+    await waitFor(() => expect(within(box).getByLabelText('Im Haushaltsbuch')).toHaveDisplayValue('Versicherungen · Sonstige Versicherungen'));
+    expect(box).toHaveTextContent('Als Fixkosten mit 5,00 € pro Monat, ab diesem Monat');
+    await user.click(within(box).getByRole('button', { name: 'Speichern' }));
+
+    expect(await screen.findByText('Hausrat gespeichert und im Haushaltsbuch eingetragen: kündbar bis 30.09.2027 zum 31.12.2027')).toBeInTheDocument();
+    expect(sent.link).toEqual({ id: expect.any(Number), category_id: 5 });
+    expect(data.transactions.at(-1)).toMatchObject({ description: 'Hausrat', amount: 5, is_recurring: true });
+  });
+
+  it('schlägt eine Kategorie vor, deren Name im Vertragsnamen steckt', async () => {
+    data.categories.push({ id: 6, name: 'Haftpflicht', type: 'fixed_expense', parent_id: 50 });
+    renderApp('/contracts');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Vertrag' }));
+    const box = await screen.findByRole('dialog');
+    await user.type(within(box).getByLabelText('Name'), 'Private Haftpflicht');
+    await waitFor(() => expect(within(box).getByLabelText('Im Haushaltsbuch')).toHaveDisplayValue('Versicherungen · Haftpflicht'));
+  });
+
+  it('übernimmt eine vorhandene wiederkehrende Buchung', async () => {
+    data.transactions.push({
+      id: 200, amount: 19.99, description: 'Handyvertrag', date: '2026-01-01', end_date: null, is_recurring: true, is_paused: false,
+      paused_at: null, category_id: 3, category_name: 'Miete', category_type: 'fixed_expense',
+    });
+    renderApp('/contracts');
+    const user = userEvent.setup();
+    await user.click(await within(await region('Alle Verträge')).findByRole('button', { name: /^Handy/ }));
+    const box = await screen.findByRole('dialog', { name: 'Handy' });
+    await waitFor(() => expect(within(box).getByRole('option', { name: 'Handyvertrag · 19,99 €' })).toBeInTheDocument());
+    // Beim Bearbeiten wird nichts ungefragt eingetragen
+    expect(within(box).getByLabelText('Im Haushaltsbuch')).toHaveDisplayValue('Nicht eintragen');
+    await user.selectOptions(within(box).getByLabelText('Im Haushaltsbuch'), 't200');
+    await user.click(within(box).getByRole('button', { name: 'Speichern' }));
+
+    expect(await screen.findByText(/^Handy gespeichert und im Haushaltsbuch eingetragen/)).toBeInTheDocument();
+    expect(sent.link).toEqual({ id: 52, transaction_id: 200 });
+  });
+
+  it('zeigt die verknüpfte Buchung und löst die Verknüpfung', async () => {
+    data.contracts[0].booking = { id: 300, amount: 5, category_name: 'Sonstige Versicherungen', end_date: null };
+    renderApp('/contracts');
+    const user = userEvent.setup();
+    await user.click(await within(await region('Alle Verträge')).findByRole('button', { name: /^Haftpflicht/ }));
+    const box = await screen.findByRole('dialog', { name: 'Haftpflicht' });
+    expect(box).toHaveTextContent('Im HaushaltsbuchSonstige Versicherungen · 5,00 € pro Monat');
+    expect(within(box).queryByLabelText('Im Haushaltsbuch')).not.toBeInTheDocument();
+    await user.click(within(box).getByRole('button', { name: 'Verknüpfung lösen' }));
+
+    expect(await screen.findByText('Verknüpfung gelöst, die Buchung bleibt im Haushaltsbuch')).toBeInTheDocument();
+    await waitFor(() => expect(within(box).getByLabelText('Im Haushaltsbuch')).toBeInTheDocument());
   });
 
   it('erklärt die leere Seite', async () => {

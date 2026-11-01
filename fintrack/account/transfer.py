@@ -144,7 +144,8 @@ def export_user_data(user):
              "start_date": _iso(c.start_date), "min_term_months": c.min_term_months,
              "renewal_months": c.renewal_months, "notice_value": c.notice_value,
              "notice_unit": c.notice_unit, "cancelled_at": _iso(c.cancelled_at),
-             "end_date": _iso(c.end_date), "notes": c.notes, "created_at": _iso(c.created_at)}
+             "end_date": _iso(c.end_date), "notes": c.notes,
+             "transaction_ref": transaction_ref.get(c.transaction_id), "created_at": _iso(c.created_at)}
             for c in _by_id(Contract, user_id)
         ],
     }
@@ -246,7 +247,8 @@ def import_user_data(user, data):
     for entry in data.insights:
         _create(DailyInsight, user_id=user_id, content=entry.content, created_at=entry.created_at)
     for entry in data.contracts:
-        _create(Contract, user_id=user_id, **entry.model_dump())
+        _create(Contract, user_id=user_id, transaction_id=transaction_ids.get(entry.transaction_ref),
+                **entry.model_dump(exclude={'transaction_ref'}))
 
     db.session.commit()
 

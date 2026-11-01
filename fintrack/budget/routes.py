@@ -17,7 +17,7 @@ from fintrack.auth.session import get_own, protect_blueprint
 from fintrack.budget.schemas import CategoryCreate, MonthQuery, TransactionCreate
 from fintrack.budget.service import calculate_budget_summary, create_default_categories
 from fintrack.extensions import db
-from fintrack.models import Category, Transaction
+from fintrack.models import Category, Contract, Transaction
 
 bp = Blueprint('budget', __name__)
 # Nur mit Anmeldung
@@ -202,6 +202,8 @@ def delete_transaction(transaction_id):
     if not transaction:
         raise ApiError(404, 'Buchung nicht gefunden')
 
+    # Ein Vertrag dazu bleibt bestehen und verliert nur die Verknüpfung
+    Contract.query.filter_by(transaction_id=transaction.id).update({Contract.transaction_id: None})
     db.session.delete(transaction)
     db.session.commit()
 
