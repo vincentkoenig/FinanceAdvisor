@@ -30,7 +30,12 @@ export type ImportPreview = {
   rows: ImportRow[];
   skipped: { line: number; reason: string }[];
   counts: Record<ImportStatus, number>;
+  /** Nur bei PDF-Kontoauszügen: Hinweis der Auswertung und der Text, der an die KI ging */
+  note?: string | null;
+  sent_text?: string;
 };
+
+export const isPdf = (file: File) => /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
 
 /** Die Spalten wurden nicht erkannt: columns nennt sie, damit man sie zuordnen kann */
 export class UnknownColumnsError extends ApiError {
@@ -44,12 +49,14 @@ export class UnknownColumnsError extends ApiError {
 
 export async function previewBankImport(file: File, mapping?: ColumnMapping): Promise<ImportPreview> {
   // Die Datei geht unverändert als Inhalt der Anfrage (Bytes, damit Windows-1252 erhalten bleibt),
-  // die Spaltenzuordnung als URL-Parameter - sie enthält nur Spaltennummern
+  // die Spaltenzuordnung als URL-Parameter - sie enthält nur Spaltennummern.
+  // PDF-Kontoauszüge wertet der Server mit der KI aus (nach dem Entfernen persönlicher Angaben).
+  const pdf = isPdf(file);
   const query = mapping ? `?mapping=${encodeURIComponent(JSON.stringify({ columns: mapping }))}` : '';
   let response: Response;
   try {
-    response = await fetch(`${API_PREFIX}/me/import/bank/preview${query}`, {
-      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'text/csv' }, body: await file.arrayBuffer(),
+    response = await fetch(`${API_PREFIX}/me/import/bank/${pdf ? 'pdf/preview' : `preview${query}`}`, {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': pdf ? 'application/pdf' : 'text/csv' }, body: await file.arrayBuffer(),
     });
   } catch {
     throw new ApiError(0, 'Keine Verbindung zum Server. Bitte prüfe deine Internetverbindung.');

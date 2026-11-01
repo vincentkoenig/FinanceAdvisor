@@ -179,6 +179,7 @@ Alle Routen liegen unter `/api/v1` und antworten mit JSON. Persönliche Daten li
 | `DELETE` · `POST` | `/me/transactions/<id>` · `/toggle-pause` | Buchung löschen · wiederkehrende Buchung pausieren/fortsetzen |
 | `GET` | `/me/budget/summary` | Cash-Bestand und aktueller Monat |
 | `POST` | `/me/import/bank/preview` | CSV-Export der Bank lesen (Feld `file`, optional `mapping`): Umsätze mit Status `new` / `covered` (deckt eine wiederkehrende Buchung ab) / `duplicate` und Kategorievorschlag, speichert nichts |
+| `POST` | `/me/import/bank/pdf/preview` | Kontoauszug als PDF: persönliche Angaben entfernen, Umsätze per OpenAI auslesen, dann dieselbe Vorschau wie beim CSV-Import (mit `sent_text`) |
 | `POST` | `/me/import/bank/commit` | Bestätigte Umsätze als Buchungen übernehmen (alles oder nichts, schon importierte werden übersprungen) |
 | `POST` | `/me/import/depot/preview` | PDF-Abrechnung lesen: persönliche Angaben werden entfernt, der Rest per OpenAI (Structured Output) ausgelesen; Käufe/Verkäufe mit ISIN-Suche, Kurs inkl. Gebühren, Status `new` / `duplicate` / `unknown` / `insufficient` und dem gesendeten Text, speichert nichts |
 | `POST` | `/me/import/crypto/preview` | CSV-Export einer Krypto-App (z. B. Bison) ohne KI lesen: nur Käufe/Verkäufe, Kryptowährung als Euro-Paar (`BTC` → `BTC-EUR`), gleiche Vorschau wie bei Abrechnungen; bei unbekannten Spalten `columns`, dann `?mapping=` |
