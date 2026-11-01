@@ -210,6 +210,35 @@ describe('Verträge', () => {
     await waitFor(() => expect(within(box).getByLabelText('Im Haushaltsbuch')).toBeInTheDocument());
   });
 
+  it('schlägt regelmäßige Abbuchungen als Vertrag vor und blendet sie aus', async () => {
+    data.contractSuggestions = [
+      { key: 'beispiel ag', name: 'Beispiel AG', amount: 34.38, interval: 'monthly', first_date: '2026-07-01', last_date: '2026-10-01', count: 4, category_id: 5, category_name: 'Sonstige Versicherungen', kind: 'insurance' },
+      { key: 'gym', name: 'Gym', amount: 29, interval: 'monthly', first_date: '2026-08-01', last_date: '2026-10-01', count: 3, category_id: 4, category_name: 'Kleidung', kind: 'fitness' },
+    ];
+    renderApp('/contracts');
+    const user = userEvent.setup();
+    const panel = await region('Erkannt in deinen Umsätzen');
+    expect(panel).toHaveTextContent('Beispiel AG34,38 € monatlich · 4× seit 1. Juli · Sonstige Versicherungen');
+
+    await user.click(within(panel).getByRole('button', { name: 'Gym ausblenden' }));
+    await waitFor(() => expect(panel).not.toHaveTextContent('Gym'));
+    expect(localStorage.getItem('fintrack.contracts.dismissed')).toBe('["gym"]');
+
+    await user.click(within(panel).getByRole('button', { name: 'Beispiel AG als Vertrag anlegen' }));
+    const box = await screen.findByRole('dialog', { name: 'Vertrag hinzufügen' });
+    expect(within(box).getByLabelText('Name')).toHaveValue('Beispiel AG');
+    expect(within(box).getByLabelText('Beitrag')).toHaveValue('34,38');
+    expect(within(box).getByLabelText('Zahlweise')).toHaveDisplayValue('monatlich');
+    expect(within(box).getByLabelText('Beginn')).toHaveValue('2026-07-01');
+    // Steht schon im Haushaltsbuch: nicht noch einmal als Fixkosten eintragen
+    expect(within(box).getByLabelText('Im Haushaltsbuch')).toHaveDisplayValue('Nicht eintragen');
+    await user.click(within(box).getByRole('button', { name: 'Speichern' }));
+    expect(await screen.findByText(/^Beispiel AG gespeichert/)).toBeInTheDocument();
+    expect(sent.contract).toMatchObject({ name: 'Beispiel AG', category: 'insurance', amount: 34.38, interval: 'monthly', renewal_months: 12 });
+    expect(sent.link).toBeUndefined();
+    localStorage.clear();
+  });
+
   it('erklärt die leere Seite', async () => {
     data.contracts = [];
     renderApp('/contracts');

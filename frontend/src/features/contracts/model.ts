@@ -158,3 +158,24 @@ export function suggestCategory(leaves: { id: number; name: string; label: strin
     ?? leaves.find((leaf) => label(leaf).includes('verträge'))
     ?? leaves[0];
 }
+
+// Ausgeblendete Vorschläge (Schlüssel der Abbuchung). Nur eine Bequemlichkeit dieses Browsers:
+// ohne Speicher (privates Fenster) erscheinen sie eben wieder.
+const DISMISSED_KEY = 'fintrack.contracts.dismissed';
+
+export function readDismissed(): string[] {
+  try {
+    const value = JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? '[]');
+    return Array.isArray(value) ? value.filter((v) => typeof v === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveDismissed(keys: string[]) {
+  try {
+    localStorage.setItem(DISMISSED_KEY, JSON.stringify(keys));
+  } catch {
+    // Speicher nicht verfügbar: dann nur bis zum Neuladen ausgeblendet
+  }
+}

@@ -85,21 +85,35 @@ def _covering_booking(row, recurring, used):
 
 
 def _suggestions(user_id, categories):
-    """Kategorie je Wort aus früheren Buchungen, die neueste gewinnt (z.B. 'rewe' -> Lebensmittel)."""
-    by_word = {}
-    bookings = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.asc()).all()
+    """
+    Was FinTrack aus früheren Buchungen gelernt hat, getrennt nach Richtung (Einnahme/Ausgabe):
+    ganzer Text -> Kategorie (z.B. 'rewe markt' -> Lebensmittel) und einzelnes Wort -> Kategorie.
+    Die neueste Buchung gewinnt - ordnet man einen Empfänger um, gilt beim nächsten Import das Neue.
+    """
+    by_text, by_word = {}, {}
+    bookings = Transaction.query.filter_by(user_id=user_id).order_by(Transaction.date.asc(), Transaction.id.asc()).all()
     for booking in bookings:
-        if booking.category_id in categories:
-            for word in words(booking.description):
-                by_word[word] = booking.category_id
-    return by_word
+        kind = categories.get(booking.category_id)
+        if kind is None:
+            continue
+        income = kind == 'income'
+        by_text[(income, _norm(booking.description))] = booking.category_id
+        for word in words(booking.description):
+            by_word[(income, word)] = booking.category_id
+    return by_text, by_word
 
 
-def _suggest(row, by_word, categories):
-    for word in words(row.counterparty) | words(row.purpose):
-        category_id = by_word.get(word)
-        if category_id and (categories[category_id] == 'income') == (row.amount > 0):
-            return category_id
+def _suggest(row, learned):
+    """Erst derselbe Empfänger, dann ein gemeinsames Wort (Empfänger vor Verwendungszweck)."""
+    by_text, by_word = learned
+    income = row.amount > 0
+    exact = by_text.get((income, _norm(description_for(row.counterparty, row.purpose))))
+    if exact:
+        return exact
+    for text in (row.counterparty, row.purpose):
+        for word in sorted(words(text)):
+            if (income, word) in by_word:
+                return by_word[(income, word)]
     return None
 
 
@@ -111,7 +125,7 @@ def build_preview(user_id, rows):
     categories = {c.id: c.type for c in Category.query.filter_by(user_id=user_id).all()}
     recurring = [(t, categories.get(t.category_id)) for t in
                  Transaction.query.filter_by(user_id=user_id, is_recurring=True).order_by(Transaction.id).all()]
-    by_word = _suggestions(user_id, categories)
+    learned = _suggestions(user_id, categories)
     used = set()
 
     result = []
@@ -130,7 +144,7 @@ def build_preview(user_id, rows):
                 entry["status"] = 'covered'
                 entry["covered_by"] = {"id": booking.id, "description": booking.description, "amount": booking.amount}
             else:
-                entry["category_id"] = _suggest(row, by_word, categories)
+                entry["category_id"] = _suggest(row, learned)
         result.append(entry)
     return result
 
