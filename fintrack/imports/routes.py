@@ -4,19 +4,30 @@ imports/routes.py - Kontoumsätze aus einer CSV-Datei ins Haushaltsbuch überneh
 Zwei Schritte, damit nichts ungeprüft gebucht wird:
 1. POST /me/import/bank/preview  (Datei) -> Umsätze mit Status und Kategorievorschlag, speichert nichts
 2. POST /me/import/bank/commit   (JSON)  -> legt die bestätigten Umsätze an
-Die Datei wird nur gelesen und nirgends abgelegt.
+Genauso für Depot-Abrechnungen (PDF) unter /me/import/depot/...: Der Text wird vor
+dem Auswerten durch das Sprachmodell von persönlichen Angaben befreit.
+Dateien werden nur gelesen und nirgends abgelegt.
 """
+
+import logging
 
 import json
 
 from flask import Blueprint, jsonify, request
 from flask_login import current_user
 
+from fintrack.auth.session import current_user_key
+from fintrack.extensions import limiter
+
 from fintrack.api import ApiError, parse_body
 from fintrack.auth.session import protect_blueprint
 from fintrack.imports.bank_csv import CsvImportError, read_bank_csv
 from fintrack.imports.bank_service import build_preview, commit_rows
-from fintrack.imports.schemas import ColumnMapping, ImportCommit
+from fintrack.imports.depot_pdf import PdfImportError, extract_text, mask_personal_data, read_trades
+from fintrack.imports.depot_service import build_depot_preview, commit_trades
+from fintrack.imports.schemas import ColumnMapping, DepotCommit, ImportCommit
+
+logger = logging.getLogger(__name__)
 
 bp = Blueprint('imports', __name__)
 # Nur mit Anmeldung
@@ -65,3 +76,46 @@ def commit_bank_import():
     data = parse_body(ImportCommit)
     created, skipped = commit_rows(current_user.id, data.rows)
     return jsonify({"message": f'{created} Umsätze übernommen', "created": created, "skipped": skipped}), 201
+
+
+# ─── DEPOT-ABRECHNUNGEN (PDF) ─────────────────────────────────────────────────
+
+@bp.route('/me/import/depot/preview', methods=['POST'])
+@limiter.limit("40 per hour", key_func=current_user_key)
+def preview_depot_import():
+    """
+    Liest eine PDF-Abrechnung (Inhalt der Anfrage oder Formularfeld "file"),
+    entfernt persönliche Angaben, lässt Käufe/Verkäufe auslesen und prüft sie.
+    "sent_text" zeigt genau den Text, der ausgewertet wurde.
+    """
+    upload = request.files.get('file')
+    data = upload.read() if upload is not None else request.get_data()
+    if not data:
+        raise ApiError(400, 'Bitte eine PDF-Abrechnung auswählen')
+
+    try:
+        masked = mask_personal_data(extract_text(data))
+    except PdfImportError as error:
+        raise ApiError(400, str(error))
+
+    try:
+        document = read_trades(masked)
+    except Exception:
+        logger.exception('Abrechnung konnte nicht ausgewertet werden')
+        raise ApiError(502, 'Die Abrechnung konnte gerade nicht ausgewertet werden. Bitte versuche es gleich noch einmal.')
+
+    rows = build_depot_preview(current_user.id, document.trades if document.is_trade_statement else [])
+    return jsonify({
+        "is_trade_statement": document.is_trade_statement,
+        "note": document.note,
+        "rows": rows,
+        "sent_text": masked,
+    }), 200
+
+
+@bp.route('/me/import/depot/commit', methods=['POST'])
+def commit_depot_import():
+    """Bucht die bestätigten Käufe und Verkäufe ins Depot (alles oder nichts)."""
+    data = parse_body(DepotCommit)
+    booked, skipped = commit_trades(current_user.id, data.trades)
+    return jsonify({"message": f'{booked} Ausführungen gebucht', "booked": booked, "skipped": skipped}), 201

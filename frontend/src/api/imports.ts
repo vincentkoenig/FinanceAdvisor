@@ -1,4 +1,4 @@
-// Kontoumsätze aus dem CSV-Export der Bank: Vorschau (speichert nichts) und Übernehmen.
+// Kontoumsätze aus dem CSV-Export der Bank und Depot-Abrechnungen (PDF): Vorschau (speichert nichts) und Übernehmen.
 // Die Vorschau schickt die Datei selbst statt JSON, darum hier ein eigener fetch statt api().
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { API_PREFIX, ApiError, api } from './client';
@@ -74,5 +74,54 @@ export function useCommitBankImport() {
     mutationFn: (rows: CommitRow[]) =>
       api<{ message: string; created: number; skipped: number }>('/me/import/bank/commit', { method: 'POST', body: { rows } }),
     onSuccess: () => Promise.all([keys.bookings, keys.budgetSummary].map((queryKey) => client.invalidateQueries({ queryKey }))),
+  });
+}
+
+// ─── DEPOT-ABRECHNUNGEN (PDF) ────────────────────────────────────────────────
+
+export type DepotStatus = 'new' | 'duplicate' | 'unknown' | 'insufficient';
+
+export type DepotRow = {
+  key: string;
+  type: 'buy' | 'sell';
+  isin: string;
+  name: string;
+  date: string;
+  quantity: number;
+  /** Kurs inklusive Gebühren je Stück (so wird gebucht) */
+  price: number | null;
+  /** Kurs laut Abrechnung, ohne Gebühren */
+  quote: number;
+  fees: number;
+  symbol: string | null;
+  asset_name: string | null;
+  asset_id: number | null;
+  status: DepotStatus;
+};
+
+export type DepotPreview = { is_trade_statement: boolean; note: string | null; rows: DepotRow[]; sent_text: string };
+
+export async function previewDepotImport(file: File): Promise<DepotPreview> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_PREFIX}/me/import/depot/preview`, {
+      method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/pdf' }, body: await file.arrayBuffer(),
+    });
+  } catch {
+    throw new ApiError(0, 'Keine Verbindung zum Server. Bitte prüfe deine Internetverbindung.');
+  }
+  const data = await response.json().catch(() => null);
+  if (!response.ok) throw new ApiError(response.status, data?.error ?? `Unerwartete Antwort vom Server (${response.status})`);
+  return data as DepotPreview;
+}
+
+export type DepotCommitTrade = { type: 'buy' | 'sell'; symbol: string; name: string; date: string; quantity: number; price: number };
+
+export function useCommitDepotImport() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (trades: DepotCommitTrade[]) =>
+      api<{ message: string; booked: number; skipped: number }>('/me/import/depot/commit', { method: 'POST', body: { trades } }),
+    onSuccess: () => Promise.all([keys.positions, keys.trades, keys.history].map((queryKey) => client.invalidateQueries({ queryKey }))),
   });
 }

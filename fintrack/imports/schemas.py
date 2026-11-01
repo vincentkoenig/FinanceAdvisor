@@ -3,9 +3,9 @@ imports/schemas.py - Eingaben für den Import von Kontoumsätzen.
 """
 
 from datetime import date
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
-from pydantic import Field, PositiveInt, field_validator
+from pydantic import Field, PositiveFloat, PositiveInt, field_validator
 
 from fintrack.api import RequestModel
 from fintrack.imports.bank_csv import FIELDS
@@ -46,3 +46,17 @@ class ImportRow(RequestModel):
 
 class ImportCommit(RequestModel):
     rows: List[ImportRow] = Field(min_length=1, max_length=5000)
+
+
+class DepotTrade(RequestModel):
+    """Eine bestätigte Ausführung aus der Vorschau; der Preis ist schon inklusive Gebühren je Stück."""
+    type: Literal['buy', 'sell']
+    symbol: str = Field(min_length=1, max_length=30, pattern=r'^[A-Za-z0-9.=^-]+$')
+    name: str = Field(min_length=1, max_length=200)
+    date: date
+    quantity: PositiveFloat
+    price: PositiveFloat
+
+
+class DepotCommit(RequestModel):
+    trades: List[DepotTrade] = Field(min_length=1, max_length=500)

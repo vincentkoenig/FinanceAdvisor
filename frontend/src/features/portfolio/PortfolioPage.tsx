@@ -3,6 +3,7 @@
 // Anlageart, darunter Reiter für Positionen, Watchlist, Transaktionen, Sparpläne und Dividenden.
 // Kaufen, Verkaufen, Beobachten und Sparpläne laufen über Dialoge (dialogs.tsx).
 import { useState } from 'react';
+import { Link } from 'react-router';
 import {
   type Dividend, type SavingsPlan, type Trade,
   useDividends, useExecutePlan, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
@@ -105,6 +106,7 @@ export function PortfolioPage() {
           </p>
         </div>
         <div className="actions">
+          <Link to="/portfolio/import" className="btn"><Icon name="upload" size={16} />Importieren</Link>
           <button className="btn btn-primary" onClick={() => setOpen({ type: 'add' })}><Icon name="plus" size={16} />Asset hinzufügen</button>
         </div>
       </div>

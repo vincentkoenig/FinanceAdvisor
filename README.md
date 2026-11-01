@@ -180,6 +180,8 @@ Alle Routen liegen unter `/api/v1` und antworten mit JSON. Persönliche Daten li
 | `GET` | `/me/budget/summary` | Cash-Bestand und aktueller Monat |
 | `POST` | `/me/import/bank/preview` | CSV-Export der Bank lesen (Feld `file`, optional `mapping`): Umsätze mit Status `new` / `covered` (deckt eine wiederkehrende Buchung ab) / `duplicate` und Kategorievorschlag, speichert nichts |
 | `POST` | `/me/import/bank/commit` | Bestätigte Umsätze als Buchungen übernehmen (alles oder nichts, schon importierte werden übersprungen) |
+| `POST` | `/me/import/depot/preview` | PDF-Abrechnung lesen: persönliche Angaben werden entfernt, der Rest per OpenAI (Structured Output) ausgelesen; Käufe/Verkäufe mit ISIN-Suche, Kurs inkl. Gebühren, Status `new` / `duplicate` / `unknown` / `insufficient` und dem gesendeten Text, speichert nichts |
+| `POST` | `/me/import/depot/commit` | Bestätigte Käufe/Verkäufe zeitlich geordnet ins Depot buchen, fehlende Assets anlegen (alles oder nichts) |
 | `GET` · `POST` | `/me/contracts` | Verträge mit Status, Kündigungstag und Kosten pro Monat/Jahr (sortiert nach Frist) · neuer Vertrag |
 | `PUT` · `DELETE` | `/me/contracts/<id>` | Vertrag bearbeiten · löschen |
 | `GET` | `/me/contracts/suggestions` | Regelmäßige Abbuchungen aus importierten Umsätzen (monatlich bis jährlich, ähnlicher Betrag), die noch kein Vertrag sind |

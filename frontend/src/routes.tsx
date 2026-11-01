@@ -13,6 +13,7 @@ import { useTheme } from './lib/theme';
 // Übersicht und Anmeldung sind sofort da; die übrigen Seiten kommen beim ersten Öffnen nach
 const PortfolioPage = lazyPage(() => import('./features/portfolio/PortfolioPage').then((m) => ({ default: m.PortfolioPage })));
 const BudgetPage = lazyPage(() => import('./features/budget/BudgetPage').then((m) => ({ default: m.BudgetPage })));
+const DepotImportPage = lazyPage(() => import('./features/portfolio/DepotImportPage').then((m) => ({ default: m.DepotImportPage })));
 const ImportPage = lazyPage(() => import('./features/budget/ImportPage').then((m) => ({ default: m.ImportPage })));
 const ContractsPage = lazyPage(() => import('./features/contracts/ContractsPage').then((m) => ({ default: m.ContractsPage })));
 const ChatPage = lazyPage(() => import('./features/chat/ChatPage').then((m) => ({ default: m.ChatPage })));
@@ -55,6 +56,7 @@ export const routes: RouteObject[] = [
             children: [
               { index: true, element: <HomePage /> },
               { path: 'portfolio', element: <PortfolioPage /> },
+              { path: 'portfolio/import', element: <DepotImportPage /> },
               { path: 'budget', element: <BudgetPage /> },
               { path: 'budget/import', element: <ImportPage /> },
               { path: 'contracts', element: <ContractsPage /> },

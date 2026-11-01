@@ -114,7 +114,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -318,6 +318,26 @@ export const handlers = [
     const { rows } = (await request.json()) as { rows: unknown[] };
     sent.bankImport = rows;
     return HttpResponse.json({ message: `${rows.length} Umsätze übernommen`, created: rows.length, skipped: 0 }, { status: 201 });
+  }),
+
+  // Depot-Abrechnungen: eine Datei namens "kaputt.pdf" scheitert, alle anderen liefern dieselben zwei Ausführungen
+  http.post('/api/v1/me/import/depot/preview', async ({ request }) => {
+    const text = await request.text();
+    if (text.includes('kaputt')) return HttpResponse.json({ error: 'Die Datei ist kein lesbares PDF.' }, { status: 400 });
+    const trade = (key: string, type: string, quantity: number, quote: number, fees: number, status: string) => ({
+      key, type, isin: 'IE00B4L5Y983', name: 'ISHS CORE MSCI WORLD', date: '2026-10-01', quantity, quote, fees,
+      price: type === 'buy' ? quote + fees / quantity : quote - fees / quantity,
+      symbol: 'EUNL.DE', asset_name: 'iShares Core MSCI World', asset_id: 1, status,
+    });
+    return HttpResponse.json({
+      is_trade_statement: true, note: null, sent_text: 'WERTPAPIERABRECHNUNG [NUMMER]',
+      rows: [trade('k1', 'buy', 10, 100, 1, 'new'), trade('k2', 'sell', 5, 105, 0, 'duplicate')],
+    });
+  }),
+  http.post('/api/v1/me/import/depot/commit', async ({ request }) => {
+    const { trades } = (await request.json()) as { trades: unknown[] };
+    sent.depotImport = trades;
+    return HttpResponse.json({ message: `${trades.length} Ausführungen gebucht`, booked: trades.length, skipped: 0 }, { status: 201 });
   }),
 
   http.put('/api/v1/me/settings', async ({ request }) => {
