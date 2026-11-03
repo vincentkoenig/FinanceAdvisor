@@ -86,7 +86,7 @@ export function useCommitBankImport() {
 
 // ─── DEPOT-ABRECHNUNGEN (PDF) ────────────────────────────────────────────────
 
-export type DepotStatus = 'new' | 'duplicate' | 'unknown' | 'insufficient';
+export type DepotStatus = 'new' | 'duplicate' | 'unknown' | 'insufficient' | 'invalid';
 
 export type DepotRow = {
   key: string;
