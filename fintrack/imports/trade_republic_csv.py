@@ -73,7 +73,7 @@ def read_trade_republic_csv(data: bytes):
                 for index in by_isin[isin]:
                     before = trades[index]
                     trades[index] = before.model_copy(update={
-                        'quantity': before.quantity * ratio, 'price': round(before.price / ratio, 6)})
+                        'quantity': round(before.quantity * ratio, 10), 'price': round(before.price / ratio, 6)})
                 held[isin] += shares
             else:
                 skipped.append({"line": line, "reason": 'Split ohne Bestand'})

@@ -52,10 +52,11 @@ export function parseDay(iso: string) {
   return new Date(iso.slice(0, 10) + 'T12:00:00');
 }
 
-/** "2026-10-03" → "3. Okt." */
+/** "2026-10-03" → "3. Okt."; aus einem anderen Jahr mit Jahreszahl: "18. Jan. 2021" */
 export function dayShort(iso: string | Date) {
   const day = typeof iso === 'string' ? parseDay(iso) : iso;
-  return day.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
+  const year = day.getFullYear() === new Date().getFullYear() ? undefined : 'numeric';
+  return day.toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year });
 }
 
 /** Datum → "Oktober" */
