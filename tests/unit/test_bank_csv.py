@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 import pytest
 
-from fintrack.imports.bank_csv import CsvImportError, parse_amount, read_bank_csv
+from fintrack.imports.bank_csv import CsvImportError, parse_amount, payee_from_purpose, read_bank_csv
 
 # Semikolon, Windows-1252, Kontoinfos über der Kopfzeile, Kontostand am Ende
 WITH_PREAMBLE = (
@@ -99,3 +99,38 @@ class TestReadBankCsv:
     def test_empty_files(self, data, message):
         with pytest.raises(CsvImportError, match=message):
             read_bank_csv(data)
+
+
+# Wie bei der HypoVereinsbank: UTF-16 ohne BOM, kein Empfänger, alles im Verwendungszweck
+ALL_IN_PURPOSE = (
+    'Kontonummer;Buchungsdatum;Valuta;Verwendungszweck;Betrag;Waehrung\n'
+    '12345678;02.10.2026;02.10.2026;LASTSCHRIFT Beispiel Versicherung AG 123456789 KUNDENREFERENZ 4711;-44,42;EUR\n'
+    '12345678;03.10.2026;03.10.2026;DAUERAUFTRAG (AUSFÜHRUNG) EMPFAENGER Vermieter Muster IBAN DE00123456780000000000;'
+    '-1.200,00;EUR\n'
+).encode('utf-16-le')
+
+
+class TestEverythingInPurpose:
+
+    def test_utf16_without_bom_and_payee_from_purpose(self):
+        columns, mapping, rows, _ = read_bank_csv(ALL_IN_PURPOSE)
+
+        assert columns[1] == 'Buchungsdatum' and 'counterparty' not in mapping
+        assert [(r.day, r.amount, r.counterparty) for r in rows] == [
+            (date(2026, 10, 2), -44.42, 'Beispiel Versicherung AG'), (date(2026, 10, 3), -1200.0, 'Vermieter Muster')]
+        assert rows[0].purpose.startswith('LASTSCHRIFT Beispiel')
+
+    @pytest.mark.parametrize('purpose,payee', [
+        ('ECHTZEITÜBERWEISUNG Erika Muster DE00123456780000000000 Nebenkosten MOBILE 16:29 UHR', 'Erika Muster'),
+        ('SEPA-GUTSCHRIFT IM AUFTR.V. Beispiel Krankenkasse AG 2412024811-Erstattung', 'Beispiel Krankenkasse AG'),
+        ('EC-GAA/POS Bäckerei Beispiel Musterstadt 11.01.2026 11:41 Uhr E KF09 EC-TERMINAL 7111', 'Bäckerei Beispiel Musterstadt'),
+        ('LASTSCHRIFT Strom GmbH Strom Rechnung 2026 KUNDENREFERENZ 1', 'Strom GmbH'),
+        ('LASTSCHRIFT PayPal Europe S.a.r.l. et C ie S.C.A 1039741450813/PP.3184.PP/. Netflix.com, Ihr Einkauf be i '
+         'Netflix.com KUNDENREFERENZ 1', 'PayPal · Netflix.com'),
+        ('LASTSCHRIFT PayPal Europe S.a.r.l. et C ie S.C.A 1039890264369/PP.3184.PP/. , Ihr Einkauf bei KUNDENREFERENZ',
+         'PayPal'),
+        ('DEPOTPREIS Depotpreis für Q4/2025 Depotnummer 0430/ 1234', 'Depotpreis'),
+        ('Irgendein Text ohne bekannte Buchungsart', ''),
+    ])
+    def test_payee(self, purpose, payee):
+        assert payee_from_purpose(purpose) == payee
