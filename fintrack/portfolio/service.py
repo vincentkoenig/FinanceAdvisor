@@ -12,6 +12,8 @@ from fintrack.api import ApiError
 from fintrack.extensions import db
 from fintrack.models import AssetTransaction, UserAsset
 
+QUANTITY_EPSILON = 1e-6
+
 
 def record_buy(user_id, asset_id, quantity, price, date=None):
     """
@@ -53,11 +55,14 @@ def record_sell(user_id, asset_id, quantity, price=None, date=None):
 
     if not position or not position.quantity:
         raise ApiError(404, 'Position nicht gefunden')
-    if quantity > position.quantity:
+    # Bruchstücke summieren sich als Kommazahl nie ganz exakt (0,0193 × 20 = 0,38599999...):
+    # Abweichungen unter QUANTITY_EPSILON gelten als gleich, der Rest wird dann ganz verkauft
+    if quantity > position.quantity + QUANTITY_EPSILON:
         raise ApiError(400, 'Nicht genug Anteile!')
 
     position.quantity -= quantity
-    if position.quantity == 0:
+    if position.quantity < QUANTITY_EPSILON:
+        position.quantity = 0
         position.status = 'sold'
 
     # Zeitpunkt ausdrücklich setzen (wie bei record_buy), statt die

@@ -25,9 +25,7 @@ from fintrack.imports.depot_pdf import ISIN
 from fintrack.market import yahoo
 from fintrack.market.search import create_asset, search_assets
 from fintrack.models import Asset, AssetTransaction, UserAsset
-from fintrack.portfolio.service import record_buy, record_sell
-
-QUANTITY_EPSILON = 1e-6
+from fintrack.portfolio.service import QUANTITY_EPSILON, record_buy, record_sell
 
 
 def effective_price(trade_type, price, fees, quantity):

@@ -88,3 +88,25 @@ def test_preview_and_booking(client):
 
     etf = Asset.query.filter_by(symbol='EUNL.DE').one()
     assert UserAsset.query.filter_by(asset_id=etf.id).one().quantity == pytest.approx(1.5)
+
+
+def test_selling_everything_after_fractional_buys_and_split(client):
+    """Kleine Bruchstücke + Split summieren sich als Kommazahl nicht exakt; der Verkauf von allem muss trotzdem gehen."""
+    buys = [('2026-01-05', '0.0033'), ('2026-01-06', '0.0037'), ('2026-01-07', '0.0036'),
+            ('2026-01-08', '0.0043'), ('2026-01-09', '0.0044')]
+    export = '\n'.join([HEADER] + [line(day, 'TRADING', 'BUY', 'Beispiel AG', 'DE0000000001', shares, '2700.0')
+                                   for day, shares in buys] + [
+        line('2026-02-01', 'CORPORATE_ACTION', 'SPLIT', 'Beispiel AG', 'DE0000000001', '0.3667'),
+        line('2026-03-01', 'TRADING', 'SELL', 'Beispiel AG', 'DE0000000001', '-0.3860', '91.57'),
+    ]).encode()
+    rows = client.post('/api/v1/me/import/crypto/preview', data=export, content_type='text/csv').get_json()['rows']
+    assert all(r['status'] == 'new' for r in rows)
+
+    trades = [{'type': r['type'], 'symbol': r['symbol'], 'name': r['asset_name'], 'date': r['date'],
+               'quantity': r['quantity'], 'price': r['price']} for r in rows]
+    response = client.post('/api/v1/me/import/depot/commit', json={'trades': trades})
+
+    assert response.status_code == 201, response.get_json()
+    asset = Asset.query.filter_by(symbol='BSP.DE').one()
+    position = UserAsset.query.filter_by(asset_id=asset.id).one()
+    assert (position.quantity, position.status) == (0, 'sold')
