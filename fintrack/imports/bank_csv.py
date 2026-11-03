@@ -61,7 +61,20 @@ def _norm(text):
 
 
 def decode(data: bytes):
-    """UTF-8 (mit oder ohne BOM), sonst Windows-1252 - so exportieren deutsche Banken."""
+    """
+    UTF-8 (mit oder ohne BOM), sonst Windows-1252 - so exportieren deutsche Banken.
+    Manche (z.B. HypoVereinsbank) liefern UTF-16 ohne BOM: erkennbar an Null-Bytes zwischen den Zeichen.
+    """
+    if data[:2] in (b'\xff\xfe', b'\xfe\xff'):
+        return data.decode('utf-16')
+    head = data[:200]
+    if head.count(b'\x00') > len(head) // 4:
+        # Bei ASCII-Text steht das Null-Byte in Little Endian hinter dem Zeichen, in Big Endian davor
+        little = head[1::2].count(b'\x00') > head[0::2].count(b'\x00')
+        try:
+            return data.decode('utf-16-le' if little else 'utf-16-be')
+        except UnicodeDecodeError:
+            raise CsvImportError('Die Datei ist keine Textdatei (CSV).')
     for encoding in ('utf-8-sig', 'cp1252'):
         try:
             return data.decode(encoding)
@@ -118,6 +131,54 @@ def parse_day(text):
         except ValueError:
             continue
     raise ValueError(text)
+
+
+# Buchungsart am Anfang des Verwendungszwecks, wenn die Bank keine Empfänger-Spalte liefert
+# (HypoVereinsbank: "LASTSCHRIFT Nürnberger Lebensversicherung ... KUNDENREFERENZ ...")
+_BOOKING_TYPE = re.compile(
+    r'^(?:SEPA[- ])?(?:LASTSCHRIFT(?:-RÜCKGABE)?|GUTSCHRIFT|GEHALTSGUTSCHRIFT|ECHTZEITGUTSCHRIFT|ÜBERWEISUNG|'
+    r'ECHTZEITÜBERWEISUNG|DAUERAUFTRAG|EC-GAA/POS|KARTENZAHLUNG|KARTENTRANSAKTION|KREDITKARTENABRECHNUNG|'
+    r'FOLGELASTSCHRIFT|ERSTLASTSCHRIFT|BASISLASTSCHRIFT)\b\s*'
+    r'(?:\((?:AUSFÜHRUNG|AUSFUEHRUNG|AUSGANG|EINGANG|DIRECT BANKING|ONLINE BANKING)\)?\s*)?', re.I)
+_PAYEE_LABEL = re.compile(r'^(?:IM AUFTR\.?\s?V\.|EMPF(?:Ä|AE)NGER|AUFTRAGGEBER)\s*:?\s*', re.I)
+# Hier endet der Name: IBAN, Kennwörter, lange Nummern, Nummernblöcke, Kartennummern, Datum
+_PAYEE_END = re.compile(
+    r'\s(?:[A-Z]{2}\d{2}\s?\d{4}|IBAN|BIC|KUNDENREFERENZ|MANDAT|GLÄUBIGER|Umsatzreferenz|Belegdatum|Gesendet|'
+    r'EC-TERMINAL|WKN|Order-Nr|AUFTRAG UM|MOBILE \d|Kd\.?\s?Nr|Vers\.?\s?Nr|TXID|Zbnr)|\s?\d{6,}|\s\d+(?:\s\d+){2,}|'
+    r'\s\d{4}\s?\d{2}X|\s\d{2}\.\d{2}\.\d{2,4}|\s/', re.I)
+# Bankeigene Buchungen ohne Gegenüber: lesbarer Name statt Leerstelle
+_BANK_BOOKINGS = {
+    'DIVIDENDE': 'Dividende', 'EFFEKTEN': 'Wertpapiergeschäft', 'DEPOTPREIS': 'Depotpreis', 'ABSCHLUSS': 'Kontoabschluss',
+    'ENTGELT': 'Bankentgelt', 'PREISE/ENTGELTE': 'Bankentgelt', 'SB-EINZAHLUNG': 'Bareinzahlung',
+    'BARGELDAUSZAHLUNG': 'Bargeldauszahlung',
+}
+# PayPal nennt den eigentlichen Händler erst hinter der Referenz: ".../. Netflix.com, Ihr Einkauf bei ..."
+_PAYPAL_MERCHANT = re.compile(r'/\.\s*([^,]+?)\s*,\s*Ihr\s+E\s?i\s?n', re.I)
+PAYEE_MAX = 40
+
+
+def payee_from_purpose(purpose):
+    """Empfänger bzw. Auftraggeber aus einem Verwendungszweck, in dem alles in einer Spalte steht."""
+    text = re.sub(r'\s+', ' ', purpose or '').strip()
+    first = text.split(' ', 1)[0].upper()
+    if first in _BANK_BOOKINGS:
+        return _BANK_BOOKINGS[first]
+    if not _BOOKING_TYPE.match(text):
+        # Kein bekannter Aufbau: lieber nichts raten
+        return ''
+    rest = _PAYEE_LABEL.sub('', _BOOKING_TYPE.sub('', text, count=1), count=1)
+    end = _PAYEE_END.search(rest)
+    name = (rest[:end.start()] if end else rest).strip(' ,.-/')
+    # "Trade Republic Trade Republic", "Tibber Deutschland GmbH Tibber Rechnung": ab der Wiederholung abschneiden
+    words = name.split(' ')
+    if words[0] in words[1:]:
+        name = ' '.join(words[:words.index(words[0], 1)])
+    if len(name) > PAYEE_MAX:
+        name = name[:PAYEE_MAX].rsplit(' ', 1)[0]
+    if name.lower().startswith('paypal'):
+        merchant = _PAYPAL_MERCHANT.search(text)
+        return f'PayPal · {merchant.group(1)}'[:PAYEE_MAX] if merchant and merchant.group(1).strip() else 'PayPal'
+    return name
 
 
 def _find_header(rows):
@@ -191,9 +252,9 @@ def read_bank_csv(data: bytes, mapping: Optional[dict] = None):
             continue
         if amount == 0:
             continue
-        result.append(BankRow(line=offset, day=day, amount=round(amount, 2),
-                              counterparty=re.sub(r'\s+', ' ', cell(row, 'counterparty')),
-                              purpose=re.sub(r'\s+', ' ', cell(row, 'purpose'))))
+        purpose = re.sub(r'\s+', ' ', cell(row, 'purpose'))
+        counterparty = re.sub(r'\s+', ' ', cell(row, 'counterparty')) or payee_from_purpose(purpose)
+        result.append(BankRow(line=offset, day=day, amount=round(amount, 2), counterparty=counterparty, purpose=purpose))
 
     if not result:
         raise CsvImportError('In der Datei wurden keine Umsätze gefunden.', columns=columns)
