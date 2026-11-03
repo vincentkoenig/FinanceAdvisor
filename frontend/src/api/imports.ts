@@ -84,6 +84,16 @@ export function useCommitBankImport() {
   });
 }
 
+export type Payee = { name: string; income: boolean };
+export type PayeeSuggestion = Payee & { category_id: number | null };
+
+/** Kategorie-Vorschläge der KI; geschickt werden nur Empfängernamen und Richtung */
+export const useCategorizeBankImport = () =>
+  useMutation({
+    mutationFn: (payees: Payee[]) =>
+      api<{ suggestions: PayeeSuggestion[] }>('/me/import/bank/categorize', { method: 'POST', body: { payees } }),
+  });
+
 // ─── DEPOT-ABRECHNUNGEN (PDF) ────────────────────────────────────────────────
 
 export type DepotStatus = 'new' | 'duplicate' | 'unknown' | 'insufficient' | 'invalid';

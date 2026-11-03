@@ -28,7 +28,8 @@ from fintrack.imports.crypto_csv import read_crypto_csv
 from fintrack.imports.depot_pdf import PdfImportError, extract_text, mask_personal_data, read_trades
 from fintrack.imports.depot_service import build_depot_preview, commit_trades
 from fintrack.imports.trade_republic_csv import is_trade_republic, read_trade_republic_csv
-from fintrack.imports.schemas import ColumnMapping, CryptoColumnMapping, DepotCommit, ImportCommit
+from fintrack.imports.categorize import suggest_categories
+from fintrack.imports.schemas import CategorizeRequest, ColumnMapping, CryptoColumnMapping, DepotCommit, ImportCommit
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,25 @@ def commit_bank_import():
     data = parse_body(ImportCommit)
     created, skipped = commit_rows(current_user.id, data.rows)
     return jsonify({"message": f'{created} Umsätze übernommen', "created": created, "skipped": skipped}), 201
+
+
+@bp.route('/me/import/bank/categorize', methods=['POST'])
+@limiter.limit("20 per hour", key_func=current_user_key)
+def categorize_bank_import():
+    """
+    Kategorie-Vorschläge der KI für Empfänger ohne Vorschlag (JSON {"payees": [{name, income}]}).
+    Geht nur mit den Namen an OpenAI, speichert nichts; die Seite setzt die Vorschläge in die Vorschau.
+    """
+    data = parse_body(CategorizeRequest)
+    # Doppelte Namen nur einmal schicken
+    payees = list({(p.name.strip(), p.income): {"name": p.name.strip(), "income": p.income}
+                   for p in data.payees}.values())
+    try:
+        suggestions = suggest_categories(current_user.id, payees)
+    except Exception:
+        logger.exception('Kategorien konnten nicht vorgeschlagen werden')
+        raise ApiError(502, 'Die Kategorien konnten gerade nicht vorgeschlagen werden. Bitte versuche es gleich noch einmal.')
+    return jsonify({"suggestions": suggestions}), 200
 
 
 # ─── DEPOT-ABRECHNUNGEN (PDF) ─────────────────────────────────────────────────

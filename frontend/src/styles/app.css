@@ -262,6 +262,7 @@ details.fold .fold-peek, details.fold .fold-chev { display: none; }
 .file-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .import-row { flex-wrap: wrap; }
 .import-category { width: 260px; flex: none; }
+.import-suggest { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 12px; }
 .import-category .pill { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .file-results { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .file-results li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-width: 0; }

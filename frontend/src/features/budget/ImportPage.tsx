@@ -5,16 +5,21 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useCategories } from '../../api/budget';
-import { type ColumnMapping, type ImportPreview, type ImportRow, UnknownColumnsError, useCommitBankImport, usePreviewBankImport } from '../../api/imports';
+import {
+  type ColumnMapping, type ImportPreview, type ImportRow, UnknownColumnsError, useCategorizeBankImport, useCommitBankImport, usePreviewBankImport,
+} from '../../api/imports';
 import { Icon } from '../../components/Icon';
 import { useToast } from '../../components/Toast';
 import { dayShort } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
-import { MAPPING_FIELDS, type Choice, assignCategory, categoryOptions, initialChoices, toCommit } from './importModel';
+import {
+  MAPPING_FIELDS, type Choice, applySuggestions, assignCategory, categoryOptions, initialChoices, payeesWithoutCategory, toCommit,
+} from './importModel';
 
 export function ImportPage() {
   const previewImport = usePreviewBankImport();
   const commit = useCommitBankImport();
+  const categorize = useCategorizeBankImport();
   const categories = useCategories();
   const notify = useToast();
   const navigate = useNavigate();
@@ -59,6 +64,20 @@ export function ImportPage() {
   };
 
   const summary = preview ? toCommit(preview.rows, choices) : null;
+  const openPayees = preview ? payeesWithoutCategory(preview.rows, choices) : [];
+
+  const suggest = () => {
+    if (!preview || !openPayees.length) return;
+    setError(null);
+    categorize.mutate(openPayees, {
+      onSuccess: ({ suggestions }) => {
+        const result = applySuggestions(preview.rows, choices, suggestions);
+        setChoices(result.choices);
+        notify(result.filled ? `${result.filled} Umsätze vorbelegt, bitte kurz prüfen` : 'Die KI hatte keine sicheren Vorschläge');
+      },
+      onError: (failure) => setError(failure.message),
+    });
+  };
   const save = () => {
     if (!summary || summary.missing || !summary.commit.length) return;
     commit.mutate(summary.commit, {
@@ -101,7 +120,8 @@ export function ImportPage() {
             <pre className="sent-text">{preview.sent_text}</pre>
           </details>
         )}
-        {error && !columns && <p className="err" role="alert">{error}</p>}
+        {/* Mit Vorschau steht der Fehler dort, nicht zweimal */}
+        {error && !columns && !preview && <p className="err" role="alert">{error}</p>}
       </section>
 
       {columns && file && (
@@ -143,6 +163,18 @@ export function ImportPage() {
                 preview.skipped.length && `${preview.skipped.length} übersprungen`].filter(Boolean).join(' · ')}
             </span>
           </div>
+          {openPayees.length > 0 && (
+            <div className="import-suggest">
+              <button className="btn" onClick={suggest} disabled={categorize.isPending || commit.isPending}>
+                <Icon name="spark" size={16} />{categorize.isPending ? 'Ordnet zu …' : 'Kategorien vorschlagen lassen'}
+              </button>
+              <p className="hint">
+                Für {openPayees.length === 1 ? '1 Empfänger' : `${openPayees.length} Empfänger`} ohne Kategorie. An OpenAI gehen
+                nur die Namen der Empfänger und ob es eine Einnahme oder Ausgabe ist, keine Beträge, Daten oder IBANs. Unsichere
+                Fälle und Überweisungen auf eigene Konten bleiben leer.
+              </p>
+            </div>
+          )}
           <div className="rows">
             {preview.rows.map((row) => (
               <PreviewRow key={row.key} row={row} choice={choices[row.key]} categories={categories.data ?? []}
