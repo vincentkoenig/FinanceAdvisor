@@ -1,6 +1,6 @@
 // Logik der Import-Seite ohne Oberfläche: Kategorien je Richtung, Auswahl und gemeinsame Zuordnung.
 import type { Category } from '../../api/budget';
-import type { CommitRow, ImportField, ImportRow } from '../../api/imports';
+import type { CommitRow, ImportField, ImportRow, Payee, PayeeSuggestion } from '../../api/imports';
 
 /** Felder der Spaltenzuordnung, wie sie die Seite abfragt */
 export const MAPPING_FIELDS: { field: ImportField; label: string; required?: boolean }[] = [
@@ -44,6 +44,33 @@ export function assignCategory(rows: ImportRow[], choices: Record<string, Choice
     if (same && other.status === 'new' && next[other.key].category === null) next[other.key] = { ...next[other.key], category };
   }
   return next;
+}
+
+const payeeKey = (name: string, income: boolean) => `${income ? '+' : '-'}${name.trim().toLowerCase()}`;
+
+/** Empfänger ausgewählter neuer Umsätze ohne Kategorie, je Name und Richtung einmal (für den KI-Vorschlag) */
+export function payeesWithoutCategory(rows: ImportRow[], choices: Record<string, Choice>): Payee[] {
+  const payees = new Map<string, Payee>();
+  for (const row of rows) {
+    const choice = choices[row.key];
+    if (row.status !== 'new' || !choice.selected || choice.category !== null || !row.counterparty.trim()) continue;
+    payees.set(payeeKey(row.counterparty, row.amount > 0), { name: row.counterparty.trim(), income: row.amount > 0 });
+  }
+  return [...payees.values()];
+}
+
+/** KI-Vorschläge übernehmen, nur bei Umsätzen, die noch keine Kategorie haben. Gibt auch die Zahl gesetzter Umsätze zurück. */
+export function applySuggestions(rows: ImportRow[], choices: Record<string, Choice>, suggestions: PayeeSuggestion[]) {
+  const found = new Map(suggestions.filter((s) => s.category_id !== null).map((s) => [payeeKey(s.name, s.income), s.category_id!]));
+  const next = { ...choices };
+  let filled = 0;
+  for (const row of rows) {
+    const category = found.get(payeeKey(row.counterparty, row.amount > 0));
+    if (row.status !== 'new' || category === undefined || next[row.key].category !== null) continue;
+    next[row.key] = { ...next[row.key], category };
+    filled += 1;
+  }
+  return { choices: next, filled };
 }
 
 /** Was übernommen wird; missing zählt ausgewählte Umsätze ohne Kategorie */

@@ -183,3 +183,35 @@ class TestCommit:
 
         assert response.status_code == 404
         assert Transaction.query.filter(Transaction.import_hash.isnot(None)).count() == 0
+
+
+class TestCategorize:
+
+    def test_suggestions_only_in_the_right_direction(self, account, mocker):
+        client, _, ids = account
+        from fintrack.imports.categorize import _Answer, _Choice
+        ask = mocker.patch('fintrack.imports.categorize._ask', return_value=[
+            _Choice(index=0, category_id=ids['food']),
+            # Einnahme mit Ausgaben-Kategorie und unbekannte id werden verworfen
+            _Choice(index=1, category_id=ids['rent']),
+            _Choice(index=2, category_id=9999),
+        ])
+
+        response = client.post('/api/v1/me/import/bank/categorize', json={'payees': [
+            {'name': 'REWE Markt', 'income': False}, {'name': 'Erstattung', 'income': True},
+            {'name': 'Unbekannt', 'income': False}, {'name': 'REWE Markt ', 'income': False}]})
+
+        assert response.status_code == 200
+        assert [s['category_id'] for s in response.get_json()['suggestions']] == [ids['food'], None, None]
+        # Doppelte Namen gehen nur einmal an die KI, und nur Namen und Richtung
+        sent = ask.call_args.args[2]
+        assert sent == [{'name': 'REWE Markt', 'income': False}, {'name': 'Erstattung', 'income': True},
+                        {'name': 'Unbekannt', 'income': False}]
+
+    def test_failure_is_a_clear_error(self, account, mocker):
+        client, _, _ = account
+        mocker.patch('fintrack.imports.categorize._ask', side_effect=RuntimeError('weg'))
+
+        response = client.post('/api/v1/me/import/bank/categorize', json={'payees': [{'name': 'REWE', 'income': False}]})
+
+        assert response.status_code == 502 and 'gleich noch einmal' in response.get_json()['error']

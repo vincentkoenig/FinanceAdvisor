@@ -25,6 +25,7 @@ const PATHS = {
   bars: 'M3 9h18v6H3zM11 9v6M17 9v6',
   doc: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6',
   ring: 'M21 12a9 9 0 1 1-9-9M16.5 12A4.5 4.5 0 1 1 12 7.5',
+  spark: 'M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8zM19 15v6M16 18h6',
 } as const;
 
 export type IconName = keyof typeof PATHS;

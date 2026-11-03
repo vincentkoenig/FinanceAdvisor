@@ -64,6 +64,16 @@ class ImportCommit(RequestModel):
     rows: List[ImportRow] = Field(min_length=1, max_length=5000)
 
 
+class Payee(RequestModel):
+    name: str = Field(min_length=1, max_length=200)
+    income: bool
+
+
+class CategorizeRequest(RequestModel):
+    """Empfänger ohne Kategorie, je Name und Richtung einmal."""
+    payees: List[Payee] = Field(min_length=1, max_length=1000)
+
+
 class DepotTrade(RequestModel):
     """Eine bestätigte Ausführung aus der Vorschau; der Preis ist schon inklusive Gebühren je Stück."""
     type: Literal['buy', 'sell']

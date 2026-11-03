@@ -114,7 +114,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -321,6 +321,12 @@ export const handlers = [
       { key: 'p2', occurrence: 0, line: 2, date: '2026-10-07', amount: -3.2, counterparty: 'Café Mitte', purpose: 'Kartenzahlung', description: 'Café Mitte', status: 'new', covered_by: null, category_id: null },
     ],
   })),
+  // KI-Vorschlag: Café Mitte -> Kleidung (4), alles andere ohne Vorschlag
+  http.post('/api/v1/me/import/bank/categorize', async ({ request }) => {
+    const { payees } = (await request.json()) as { payees: { name: string; income: boolean }[] };
+    sent.payees = payees;
+    return HttpResponse.json({ suggestions: payees.map((p) => ({ ...p, category_id: p.name === 'Café Mitte' ? 4 : null })) });
+  }),
   http.post('/api/v1/me/import/bank/commit', async ({ request }) => {
     const { rows } = (await request.json()) as { rows: unknown[] };
     sent.bankImport = rows;

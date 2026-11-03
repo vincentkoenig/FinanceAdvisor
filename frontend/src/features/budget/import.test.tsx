@@ -45,6 +45,23 @@ describe('Umsätze importieren', () => {
     expect(within(panel).getByRole('button', { name: '4 Umsätze übernehmen' })).toBeDisabled();
   });
 
+  it('lässt fehlende Kategorien von der KI vorschlagen, nur mit den Namen der Empfänger', async () => {
+    const { user } = await openWithFile();
+    const panel = await preview();
+    expect(panel).toHaveTextContent('Für 2 Empfänger ohne Kategorie');
+
+    await user.click(within(panel).getByRole('button', { name: 'Kategorien vorschlagen lassen' }));
+
+    expect(await screen.findByText('2 Umsätze vorbelegt, bitte kurz prüfen')).toBeInTheDocument();
+    // Je Name und Richtung einmal, ohne Beträge
+    expect(sent.payees).toEqual([{ name: 'Café Mitte', income: false }, { name: 'Erstattung', income: true }]);
+    expect(within(panel).getByLabelText('Kategorie für Café Mitte am 7. Okt.')).toHaveDisplayValue('Lebenshaltung · Kleidung');
+    expect(within(panel).getByLabelText('Kategorie für Café Mitte am 8. Okt.')).toHaveDisplayValue('Lebenshaltung · Kleidung');
+    // Der vorhandene Vorschlag bleibt
+    expect(within(panel).getByLabelText('Kategorie für REWE Markt am 5. Okt.')).toHaveDisplayValue('Lebenshaltung · Lebensmittel');
+    expect(panel).toHaveTextContent('Für 1 Empfänger ohne Kategorie');
+  });
+
   it('ordnet gleiche Empfänger mit zu, bietet je Richtung passende Kategorien und übernimmt', async () => {
     const { user, router } = await openWithFile();
     const panel = await preview();
