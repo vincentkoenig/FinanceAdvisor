@@ -8,6 +8,7 @@ Vorschau je Ausführung:
 - 'duplicate':    gleicher Kauf/Verkauf (Asset, Tag, Stück) ist schon gebucht
 - 'unknown':      zur ISIN wurde nichts gefunden - lässt sich so nicht übernehmen
 - 'insufficient': Verkauf von mehr Stück, als nach den Käufen davor im Depot wären
+- 'invalid':      Stück oder Kurs fehlen, oder beim Verkauf sind die Gebühren höher als der Erlös
 - 'new':          kann übernommen werden
 Als Preis zählt der Kurs inklusive Gebühren je Stück (beim Verkauf abzüglich) -
 so stimmt der Einstand mit dem überein, was tatsächlich bezahlt wurde.
@@ -32,7 +33,8 @@ QUANTITY_EPSILON = 1e-6
 def effective_price(trade_type, price, fees, quantity):
     """Kurs inklusive Gebühren je Stück (Kauf teurer, Verkauf weniger Erlös)."""
     per_share = fees / quantity if quantity else 0
-    return round(price + per_share if trade_type == 'buy' else price - per_share, 4)
+    # 8 Stellen: Kryptowährungen kosten teils Bruchteile eines Cents und dürfen nicht auf 0 fallen
+    return round(price + per_share if trade_type == 'buy' else price - per_share, 8)
 
 
 def _midnight(day):
@@ -98,8 +100,11 @@ def build_depot_preview(user_id, trades):
     for trade in sorted(trades, key=lambda t: (t.trade_date, t.type != 'buy')):
         isin = trade.isin.strip().upper()
         valid = trade.quantity > 0 and trade.price > 0 and trade.fees >= 0
-        match = _identify(isin, cache) if valid else None
         price = effective_price(trade.type, trade.price, trade.fees, trade.quantity) if valid else None
+        # Beim Verkauf kleiner Stückzahlen können die Gebühren den Erlös auffressen - so nicht buchbar
+        valid = valid and price > 0
+        price = price if valid else None
+        match = _identify(isin, cache) if valid else None
         entry = {
             "key": hashlib.sha256(f'{isin}|{trade.type}|{trade.trade_date}|{trade.quantity}|{trade.price}'
                                   .encode()).hexdigest()[:24],
@@ -110,7 +115,9 @@ def build_depot_preview(user_id, trades):
             "asset_id": match['asset_id'] if match else None,
             "status": 'new',
         }
-        if not valid or match is None:
+        if not valid:
+            entry["status"] = 'invalid'
+        elif match is None:
             entry["status"] = 'unknown'
         elif _already_booked(user_id, match['asset_id'], trade.type, trade.trade_date, trade.quantity):
             entry["status"] = 'duplicate'

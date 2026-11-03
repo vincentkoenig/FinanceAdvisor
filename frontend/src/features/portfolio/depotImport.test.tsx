@@ -53,7 +53,7 @@ describe('Abrechnungen importieren', () => {
     }
     await user.click(within(files).getByRole('button', { name: 'Vorschau laden' }));
 
-    await waitFor(() => expect(files).toHaveTextContent('bison.csv1 Ausführung · 1 übersprungen (z. B. Ein- und Auszahlungen)'));
+    await waitFor(() => expect(files).toHaveTextContent('bison.csv1 Ausführung · 1 übersprungen (z. B. Ein- und Auszahlungen, Dividenden)'));
     expect(sent.cryptoMapping).toEqual({ columns: { date: 0, type: 1, asset: 2, quantity: 3, total: 4 } });
     expect(screen.getByRole('region', { name: 'Vorschau' })).toHaveTextContent('KaufBTC EUR');
   });

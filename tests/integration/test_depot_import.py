@@ -143,6 +143,14 @@ class TestPreview:
 
         assert statuses == [('sell', 'insufficient'), ('buy', 'unknown')]
 
+    def test_sell_where_fees_eat_the_proceeds_is_not_bookable(self, account, ai):
+        ai.return_value = ExtractedDocument(is_trade_statement=True, note=None, trades=[
+            trade(), trade(kind='sell', quantity=0.01, price=50.0, fees=1.0)])
+
+        rows = preview(account).get_json()['rows']
+
+        assert [(r['type'], r['status'], r['price']) for r in rows] == [('buy', 'new', 100.1), ('sell', 'invalid', None)]
+
     def test_buy_then_sell_in_the_same_file(self, account, ai):
         ai.return_value = ExtractedDocument(is_trade_statement=True, note=None, trades=[
             trade(kind='sell', quantity=4, day=date(2026, 10, 1), fees=0), trade()])

@@ -1,6 +1,6 @@
 // Abrechnungen importieren. Frage der Seite: Welche Käufe und Verkäufe sollen ins Depot?
 // Dateien wählen (auch mehrere): PDF-Abrechnungen von Brokern (persönliche Angaben werden entfernt, dann
-// liest die KI die Ausführungen aus) und CSV-Exporte von Krypto-Apps wie Bison (ohne KI, Spalten notfalls
+// liest die KI die Ausführungen aus), den Trade-Republic-Export und CSV-Exporte von Krypto-Apps wie Bison (ohne KI, Spalten notfalls
 // von Hand zuordnen) → Vorschau prüfen → buchen. Gespeichert wird erst beim Buchen, die Dateien nirgends.
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
@@ -21,6 +21,7 @@ const STATUS_TEXT: Record<Exclude<DepotRow['status'], 'new'>, string> = {
   duplicate: 'schon gebucht',
   unknown: 'Wertpapier nicht gefunden',
   insufficient: 'zu wenig Stück im Depot',
+  invalid: 'Kurs nach Gebühren nicht über 0',
 };
 
 const CRYPTO_FIELDS: { field: CryptoField; label: string }[] = [
@@ -52,7 +53,7 @@ export function DepotImportPage() {
     try {
       if (isCsv(file)) {
         const result = await previewCryptoImport(file, withMapping);
-        const skipped = result.skipped.length ? ` · ${result.skipped.length} übersprungen (z. B. Ein- und Auszahlungen)` : '';
+        const skipped = result.skipped.length ? ` · ${result.skipped.length} übersprungen (z. B. Ein- und Auszahlungen, Dividenden)` : '';
         return { kind: 'rows', name: file.name, rows: result.rows, info: count(result.rows.length) + skipped };
       }
       const result = await previewDepotImport(file);
@@ -120,7 +121,7 @@ export function DepotImportPage() {
       <div className="title-row">
         <div className="text">
           <h1>Abrechnungen importieren</h1>
-          <p className="sub">PDF-Abrechnungen deiner Broker (z. B. Trade Republic, HypoVereinsbank) und CSV-Exporte von Krypto-Apps wie Bison.</p>
+          <p className="sub">PDF-Abrechnungen deiner Broker (z. B. HypoVereinsbank), den Transaktionsexport von Trade Republic (CSV) und CSV-Exporte von Krypto-Apps wie Bison.</p>
         </div>
         <div className="actions">
           <Link to="/portfolio" className="btn"><Icon name="left" size={16} />Portfolio</Link>
