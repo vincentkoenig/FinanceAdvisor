@@ -1,25 +1,28 @@
 // Umsätze importieren. Frage der Seite: Welche Umsätze aus dem Bankexport sollen ins Haushaltsbuch?
 // CSV-Export oder Kontoauszug als PDF wählen → (bei CSV Spalten zuordnen, falls nicht erkannt) →
-// Vorschau prüfen, Kategorien setzen → übernehmen.
+// Vorschau prüfen, Kategorien setzen (fehlende auf Wunsch von der KI, neue direkt hier anlegen) → übernehmen.
 // Gespeichert wird erst beim Übernehmen; die Datei selbst bleibt nirgends liegen.
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { useCategories } from '../../api/budget';
+import { type Category, useAddCategory, useCategories } from '../../api/budget';
 import {
   type ColumnMapping, type ImportPreview, type ImportRow, UnknownColumnsError, useCategorizeBankImport, useCommitBankImport, usePreviewBankImport,
 } from '../../api/imports';
+import { Dialog } from '../../components/Dialog';
 import { Icon } from '../../components/Icon';
 import { useToast } from '../../components/Toast';
 import { dayShort } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import {
-  MAPPING_FIELDS, type Choice, applySuggestions, assignCategory, categoryOptions, initialChoices, payeesWithoutCategory, toCommit,
+  MAPPING_FIELDS, type Choice, type Proposal, applySuggestions, assignCategory, assignToPayees, categoryOptions, initialChoices,
+  payeesWithoutCategory, proposalsFrom, toCommit,
 } from './importModel';
 
 export function ImportPage() {
   const previewImport = usePreviewBankImport();
   const commit = useCommitBankImport();
   const categorize = useCategorizeBankImport();
+  const addCategory = useAddCategory();
   const categories = useCategories();
   const notify = useToast();
   const navigate = useNavigate();
@@ -30,6 +33,9 @@ export function ImportPage() {
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [choices, setChoices] = useState<Record<string, Choice>>({});
   const [error, setError] = useState<string | null>(null);
+  // Von der KI vorgeschlagene neue Kategorien und die Zeile, für die gerade eine neue angelegt wird
+  const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [creatingFor, setCreatingFor] = useState<ImportRow | null>(null);
 
   const load = (chosen: File, withMapping?: ColumnMapping) => {
     setError(null);
@@ -58,6 +64,7 @@ export function ImportPage() {
   const reset = () => {
     setFile(null);
     setPreview(null);
+    setProposals([]);
     setColumns(null);
     setError(null);
     setInputKey((k) => k + 1);
@@ -72,12 +79,30 @@ export function ImportPage() {
     categorize.mutate(openPayees, {
       onSuccess: ({ suggestions }) => {
         const result = applySuggestions(preview.rows, choices, suggestions);
+        const proposed = proposalsFrom(suggestions, preview.rows, result.choices);
         setChoices(result.choices);
-        notify(result.filled ? `${result.filled} Umsätze vorbelegt, bitte kurz prüfen` : 'Die KI hatte keine sicheren Vorschläge');
+        setProposals(proposed);
+        const extra = proposed.length ? `, ${proposed.length === 1 ? '1 neue Kategorie' : `${proposed.length} neue Kategorien`} vorgeschlagen` : '';
+        notify(result.filled || proposed.length ? `${result.filled} Umsätze vorbelegt${extra}, bitte kurz prüfen` : 'Die KI hatte keine sicheren Vorschläge');
       },
       onError: (failure) => setError(failure.message),
     });
   };
+  // Vorgeschlagene Kategorie anlegen und allen Umsätzen ihrer Empfänger ohne Kategorie geben
+  const accept = (proposal: Proposal) => {
+    const parent = categories.data?.find((c) => c.id === proposal.parent_id);
+    if (!preview || !parent) return;
+    addCategory.mutate({ name: proposal.name, type: parent.type, parent_id: parent.id }, {
+      onSuccess: ({ category_id }) => {
+        const result = assignToPayees(preview.rows, choices, proposal.payees, category_id);
+        setChoices(result.choices);
+        setProposals((list) => list.filter((p) => p.key !== proposal.key));
+        notify(`${proposal.parent_name} · ${proposal.name} angelegt, ${result.filled} Umsätze zugeordnet`);
+      },
+      onError: (failure) => notify(failure.message, { error: true }),
+    });
+  };
+
   const save = () => {
     if (!summary || summary.missing || !summary.commit.length) return;
     commit.mutate(summary.commit, {
@@ -175,11 +200,32 @@ export function ImportPage() {
               </p>
             </div>
           )}
+          {proposals.length > 0 && (
+            <div className="import-proposals" role="group" aria-label="Vorgeschlagene neue Kategorien">
+              <p className="strong">Neue Kategorien vorgeschlagen</p>
+              <p className="hint">Für diese Empfänger passt keine deiner Kategorien. Angelegt wird erst mit deinem Klick.</p>
+              {proposals.map((p) => (
+                <div className="row" key={p.key}>
+                  <div className="grow">
+                    <span className="trunc">{p.parent_name} · {p.name}</span>
+                    <span className="sub-line trunc">
+                      {p.rows === 1 ? '1 Umsatz' : `${p.rows} Umsätze`} · {p.payees.map((x) => x.name).join(', ')}
+                    </span>
+                  </div>
+                  <button className="btn btn-sm" onClick={() => accept(p)} disabled={addCategory.isPending}
+                    aria-label={`${p.parent_name} · ${p.name} anlegen und zuordnen`}>Anlegen und zuordnen</button>
+                  <button className="icon-btn" onClick={() => setProposals((list) => list.filter((x) => x.key !== p.key))}
+                    aria-label={`Vorschlag ${p.parent_name} · ${p.name} verwerfen`} title="Verwerfen"><Icon name="close" size={16} /></button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="rows">
             {preview.rows.map((row) => (
               <PreviewRow key={row.key} row={row} choice={choices[row.key]} categories={categories.data ?? []}
                 onSelect={(selected) => setChoices((c) => ({ ...c, [row.key]: { ...c[row.key], selected } }))}
-                onCategory={(category) => setChoices((c) => assignCategory(preview.rows, c, row.key, category))} />
+                onCategory={(category) => setChoices((c) => assignCategory(preview.rows, c, row.key, category))}
+                onNewCategory={() => setCreatingFor(row)} />
             ))}
           </div>
           {preview.skipped.length > 0 && (
@@ -195,7 +241,69 @@ export function ImportPage() {
           </div>
         </section>
       )}
+      {creatingFor && preview && (
+        <NewCategoryDialog income={creatingFor.amount > 0} categories={categories.data ?? []} onClose={() => setCreatingFor(null)}
+          onCreated={(id) => setChoices((c) => assignCategory(preview.rows, c, creatingFor.key, id))} />
+      )}
     </>
+  );
+}
+
+const TYPE_LABEL: Record<string, string> = { income: 'Einkommen', fixed_expense: 'Fixkosten', variable_expense: 'Variable Ausgabe' };
+
+/** Neue Kategorie direkt aus der Vorschau: unter einer Hauptkategorie der passenden Richtung oder als neue Hauptkategorie */
+function NewCategoryDialog({ income, categories, onClose, onCreated }: {
+  income: boolean; categories: Category[]; onClose: () => void; onCreated: (id: number) => void;
+}) {
+  const add = useAddCategory();
+  const notify = useToast();
+  const types: Category['type'][] = income ? ['income'] : ['fixed_expense', 'variable_expense'];
+  const mains = categories.filter((c) => c.parent_id === null && types.includes(c.type)).sort((a, b) => a.name.localeCompare(b.name, 'de'));
+  const [name, setName] = useState('');
+  const [place, setPlace] = useState(mains[0] ? `main:${mains[0].id}` : `type:${types[0]}`);
+  const [error, setError] = useState('');
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!name.trim()) {
+      setError('Bitte einen Namen eingeben.');
+      return;
+    }
+    const [kind, value] = place.split(':');
+    const parent = kind === 'main' ? mains.find((m) => m.id === Number(value)) : undefined;
+    add.mutate({ name: name.trim(), type: parent?.type ?? (value as Category['type']), parent_id: parent?.id ?? null }, {
+      onSuccess: ({ category_id }) => {
+        notify(`${parent ? `${parent.name} · ` : ''}${name.trim()} angelegt`);
+        onCreated(category_id);
+        onClose();
+      },
+      onError: (failure) => setError(failure.message),
+    });
+  };
+
+  return (
+    <Dialog title="Neue Kategorie" onClose={onClose} busy={add.isPending}>
+      <form className="dialog-form" onSubmit={submit} noValidate>
+        <div className="field">
+          <label htmlFor="new-category-name">Name</label>
+          <input className="input" id="new-category-name" placeholder="z. B. Lebensversicherung" maxLength={60} value={name}
+            onChange={(e) => setName(e.target.value)} aria-invalid={error ? true : undefined} />
+        </div>
+        <div className="field">
+          <label htmlFor="new-category-place">Einordnen unter</label>
+          <select className="select" id="new-category-place" value={place} onChange={(e) => setPlace(e.target.value)}>
+            {/* Bei Ausgaben die Art dazu: "Mobilität" kann es als Fixkosten und als variable Ausgabe geben */}
+            {mains.map((m) => <option key={m.id} value={`main:${m.id}`}>{income ? m.name : `${m.name} (${TYPE_LABEL[m.type]})`}</option>)}
+            {types.map((t) => <option key={t} value={`type:${t}`}>Als eigene Hauptkategorie ({TYPE_LABEL[t]})</option>)}
+          </select>
+        </div>
+        {error && <p className="err" role="alert">{error}</p>}
+        <div className="dialog-actions">
+          <button type="button" className="btn" onClick={onClose} disabled={add.isPending}>Abbrechen</button>
+          <button type="submit" className="btn btn-primary" disabled={add.isPending}>{add.isPending ? 'Legt an …' : 'Anlegen und zuordnen'}</button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 
@@ -205,9 +313,10 @@ type RowProps = {
   categories: Parameters<typeof categoryOptions>[0];
   onSelect: (selected: boolean) => void;
   onCategory: (category: number | null) => void;
+  onNewCategory: () => void;
 };
 
-function PreviewRow({ row, choice, categories, onSelect, onCategory }: RowProps) {
+function PreviewRow({ row, choice, categories, onSelect, onCategory, onNewCategory }: RowProps) {
   const { eur } = useMoney();
   const income = row.amount > 0;
   const name = row.counterparty || row.purpose || 'Umsatz';
@@ -225,9 +334,11 @@ function PreviewRow({ row, choice, categories, onSelect, onCategory }: RowProps)
         {row.status === 'new'
           ? (
             <select className="select" value={choice.category ?? ''} aria-label={`Kategorie für ${name} am ${dayShort(row.date)}`}
-              onChange={(e) => onCategory(e.target.value === '' ? null : Number(e.target.value))} disabled={!choice.selected}>
+              onChange={(e) => (e.target.value === 'new' ? onNewCategory() : onCategory(e.target.value === '' ? null : Number(e.target.value)))}
+              disabled={!choice.selected}>
               <option value="">Kategorie wählen</option>
               {categoryOptions(categories, income).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+              <option value="new">+ Neue Kategorie …</option>
             </select>
           )
           : <span className="pill">{row.status === 'covered' ? `schon erfasst: ${row.covered_by?.description ?? 'wiederkehrend'}` : 'schon importiert'}</span>}

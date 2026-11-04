@@ -85,7 +85,9 @@ export function useCommitBankImport() {
 }
 
 export type Payee = { name: string; income: boolean };
-export type PayeeSuggestion = Payee & { category_id: number | null };
+/** Neue Unterkategorie, die die KI vorschlägt, weil keine vorhandene passt (angelegt wird erst nach Zustimmung) */
+export type NewCategoryProposal = { name: string; parent_id: number; parent_name: string };
+export type PayeeSuggestion = Payee & { category_id: number | null; new_category: NewCategoryProposal | null };
 
 /** Kategorie-Vorschläge der KI; geschickt werden nur Empfängernamen und Richtung */
 export const useCategorizeBankImport = () =>

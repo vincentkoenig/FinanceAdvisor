@@ -1,6 +1,6 @@
 // Logik der Import-Seite ohne Oberfläche: Kategorien je Richtung, Auswahl und gemeinsame Zuordnung.
 import type { Category } from '../../api/budget';
-import type { CommitRow, ImportField, ImportRow, Payee, PayeeSuggestion } from '../../api/imports';
+import type { CommitRow, ImportField, ImportRow, NewCategoryProposal, Payee, PayeeSuggestion } from '../../api/imports';
 
 /** Felder der Spaltenzuordnung, wie sie die Seite abfragt */
 export const MAPPING_FIELDS: { field: ImportField; label: string; required?: boolean }[] = [
@@ -71,6 +71,33 @@ export function applySuggestions(rows: ImportRow[], choices: Record<string, Choi
     filled += 1;
   }
   return { choices: next, filled };
+}
+
+/** Eine Kategorie allen Umsätzen dieser Empfänger geben, die noch keine haben (z.B. nach dem Anlegen) */
+export function assignToPayees(rows: ImportRow[], choices: Record<string, Choice>, payees: Payee[], category: number) {
+  return applySuggestions(rows, choices, payees.map((p) => ({ ...p, category_id: category, new_category: null })));
+}
+
+export type Proposal = NewCategoryProposal & { key: string; payees: Payee[]; rows: number };
+
+/**
+ * Vorgeschlagene neue Kategorien, gleiche (Hauptkategorie + Name) zusammengefasst, mit den Empfängern
+ * und der Zahl ausgewählter Umsätze, die noch keine Kategorie haben. Ohne solche Umsätze entfällt der Vorschlag.
+ */
+export function proposalsFrom(suggestions: PayeeSuggestion[], rows: ImportRow[], choices: Record<string, Choice>): Proposal[] {
+  const open = rows.filter((r) => r.status === 'new' && choices[r.key].selected && choices[r.key].category === null);
+  const groups = new Map<string, Proposal>();
+  for (const s of suggestions) {
+    if (!s.new_category) continue;
+    const count = open.filter((r) => payeeKey(r.counterparty, r.amount > 0) === payeeKey(s.name, s.income)).length;
+    if (!count) continue;
+    const key = `${s.new_category.parent_id}:${s.new_category.name.toLowerCase()}`;
+    const group = groups.get(key) ?? { ...s.new_category, key, payees: [], rows: 0 };
+    group.payees.push({ name: s.name, income: s.income });
+    group.rows += count;
+    groups.set(key, group);
+  }
+  return [...groups.values()].sort((a, b) => b.rows - a.rows);
 }
 
 /** Was übernommen wird; missing zählt ausgewählte Umsätze ohne Kategorie */
