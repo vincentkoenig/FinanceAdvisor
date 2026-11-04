@@ -56,8 +56,16 @@ def add_category():
             raise ApiError(404, 'Hauptkategorie nicht gefunden')
         if parent.type != data.type:
             raise ApiError(400, 'Unterkategorie muss denselben Typ wie die Hauptkategorie haben')
+        if parent.parent_id is not None:
+            raise ApiError(400, 'Unterkategorien gehen nur unter einer Hauptkategorie')
 
-    category = Category(user_id=current_user.id, name=data.name, type=data.type, parent_id=data.parent_id)
+    # Derselbe Name zweimal an derselben Stelle wäre in jeder Auswahl verwechselbar
+    name = data.name.strip()
+    siblings = Category.query.filter_by(user_id=current_user.id, type=data.type, parent_id=data.parent_id).all()
+    if any(s.name.strip().lower() == name.lower() for s in siblings):
+        raise ApiError(409, f'Die Kategorie „{name}“ gibt es hier schon')
+
+    category = Category(user_id=current_user.id, name=name, type=data.type, parent_id=data.parent_id)
     db.session.add(category)
     db.session.commit()
 

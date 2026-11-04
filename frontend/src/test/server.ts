@@ -114,7 +114,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; bookingChange?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -149,6 +149,22 @@ export const handlers = [
     return HttpResponse.json(month ? data.transactions.filter((t) => inMonth(t, month)) : data.transactions);
   }),
   http.get('/api/v1/me/categories', () => HttpResponse.json(data.categories)),
+  http.post('/api/v1/me/categories', async ({ request }) => {
+    const body = (await request.json()) as { name: string; type: string; parent_id: number | null };
+    sent.category = body;
+    data.categories.push({ ...body, id: nextId++ });
+    return HttpResponse.json({ message: 'Kategorie angelegt', category_id: nextId - 1 }, { status: 201 });
+  }),
+  // Kategorien mit Buchungen lassen sich nicht löschen (wie auf dem Server)
+  http.delete('/api/v1/me/categories/:id', ({ params }) => {
+    const id = Number(params.id);
+    const ids = [id, ...data.categories.filter((c) => c.parent_id === id).map((c) => c.id)];
+    if (data.transactions.some((t) => ids.includes(t.category_id))) {
+      return HttpResponse.json({ error: 'Die Kategorie enthält noch Buchungen und kann nicht gelöscht werden' }, { status: 409 });
+    }
+    data.categories = data.categories.filter((c) => !ids.includes(c.id));
+    return HttpResponse.json({ message: 'Kategorie gelöscht' });
+  }),
   http.post('/api/v1/me/categories/init-defaults', () => {
     data.categories = [{ id: 40, name: 'Lebenshaltung', type: 'variable_expense', parent_id: null }, { id: 41, name: 'Lebensmittel', type: 'variable_expense', parent_id: 40 }];
     return HttpResponse.json({ message: 'Standardkategorien angelegt' }, { status: 201 });

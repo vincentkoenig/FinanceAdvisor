@@ -347,6 +347,10 @@ details.older[open] .clamp-2 { display: none; }
 .settings-row:last-child { box-shadow: none; }
 .settings-row .label-col h2 { margin-top: 6px; }
 .settings-row .label-col p { margin-top: 4px; color: var(--muted); }
+/* Kategorien: Hauptkategorie fett, Unterkategorien eingerückt darunter */
+.category-list { list-style: none; margin: 16px 0; padding: 0; }
+.category-list ul { list-style: none; margin: 0; padding: 0 0 0 20px; }
+.category-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; box-shadow: inset 0 -1px 0 var(--rule); }
 
 /* ─── Rückmeldungen und Dialoge ─── */
 .toasts { position: fixed; z-index: 80; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
