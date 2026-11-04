@@ -89,6 +89,26 @@ describe('Haushaltsbuch', () => {
     await waitFor(() => expect(screen.getByText('2 im Oktober')).toBeInTheDocument());
   });
 
+  it('ändert Kategorie und Beschreibung einer Buchung, auf Wunsch für alle gleichen', async () => {
+    renderApp('/budget');
+    const user = userEvent.setup();
+    await user.click((await screen.findAllByRole('button', { name: 'Wocheneinkauf bearbeiten' }))[0]);
+    const box = await screen.findByRole('dialog', { name: 'Buchung bearbeiten' });
+    // Ausgabe: nur Ausgaben-Arten, die aktuelle Kategorie ist vorgewählt
+    expect(within(box).getByRole('group', { name: 'Art der Ausgabe' })).toHaveTextContent('FixkostenVariable Ausgabe');
+    expect(within(box).getByLabelText('Unterkategorie')).toHaveDisplayValue('Lebensmittel');
+
+    await user.selectOptions(within(box).getByLabelText('Unterkategorie'), 'Kleidung');
+    await user.clear(within(box).getByLabelText('Beschreibung'));
+    await user.type(within(box).getByLabelText('Beschreibung'), 'Schuhe');
+    await user.click(within(box).getByLabelText('Für alle Buchungen „Wocheneinkauf“'));
+    await user.click(within(box).getByRole('button', { name: 'Speichern' }));
+
+    expect(await screen.findByText('Buchung geändert')).toBeInTheDocument();
+    expect(sent.bookingChange).toEqual({ category_id: 4, description: 'Schuhe', same_description: true });
+    expect((await screen.findAllByText('Schuhe')).length).toBeGreaterThan(0);
+  });
+
   it('speichert eine neue Buchung mit Kategorie und Wiederholung', async () => {
     renderApp('/budget');
     const user = userEvent.setup();

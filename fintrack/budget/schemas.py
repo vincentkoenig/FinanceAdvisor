@@ -40,6 +40,18 @@ class TransactionCreate(RequestModel):
         return self
 
 
+class TransactionUpdate(RequestModel):
+    """Kategorie und Beschreibung einer Buchung ändern; same_description überträgt es auf gleich benannte."""
+    category_id: PositiveInt
+    description: Optional[str] = Field(default=None, max_length=200)
+    same_description: bool = False
+
+    @field_validator('description')
+    @classmethod
+    def empty_to_none(cls, value):
+        return (value or '').strip() or None
+
+
 class MonthQuery(RequestModel):
     # Optionaler Monatsfilter im Format JJJJ-MM, z.B. 2026-10
     month: Optional[str] = Field(default=None, pattern=r'^\d{4}-(0[1-9]|1[0-2])$')

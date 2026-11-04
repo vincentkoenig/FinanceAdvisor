@@ -145,6 +145,7 @@ class TestForeignUserData:
 
     @pytest.mark.parametrize('method,url_template', [
         ('DELETE', '/api/v1/me/transactions/{transaction}'),
+        ('PUT', '/api/v1/me/transactions/{transaction}'),
         ('POST', '/api/v1/me/transactions/{transaction}/toggle-pause'),
         ('DELETE', '/api/v1/me/categories/{category}'),
         ('DELETE', '/api/v1/me/savings-plans/{plan}'),
@@ -164,6 +165,8 @@ class TestForeignUserData:
         # Gültiger Vertrags-Body, damit die Prüfung nicht schon an der Eingabe scheitert
         body = {'name': 'von A', 'category': 'other', 'amount': 1, 'interval': 'monthly',
                 'start_date': '2026-01-01'} if 'contracts' in url else None
+        if method == 'PUT' and 'transactions' in url:
+            body = {'category_id': b_data.category.id, 'description': 'von A'}
 
         response = client.open(url, method=method, json=body)
 

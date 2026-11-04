@@ -114,7 +114,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; bookingChange?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -165,6 +165,14 @@ export const handlers = [
     t.is_paused = !t.is_paused;
     t.paused_at = t.is_paused ? '2026-10-30' : null;
     return HttpResponse.json({ message: 'ok', is_paused: t.is_paused });
+  }),
+  http.put('/api/v1/me/transactions/:id', async ({ params, request }) => {
+    const body = (await request.json()) as { category_id: number; description: string | null; same_description: boolean };
+    sent.bookingChange = body;
+    const t = data.transactions.find((x) => x.id === Number(params.id))!;
+    const category = data.categories.find((c) => c.id === body.category_id)!;
+    Object.assign(t, { category_id: category.id, category_name: category.name, category_type: category.type, description: body.description });
+    return HttpResponse.json({ message: 'Buchung geändert', updated: 1 });
   }),
   http.delete('/api/v1/me/transactions/:id', ({ params }) => {
     data.transactions = data.transactions.filter((t) => t.id !== Number(params.id));
