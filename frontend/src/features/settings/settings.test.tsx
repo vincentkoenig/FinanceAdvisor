@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -20,6 +20,33 @@ describe('Einstellungen', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Einstellungen' }));
     expect(await screen.findByRole('heading', { name: 'Einstellungen', level: 1 })).toBeInTheDocument();
     expect(router.state.location.pathname).toBe('/settings');
+  });
+
+  it('legt Unterkategorien an und löscht nur leere Kategorien', async () => {
+    renderApp('/settings');
+    const user = userEvent.setup();
+    const section = await screen.findByRole('region', { name: 'Kategorien' });
+    // Fixkosten sind vorgewählt: Hauptkategorien mit eingerückten Unterkategorien
+    const list = () => within(section).getAllByRole('list')[0];
+    expect(await within(section).findByText('Sonstige Versicherungen')).toBeInTheDocument();
+    expect(list()).toHaveTextContent('Versicherungen');
+    expect(list()).not.toHaveTextContent('Lebensmittel');
+
+    await user.type(within(section).getByLabelText('Neue Kategorie'), 'Lebensversicherung');
+    await user.selectOptions(within(section).getByLabelText('Einordnen unter'), 'Versicherungen');
+    await user.click(within(section).getByRole('button', { name: 'Anlegen' }));
+
+    expect(await screen.findByText('Versicherungen · Lebensversicherung angelegt')).toBeInTheDocument();
+    expect(sent.category).toEqual({ name: 'Lebensversicherung', type: 'fixed_expense', parent_id: 50 });
+    await waitFor(() => expect(list()).toHaveTextContent('Lebensversicherung'));
+
+    // Lebenshaltung hat Buchungen (Wocheneinkauf): der Server lehnt ab, der Dialog sagt warum
+    await user.click(within(section).getByRole('button', { name: 'Variable Ausgaben' }));
+    await user.click(within(section).getByRole('button', { name: 'Lebenshaltung löschen' }));
+    const box = await screen.findByRole('dialog');
+    expect(box).toHaveTextContent('Die Unterkategorien Kleidung, Lebensmittel werden mitgelöscht');
+    await user.click(within(box).getByRole('button', { name: 'Löschen' }));
+    expect(await within(box).findByRole('alert')).toHaveTextContent('enthält noch Buchungen');
   });
 
   it('zeigt das gespeicherte Anlageprofil und speichert Änderungen', async () => {

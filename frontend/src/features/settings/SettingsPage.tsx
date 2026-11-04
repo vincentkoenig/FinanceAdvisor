@@ -1,5 +1,5 @@
-// Einstellungen: Anlageprofil (für KI-Berater und Analyse), Darstellung auf diesem Gerät,
-// eigene Daten exportieren/importieren und das Konto.
+// Einstellungen: Anlageprofil (für KI-Berater und Analyse), Kategorien des Haushaltsbuchs,
+// Darstellung auf diesem Gerät, eigene Daten exportieren/importieren und das Konto.
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useOutletContext } from 'react-router';
 import { useLogout, useMe, type User } from '../../api/auth';
@@ -10,6 +10,7 @@ import type { RootContext } from '../../components/Shell';
 import { useToast } from '../../components/Toast';
 import { parseAmount } from '../../lib/format';
 import { usePrivacy } from '../../lib/privacy';
+import { CategoriesSection } from './Categories';
 
 const RISK = [['conservative', 'Konservativ'], ['balanced', 'Ausgewogen'], ['aggressive', 'Aggressiv']];
 const EXPERIENCE = [['beginner', 'Anfänger'], ['intermediate', 'Fortgeschritten'], ['expert', 'Experte']];
@@ -182,6 +183,9 @@ export function SettingsPage() {
       <div>
         <Row title="Anlageprofil" description="Fließt in jede Antwort des KI-Beraters und in die Portfolio-Analyse ein.">
           <ProfileForm user={user} />
+        </Row>
+        <Row title="Kategorien" description="Für Buchungen im Haushaltsbuch und die Vorschläge beim Import. Unterkategorien ordnen sich unter eine Hauptkategorie.">
+          <CategoriesSection />
         </Row>
         <Row title="Darstellung" description="Gilt auf diesem Gerät. Das Handy kann ein anderes Design haben als der Laptop.">
           <div className="field">

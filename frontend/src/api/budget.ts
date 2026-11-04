@@ -59,6 +59,25 @@ export function useDeleteBooking() {
   });
 }
 
+export type NewCategory = { name: string; type: CategoryType; parent_id: number | null };
+
+export function useAddCategory() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (body: NewCategory) => api<{ message: string; category_id: number }>('/me/categories', { method: 'POST', body }),
+    onSuccess: () => client.invalidateQueries({ queryKey: budgetKeys.categories }),
+  });
+}
+
+/** Löscht samt Unterkategorien; der Server lehnt ab, solange Buchungen daran hängen */
+export function useDeleteCategory() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api<{ message: string }>(`/me/categories/${id}`, { method: 'DELETE' }),
+    onSuccess: () => client.invalidateQueries({ queryKey: budgetKeys.categories }),
+  });
+}
+
 /** Für neue Konten: die Standardkategorien anlegen */
 export function useDefaultCategories() {
   const client = useQueryClient();
