@@ -1,6 +1,6 @@
-// Dialoge des Haushaltsbuchs: Buchung hinzufügen und Buchung löschen.
+// Dialoge des Haushaltsbuchs: Buchung hinzufügen, bearbeiten und löschen.
 import { useState, type FormEvent } from 'react';
-import { type Category, useAddBooking, useCategories, useDefaultCategories, useDeleteBooking } from '../../api/budget';
+import { type Category, useAddBooking, useCategories, useDefaultCategories, useDeleteBooking, useUpdateBooking } from '../../api/budget';
 import type { Booking, CategoryType } from '../../api/overview';
 import { Dialog } from '../../components/Dialog';
 import { Actions, type Errors, Field, apiErrors, describe, positive } from '../../components/form';
@@ -132,6 +132,90 @@ export function AddBookingDialog({ defaultDate, onClose }: { defaultDate: string
           </Field>
         )}
         <Actions onCancel={onClose} busy={add.isPending} label="Speichern" busyLabel="Speichert …" error={errors.form} />
+      </form>
+    </Dialog>
+  );
+}
+
+/**
+ * Kategorie und Beschreibung einer Buchung ändern. Die Richtung bleibt: eine Einnahme bekommt nur
+ * Einkommens-Kategorien, eine Ausgabe nur Fix- oder variable Kosten.
+ */
+export function EditBookingDialog({ booking, onClose }: { booking: Booking; onClose: () => void }) {
+  const categories = useCategories();
+  const update = useUpdateBooking();
+  const notify = useToast();
+  const income = booking.category_type === 'income';
+  const types = TYPES.filter((t) => (t.type === 'income') === income);
+  const current = categories.data?.find((c) => c.id === booking.category_id);
+  const [type, setType] = useState<CategoryType>(current?.type ?? booking.category_type ?? types[0].type);
+  const [mainId, setMainId] = useState<number | null>(current ? (current.parent_id ?? current.id) : null);
+  const [subId, setSubId] = useState<number | null>(booking.category_id ?? null);
+  const [description, setDescription] = useState(booking.description ?? '');
+  const [same, setSame] = useState(false);
+  const [errors, setErrors] = useState<Errors>({});
+
+  const groups = choices(categories.data ?? [], type);
+  const group = groups.find((g) => g.main.id === mainId) ?? groups[0];
+  const sub = group?.subs.find((c) => c.id === subId) ?? group?.subs[0];
+  const original = booking.description?.trim();
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!sub) {
+      setErrors({ form: 'Bitte eine Kategorie wählen.' });
+      return;
+    }
+    try {
+      const result = await update.mutateAsync({
+        id: booking.id, body: { category_id: sub.id, description: description.trim() || null, same_description: same },
+      });
+      notify(result.message);
+      onClose();
+    } catch (error) {
+      setErrors(apiErrors(error, { description: 'description', category_id: 'form' }));
+    }
+  };
+
+  return (
+    <Dialog title="Buchung bearbeiten" onClose={onClose} busy={update.isPending}>
+      <form className="dialog-form" onSubmit={submit} noValidate>
+        {types.length > 1 && (
+          <div className="segmented" role="group" aria-label="Art der Ausgabe">
+            {types.map((t) => (
+              <button type="button" key={t.type} aria-pressed={type === t.type}
+                onClick={() => { setType(t.type); setMainId(null); setSubId(null); }}>{t.label}</button>
+            ))}
+          </div>
+        )}
+        <div className="form-grid">
+          <Field id="edit-main" label="Kategorie">
+            <select className="select" id="edit-main" value={group?.main.id ?? ''} disabled={!categories.isSuccess}
+              onChange={(e) => { setMainId(Number(e.target.value)); setSubId(null); }}>
+              {groups.map((g) => <option key={g.main.id} value={g.main.id}>{g.main.name}</option>)}
+            </select>
+          </Field>
+          <Field id="edit-sub" label="Unterkategorie">
+            <select className="select" id="edit-sub" value={sub?.id ?? ''} disabled={!categories.isSuccess}
+              onChange={(e) => setSubId(Number(e.target.value))}>
+              {group?.subs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </Field>
+        </div>
+        <Field id="edit-description" label="Beschreibung" error={errors.description}>
+          <input className="input" id="edit-description" placeholder="optional" maxLength={200} value={description}
+            onChange={(e) => setDescription(e.target.value)} {...describe('edit-description', errors.description)} />
+        </Field>
+        {original && (
+          <div className="switch-row">
+            <div className="text">
+              <label htmlFor="edit-same" className="strong">Für alle Buchungen „{original}“</label>
+              <p className="hint">Ändert auch alle anderen {income ? 'Einnahmen' : 'Ausgaben'} mit genau dieser Beschreibung, in allen Monaten</p>
+            </div>
+            <input type="checkbox" className="switch" id="edit-same" checked={same} onChange={(e) => setSame(e.target.checked)} />
+          </div>
+        )}
+        <Actions onCancel={onClose} busy={update.isPending} label="Speichern" busyLabel="Speichert …" error={errors.form} />
       </form>
     </Dialog>
   );

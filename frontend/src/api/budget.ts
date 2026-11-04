@@ -43,6 +43,18 @@ export function useAddBooking() {
   });
 }
 
+export type BookingChange = { category_id: number; description: string | null; same_description: boolean };
+
+/** Kategorie und Beschreibung ändern; same_description: auch alle Buchungen mit derselben Beschreibung */
+export function useUpdateBooking() {
+  const refresh = useRefresh();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: BookingChange }) =>
+      api<{ message: string; updated: number }>(`/me/transactions/${id}`, { method: 'PUT', body }),
+    onSuccess: refresh,
+  });
+}
+
 export function useTogglePause() {
   const refresh = useRefresh();
   return useMutation({

@@ -13,7 +13,7 @@ import { useToast } from '../../components/Toast';
 import { dayShort, isoDay, monthKey, parseDay } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import { monthFlow, signedAmount } from '../home/model';
-import { AddBookingDialog, DeleteBookingDialog } from './dialogs';
+import { AddBookingDialog, DeleteBookingDialog, EditBookingDialog } from './dialogs';
 import {
   asSummary, counts, dayInMonth, daysForAverage, expensesByCategory, largestVariable, mainCategory, monthStart, monthTotals, sortBookings,
 } from './model';
@@ -22,7 +22,7 @@ const monthLabel = (month: Date) => month.toLocaleDateString('de-DE', { month: '
 const monthOnly = (month: Date) => month.toLocaleDateString('de-DE', { month: 'long' });
 const dayMonth = (iso: string) => parseDay(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
 
-type Open = { type: 'add' } | { type: 'delete'; booking: Booking } | null;
+type Open = { type: 'add' } | { type: 'edit'; booking: Booking } | { type: 'delete'; booking: Booking } | null;
 
 export function BudgetPage() {
   const { eur } = useMoney();
@@ -128,19 +128,21 @@ export function BudgetPage() {
                 Keine Buchungen im {monthOnly(month)}. {current ? 'Mit „Buchung“ trägst du Einnahmen und Ausgaben ein.' : 'Wiederkehrende Buchungen erscheinen, sobald sie laufen.'}
               </p>
             )
-            : <Bookings bookings={sortBookings(bookings.data!, month)} month={month} categories={categories.data!} onDelete={(booking) => setOpen({ type: 'delete', booking })} />}
+            : <Bookings bookings={sortBookings(bookings.data!, month)} month={month} categories={categories.data!}
+                onEdit={(booking) => setOpen({ type: 'edit', booking })} onDelete={(booking) => setOpen({ type: 'delete', booking })} />}
         </Loaded>
       </section>
 
       {open?.type === 'add' && <AddBookingDialog defaultDate={defaultDate} onClose={() => setOpen(null)} />}
+      {open?.type === 'edit' && <EditBookingDialog booking={open.booking} onClose={() => setOpen(null)} />}
       {open?.type === 'delete' && <DeleteBookingDialog booking={open.booking} onClose={() => setOpen(null)} />}
     </>
   );
 }
 
-type BookingsProps = { bookings: Booking[]; month: Date; categories: Category[]; onDelete: (b: Booking) => void };
+type BookingsProps = { bookings: Booking[]; month: Date; categories: Category[]; onEdit: (b: Booking) => void; onDelete: (b: Booking) => void };
 
-function Bookings({ bookings, month, categories, onDelete }: BookingsProps) {
+function Bookings({ bookings, month, categories, onEdit, onDelete }: BookingsProps) {
   const { eur } = useMoney();
   const toggle = useTogglePause();
   const notify = useToast();
@@ -164,6 +166,7 @@ function Bookings({ bookings, month, categories, onDelete }: BookingsProps) {
           <Icon name={b.is_paused ? 'play' : 'pause'} size={16} />
         </button>
       )}
+      <button className="icon-btn" onClick={() => onEdit(b)} aria-label={`${name(b)} bearbeiten`} title="Bearbeiten"><Icon name="edit" size={16} /></button>
       <button className="icon-btn" onClick={() => onDelete(b)} aria-label={`${name(b)} löschen`} title="Löschen"><Icon name="trash" size={16} /></button>
     </>
   );
