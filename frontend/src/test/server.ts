@@ -337,11 +337,17 @@ export const handlers = [
       { key: 'p2', occurrence: 0, line: 2, date: '2026-10-07', amount: -3.2, counterparty: 'Café Mitte', purpose: 'Kartenzahlung', description: 'Café Mitte', status: 'new', covered_by: null, category_id: null },
     ],
   })),
-  // KI-Vorschlag: Café Mitte -> Kleidung (4), alles andere ohne Vorschlag
+  // KI-Vorschlag: Café Mitte -> Kleidung (4), für Erstattung eine neue Unterkategorie unter Einkommen
   http.post('/api/v1/me/import/bank/categorize', async ({ request }) => {
     const { payees } = (await request.json()) as { payees: { name: string; income: boolean }[] };
     sent.payees = payees;
-    return HttpResponse.json({ suggestions: payees.map((p) => ({ ...p, category_id: p.name === 'Café Mitte' ? 4 : null })) });
+    return HttpResponse.json({
+      suggestions: payees.map((p) => ({
+        ...p,
+        category_id: p.name === 'Café Mitte' ? 4 : null,
+        new_category: p.name === 'Erstattung' ? { name: 'Erstattungen', parent_id: 10, parent_name: 'Einkommen' } : null,
+      })),
+    });
   }),
   http.post('/api/v1/me/import/bank/commit', async ({ request }) => {
     const { rows } = (await request.json()) as { rows: unknown[] };

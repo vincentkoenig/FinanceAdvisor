@@ -185,16 +185,50 @@ class TestCommit:
         assert Transaction.query.filter(Transaction.import_hash.isnot(None)).count() == 0
 
 
+def choice(index, category_id=None, new_name=None, new_parent_id=None):
+    from fintrack.imports.categorize import _Choice
+    return _Choice(index=index, category_id=category_id, new_name=new_name, new_parent_id=new_parent_id)
+
+
 class TestCategorize:
+
+    def test_new_sub_category_is_only_proposed(self, account, mocker):
+        client, user, ids = account
+        insurance = Category(user_id=user.id, name='Versicherungen', type='fixed_expense')
+        db.session.add(insurance)
+        db.session.flush()
+        db.session.add(Category(user_id=user.id, name='Haftpflicht', type='fixed_expense', parent_id=insurance.id))
+        db.session.commit()
+        mocker.patch('fintrack.imports.categorize._ask', return_value=[
+            choice(0, new_name=' Lebens versicherung ', new_parent_id=insurance.id),
+            # Gibt es schon -> vorhandene Kategorie statt Vorschlag
+            choice(1, new_name='haftpflicht', new_parent_id=insurance.id),
+            # Einnahme unter einer Ausgaben-Hauptkategorie und unbekannte Hauptkategorie zählen nicht
+            choice(2, new_name='Bonus', new_parent_id=insurance.id),
+            choice(3, new_name='Irgendwas', new_parent_id=9999),
+        ])
+        before = Category.query.count()
+
+        suggestions = client.post('/api/v1/me/import/bank/categorize', json={'payees': [
+            {'name': 'Nürnberger Leben', 'income': False}, {'name': 'HUK Haftpflicht', 'income': False},
+            {'name': 'Arbeitgeber', 'income': True}, {'name': 'Laden', 'income': False}]}).get_json()['suggestions']
+
+        assert suggestions[0]['category_id'] is None
+        assert suggestions[0]['new_category'] == {'name': 'Lebens versicherung', 'parent_id': insurance.id,
+                                                  'parent_name': 'Versicherungen'}
+        haftpflicht = Category.query.filter_by(name='Haftpflicht').one().id
+        assert (suggestions[1]['category_id'], suggestions[1]['new_category']) == (haftpflicht, None)
+        assert [s['new_category'] for s in suggestions[2:]] == [None, None]
+        # Angelegt wird erst, wenn der Nutzer zustimmt
+        assert Category.query.count() == before
 
     def test_suggestions_only_in_the_right_direction(self, account, mocker):
         client, _, ids = account
-        from fintrack.imports.categorize import _Answer, _Choice
         ask = mocker.patch('fintrack.imports.categorize._ask', return_value=[
-            _Choice(index=0, category_id=ids['food']),
+            choice(0, ids['food']),
             # Einnahme mit Ausgaben-Kategorie und unbekannte id werden verworfen
-            _Choice(index=1, category_id=ids['rent']),
-            _Choice(index=2, category_id=9999),
+            choice(1, ids['rent']),
+            choice(2, 9999),
         ])
 
         response = client.post('/api/v1/me/import/bank/categorize', json={'payees': [
