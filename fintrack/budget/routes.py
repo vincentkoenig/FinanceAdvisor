@@ -14,7 +14,7 @@ from flask_login import current_user
 # Lokale Imports
 from fintrack.api import ApiError, parse_body, parse_query
 from fintrack.auth.session import get_own, protect_blueprint
-from fintrack.budget.schemas import CategoryCreate, MonthQuery, TransactionCreate
+from fintrack.budget.schemas import CategoryCreate, MonthQuery, TransactionCreate, TransactionUpdate
 from fintrack.budget.service import calculate_budget_summary, create_default_categories
 from fintrack.extensions import db
 from fintrack.models import Category, Contract, Transaction
@@ -200,6 +200,47 @@ def add_transaction():
     db.session.commit()
 
     return jsonify({"message": "Buchung gespeichert", "transaction_id": transaction.id}), 201
+
+
+@bp.route('/me/transactions/<int:transaction_id>', methods=['PUT'])
+def update_transaction(transaction_id):
+    """
+    Kategorie und Beschreibung einer Buchung ändern. Mit same_description gilt das auch für alle
+    anderen Buchungen mit derselben bisherigen Beschreibung in derselben Richtung (z.B. alle
+    importierten "Vodafone GmbH"). Einnahmen bleiben Einnahmen und Ausgaben Ausgaben: der Betrag
+    ist immer positiv gespeichert, die Richtung steckt in der Kategorie.
+    """
+    data = parse_body(TransactionUpdate)
+    transaction = get_own(Transaction, transaction_id)
+    if not transaction:
+        raise ApiError(404, 'Buchung nicht gefunden')
+    category = get_own(Category, data.category_id)
+    if not category:
+        raise ApiError(404, 'Kategorie nicht gefunden')
+
+    def is_income(category_id):
+        found = db.session.get(Category, category_id)
+        return found is not None and found.type == 'income'
+
+    income = is_income(transaction.category_id)
+    if (category.type == 'income') != income:
+        raise ApiError(400, 'Eine Einnahme braucht eine Einkommens-Kategorie, eine Ausgabe eine Ausgaben-Kategorie')
+
+    targets = [transaction]
+    old_description = (transaction.description or '').strip().lower()
+    if data.same_description and old_description:
+        others = Transaction.query.filter(
+            Transaction.user_id == current_user.id, Transaction.id != transaction.id,
+            db.func.lower(db.func.trim(Transaction.description)) == old_description).all()
+        targets += [t for t in others if is_income(t.category_id) == income]
+
+    for target in targets:
+        target.category_id = category.id
+        target.description = data.description
+    db.session.commit()
+
+    message = 'Buchung geändert' if len(targets) == 1 else f'{len(targets)} Buchungen geändert'
+    return jsonify({"message": message, "updated": len(targets)}), 200
 
 
 @bp.route('/me/transactions/<int:transaction_id>', methods=['DELETE'])

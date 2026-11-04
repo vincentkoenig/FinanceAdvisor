@@ -21,6 +21,7 @@ const PATHS = {
   send: 'M5 12h14M13 6l6 6-6 6',
   pause: 'M9 5v14M15 5v14',
   play: 'M7 5l12 7-12 7z',
+  edit: 'M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4',
   trash: 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3',
   bars: 'M3 9h18v6H3zM11 9v6M17 9v6',
   doc: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6',
