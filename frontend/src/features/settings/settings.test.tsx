@@ -49,6 +49,33 @@ describe('Einstellungen', () => {
     expect(await within(box).findByRole('alert')).toHaveTextContent('enthält noch Buchungen');
   });
 
+  it('benennt eine Kategorie um und verschiebt sie unter eine andere Hauptkategorie', async () => {
+    renderApp('/settings');
+    const user = userEvent.setup();
+    const section = await screen.findByRole('region', { name: 'Kategorien' });
+    await user.click(await within(section).findByRole('button', { name: 'Versicherungen · Sonstige Versicherungen bearbeiten' }));
+
+    const box = await screen.findByRole('dialog', { name: 'Kategorie bearbeiten' });
+    // Ausgabe: nur Ausgaben-Hauptkategorien, mit Art
+    expect(within(within(box).getByLabelText('Einordnen unter')).getAllByRole('option').map((o) => o.textContent)).toEqual([
+      'Als eigene Hauptkategorie', 'Lebenshaltung (Variable Ausgabe)', 'Versicherungen (Fixkosten)', 'Wohnen (Fixkosten)',
+    ]);
+    await user.clear(within(box).getByLabelText('Name'));
+    await user.type(within(box).getByLabelText('Name'), 'Lebensversicherung');
+    await user.selectOptions(within(box).getByLabelText('Einordnen unter'), 'Wohnen (Fixkosten)');
+    await user.click(within(box).getByRole('button', { name: 'Speichern' }));
+
+    expect(await screen.findByText('Lebensversicherung gespeichert')).toBeInTheDocument();
+    expect(sent.categoryChange).toEqual({ name: 'Lebensversicherung', parent_id: 30 });
+    expect(await within(section).findByRole('button', { name: 'Wohnen · Lebensversicherung bearbeiten' })).toBeInTheDocument();
+
+    // Hauptkategorie mit Unterkategorien: nur umbenennen
+    await user.click(within(section).getByRole('button', { name: 'Wohnen bearbeiten' }));
+    const main = await screen.findByRole('dialog', { name: 'Kategorie bearbeiten' });
+    expect(within(main).getByLabelText('Einordnen unter')).toBeDisabled();
+    expect(main).toHaveTextContent('Hat Unterkategorien und bleibt deshalb eine Hauptkategorie.');
+  });
+
   it('zeigt das gespeicherte Anlageprofil und speichert Änderungen', async () => {
     renderApp('/settings');
     const user = userEvent.setup();

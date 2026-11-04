@@ -114,7 +114,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -154,6 +154,14 @@ export const handlers = [
     sent.category = body;
     data.categories.push({ ...body, id: nextId++ });
     return HttpResponse.json({ message: 'Kategorie angelegt', category_id: nextId - 1 }, { status: 201 });
+  }),
+  http.put('/api/v1/me/categories/:id', async ({ params, request }) => {
+    const body = (await request.json()) as { name: string; parent_id: number | null };
+    sent.categoryChange = body;
+    const c = data.categories.find((x) => x.id === Number(params.id))!;
+    const parent = data.categories.find((x) => x.id === body.parent_id);
+    Object.assign(c, { name: body.name, parent_id: body.parent_id, type: parent?.type ?? c.type });
+    return HttpResponse.json({ message: 'Kategorie geändert' });
   }),
   // Kategorien mit Buchungen lassen sich nicht löschen (wie auf dem Server)
   http.delete('/api/v1/me/categories/:id', ({ params }) => {
