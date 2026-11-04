@@ -81,6 +81,17 @@ export function useAddCategory() {
   });
 }
 
+/** Umbenennen und/oder verschieben (parent_id null = eigene Hauptkategorie); Buchungen wandern mit */
+export function useUpdateCategory() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, body }: { id: number; body: { name: string; parent_id: number | null } }) =>
+      api<{ message: string }>(`/me/categories/${id}`, { method: 'PUT', body }),
+    // Kategorienamen stehen auch in den Buchungslisten
+    onSuccess: () => Promise.all([budgetKeys.categories, keys.bookings].map((queryKey) => client.invalidateQueries({ queryKey }))),
+  });
+}
+
 /** Löscht samt Unterkategorien; der Server lehnt ab, solange Buchungen daran hängen */
 export function useDeleteCategory() {
   const client = useQueryClient();

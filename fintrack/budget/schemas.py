@@ -20,6 +20,12 @@ class CategoryCreate(RequestModel):
     parent_id: Optional[PositiveInt] = None
 
 
+class CategoryUpdate(RequestModel):
+    """Umbenennen und/oder verschieben; parent_id leer = als eigene Hauptkategorie."""
+    name: str = Field(min_length=1, max_length=60)
+    parent_id: Optional[PositiveInt] = None
+
+
 class TransactionCreate(RequestModel):
     category_id: PositiveInt
     amount: PositiveFloat

@@ -14,7 +14,7 @@ from flask_login import current_user
 # Lokale Imports
 from fintrack.api import ApiError, parse_body, parse_query
 from fintrack.auth.session import get_own, protect_blueprint
-from fintrack.budget.schemas import CategoryCreate, MonthQuery, TransactionCreate, TransactionUpdate
+from fintrack.budget.schemas import CategoryCreate, CategoryUpdate, MonthQuery, TransactionCreate, TransactionUpdate
 from fintrack.budget.service import calculate_budget_summary, create_default_categories
 from fintrack.extensions import db
 from fintrack.models import Category, Contract, Transaction
@@ -70,6 +70,49 @@ def add_category():
     db.session.commit()
 
     return jsonify({"message": "Kategorie angelegt", "category_id": category.id}), 201
+
+
+@bp.route('/me/categories/<int:category_id>', methods=['PUT'])
+def update_category(category_id):
+    """
+    Kategorie umbenennen und/oder unter eine andere Hauptkategorie verschieben (oder zur eigenen
+    Hauptkategorie machen). Die Buchungen bleiben an der Kategorie und wandern mit.
+    Regeln: Einnahmen bleiben Einnahmen, Ausgaben bleiben Ausgaben (eine Unterkategorie übernimmt
+    beim Verschieben die Art ihrer neuen Hauptkategorie, also Fix- oder variable Kosten); eine
+    Hauptkategorie mit Unterkategorien kann nicht selbst Unterkategorie werden (nur zwei Ebenen).
+    """
+    data = parse_body(CategoryUpdate)
+    category = get_own(Category, category_id)
+    if not category:
+        raise ApiError(404, 'Kategorie nicht gefunden')
+
+    new_type = category.type
+    if data.parent_id is not None:
+        parent = get_own(Category, data.parent_id)
+        if not parent:
+            raise ApiError(404, 'Hauptkategorie nicht gefunden')
+        if parent.id == category.id or parent.parent_id is not None:
+            raise ApiError(400, 'Unterkategorien gehen nur unter einer anderen Hauptkategorie')
+        if (parent.type == 'income') != (category.type == 'income'):
+            raise ApiError(400, 'Einnahmen und Ausgaben lassen sich nicht ineinander verschieben')
+        if Category.query.filter_by(parent_id=category.id).count():
+            raise ApiError(400, 'Eine Hauptkategorie mit Unterkategorien kann keine Unterkategorie werden')
+        new_type = parent.type
+
+    name = data.name.strip()
+    siblings = Category.query.filter(Category.user_id == current_user.id, Category.type == new_type,
+                                     Category.parent_id.is_(None) if data.parent_id is None
+                                     else Category.parent_id == data.parent_id,
+                                     Category.id != category.id).all()
+    if any(s.name.strip().lower() == name.lower() for s in siblings):
+        raise ApiError(409, f'Die Kategorie „{name}“ gibt es hier schon')
+
+    category.name = name
+    category.parent_id = data.parent_id
+    category.type = new_type
+    db.session.commit()
+
+    return jsonify({"message": "Kategorie geändert"}), 200
 
 
 @bp.route('/me/categories/<int:category_id>', methods=['DELETE'])

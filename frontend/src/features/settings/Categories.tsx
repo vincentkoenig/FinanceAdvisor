@@ -1,7 +1,7 @@
 // Kategorien des Haushaltsbuchs verwalten: je Art (Einnahmen, Fixkosten, variable Ausgaben) die
-// Hauptkategorien mit ihren Unterkategorien, neue anlegen und leere löschen.
+// Hauptkategorien mit ihren Unterkategorien, neue anlegen, umbenennen oder verschieben und leere löschen.
 import { useState, type FormEvent } from 'react';
-import { type Category, useAddCategory, useCategories, useDeleteCategory } from '../../api/budget';
+import { type Category, useAddCategory, useCategories, useDeleteCategory, useUpdateCategory } from '../../api/budget';
 import type { CategoryType } from '../../api/overview';
 import { Dialog } from '../../components/Dialog';
 import { Icon } from '../../components/Icon';
@@ -24,6 +24,7 @@ export function CategoriesSection() {
   const [parent, setParent] = useState('');
   const [error, setError] = useState('');
   const [removing, setRemoving] = useState<Category | null>(null);
+  const [editing, setEditing] = useState<Category | null>(null);
 
   const all = categories.data ?? [];
   const mains = all.filter((c) => c.type === type && c.parent_id === null).sort(byName);
@@ -67,6 +68,9 @@ export function CategoriesSection() {
           <li key={main.id}>
             <div className="category-item strong">
               <span className="trunc">{main.name}</span>
+              <button className="icon-btn" onClick={() => setEditing(main)} aria-label={`${main.name} bearbeiten`} title="Bearbeiten">
+                <Icon name="edit" size={16} />
+              </button>
               <button className="icon-btn" onClick={() => setRemoving(main)} aria-label={`${main.name} löschen`} title="Löschen">
                 <Icon name="trash" size={16} />
               </button>
@@ -76,6 +80,9 @@ export function CategoriesSection() {
                 {subsOf(main).map((sub) => (
                   <li className="category-item" key={sub.id}>
                     <span className="trunc">{sub.name}</span>
+                    <button className="icon-btn" onClick={() => setEditing(sub)} aria-label={`${main.name} · ${sub.name} bearbeiten`} title="Bearbeiten">
+                      <Icon name="edit" size={16} />
+                    </button>
                     <button className="icon-btn" onClick={() => setRemoving(sub)} aria-label={`${main.name} · ${sub.name} löschen`} title="Löschen">
                       <Icon name="trash" size={16} />
                     </button>
@@ -109,8 +116,67 @@ export function CategoriesSection() {
         </div>
       </form>
 
+      {editing && <EditCategoryDialog category={editing} categories={all} onClose={() => setEditing(null)} />}
       {removing && <DeleteCategoryDialog category={removing} subs={subsOf(removing)} onClose={() => setRemoving(null)} />}
     </>
+  );
+}
+
+const TYPE_LABEL: Record<CategoryType, string> = { income: 'Einkommen', fixed_expense: 'Fixkosten', variable_expense: 'Variable Ausgabe' };
+
+/**
+ * Umbenennen und verschieben. Einnahmen bleiben bei Einnahmen, Ausgaben bei Ausgaben (zwischen Fix- und
+ * variablen Kosten geht es). Eine Hauptkategorie mit Unterkategorien lässt sich nur umbenennen.
+ */
+function EditCategoryDialog({ category, categories, onClose }: { category: Category; categories: Category[]; onClose: () => void }) {
+  const update = useUpdateCategory();
+  const notify = useToast();
+  const income = category.type === 'income';
+  const hasSubs = categories.some((c) => c.parent_id === category.id);
+  const mains = categories
+    .filter((c) => c.parent_id === null && c.id !== category.id && (c.type === 'income') === income)
+    .sort(byName);
+  const [name, setName] = useState(category.name);
+  const [parent, setParent] = useState(category.parent_id === null ? '' : String(category.parent_id));
+  const [error, setError] = useState('');
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!name.trim()) {
+      setError('Bitte einen Namen eingeben.');
+      return;
+    }
+    update.mutate({ id: category.id, body: { name: name.trim(), parent_id: parent ? Number(parent) : null } }, {
+      onSuccess: () => { notify(`${name.trim()} gespeichert`); onClose(); },
+      onError: (failure) => setError(failure.message),
+    });
+  };
+
+  return (
+    <Dialog title="Kategorie bearbeiten" onClose={onClose} busy={update.isPending}>
+      <form className="dialog-form" onSubmit={submit} noValidate>
+        <div className="field">
+          <label htmlFor="edit-category-name">Name</label>
+          <input className="input" id="edit-category-name" maxLength={60} value={name} onChange={(e) => setName(e.target.value)}
+            aria-invalid={error ? true : undefined} />
+        </div>
+        <div className="field">
+          <label htmlFor="edit-category-parent">Einordnen unter</label>
+          <select className="select" id="edit-category-parent" value={parent} onChange={(e) => setParent(e.target.value)} disabled={hasSubs}
+            aria-describedby={hasSubs ? 'edit-category-hint' : undefined}>
+            <option value="">Als eigene Hauptkategorie</option>
+            {mains.map((m) => <option key={m.id} value={m.id}>{income ? m.name : `${m.name} (${TYPE_LABEL[m.type]})`}</option>)}
+          </select>
+          {hasSubs && <p className="hint" id="edit-category-hint">Hat Unterkategorien und bleibt deshalb eine Hauptkategorie.</p>}
+        </div>
+        <p className="hint">Die Buchungen dieser Kategorie bleiben erhalten und wandern mit.</p>
+        {error && <p className="err" role="alert">{error}</p>}
+        <div className="dialog-actions">
+          <button type="button" className="btn" onClick={onClose} disabled={update.isPending}>Abbrechen</button>
+          <button type="submit" className="btn btn-primary" disabled={update.isPending}>{update.isPending ? 'Speichert …' : 'Speichern'}</button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 

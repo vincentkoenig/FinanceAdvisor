@@ -352,7 +352,8 @@ details.older[open] .clamp-2 { display: none; }
 /* Kategorien: Hauptkategorie fett, Unterkategorien eingerückt darunter */
 .category-list { list-style: none; margin: 16px 0; padding: 0; }
 .category-list ul { list-style: none; margin: 0; padding: 0 0 0 20px; }
-.category-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; box-shadow: inset 0 -1px 0 var(--rule); }
+.category-item { display: flex; align-items: center; gap: 4px; min-height: 40px; box-shadow: inset 0 -1px 0 var(--rule); }
+.category-item > span { flex: 1; min-width: 0; }
 
 /* ─── Rückmeldungen und Dialoge ─── */
 .toasts { position: fixed; z-index: 80; left: 50%; bottom: 24px; transform: translateX(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
