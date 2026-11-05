@@ -11,6 +11,7 @@ import { useToast } from '../../components/Toast';
 import { parseAmount } from '../../lib/format';
 import { usePrivacy } from '../../lib/privacy';
 import { CategoriesSection } from './Categories';
+import { RulesSection } from './Rules';
 
 const RISK = [['conservative', 'Konservativ'], ['balanced', 'Ausgewogen'], ['aggressive', 'Aggressiv']];
 const EXPERIENCE = [['beginner', 'Anfänger'], ['intermediate', 'Fortgeschritten'], ['expert', 'Experte']];
@@ -93,11 +94,12 @@ function ProfileForm({ user }: { user: User }) {
 
 const COUNT_LABELS: [string, string][] = [
   ['transactions', 'Buchungen'], ['positions', 'Positionen'], ['categories', 'Kategorien'], ['savings_plans', 'Sparpläne'], ['contracts', 'Verträge'],
+  ['category_rules', 'Regeln'],
 ];
 
 function importSummary(counts: ImportCounts) {
-  // Verträge nur nennen, wenn welche dabei waren (ältere Exportdateien haben keine)
-  return COUNT_LABELS.filter(([key]) => key !== 'contracts' || counts[key])
+  // Verträge und Regeln nur nennen, wenn welche dabei waren (ältere Exportdateien haben keine)
+  return COUNT_LABELS.filter(([key]) => !['contracts', 'category_rules'].includes(key) || counts[key])
     .map(([key, label]) => `${counts[key] ?? 0} ${label}`).join(', ');
 }
 
@@ -186,6 +188,9 @@ export function SettingsPage() {
         </Row>
         <Row title="Kategorien" description="Für Buchungen im Haushaltsbuch und die Vorschläge beim Import. Unterkategorien ordnen sich unter eine Hauptkategorie.">
           <CategoriesSection />
+        </Row>
+        <Row title="Regeln für den Import" description="Feste Zuordnungen, die beim Kontoimport vor der KI greifen. Korrekturen im Haushaltsbuch merkt sich FinTrack zusätzlich von selbst.">
+          <RulesSection />
         </Row>
         <Row title="Darstellung" description="Gilt auf diesem Gerät. Das Handy kann ein anderes Design haben als der Laptop.">
           <div className="field">

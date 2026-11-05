@@ -31,18 +31,54 @@ describe('Umsätze importieren', () => {
     expect(router.state.location.pathname).toBe('/budget/import');
   });
 
-  it('zeigt die Vorschau mit Status, Vorschlag und Zusammenfassung', async () => {
-    await openWithFile();
+  it('fasst neue Umsätze je Empfänger zusammen und zeigt Status, Vorschlag und Zusammenfassung', async () => {
+    const { user } = await openWithFile();
     const panel = await preview();
     expect(panel).toHaveTextContent('4 neu · 1 schon erfasst · 1 schon importiert · 1 übersprungen');
-    expect(panel).toHaveTextContent('schon erfasst: Miete');
-    expect(panel).toHaveTextContent('schon importiert');
-    expect(within(panel).getByLabelText('Kategorie für REWE Markt am 5. Okt.')).toHaveDisplayValue('Lebenshaltung · Lebensmittel');
-    // Erfasste und importierte Umsätze sind nicht wählbar
+    // Café Mitte zweimal -> eine Gruppe mit beiden Umsätzen und Summe
+    expect(within(panel).getByRole('button', { name: 'Café Mitte: 2 Umsätze zeigen' })).toHaveTextContent('2 Umsätze · Okt. 2026');
+    expect(panel).toHaveTextContent('−7,70 €');
+    expect(within(panel).getByLabelText('Kategorie für REWE Markt')).toHaveDisplayValue('Lebenshaltung · Lebensmittel');
+    expect(within(panel).getByRole('button', { name: 'REWE Markt: 1 Umsätze zeigen' })).toHaveTextContent('Händler');
+    // Erfasste und importierte Umsätze stehen eingeklappt darunter und sind nicht wählbar
+    expect(panel).toHaveTextContent('Schon erfasst oder importiert (2)');
     expect(within(panel).getByLabelText('Vermieter am 2. Okt. übernehmen')).toBeDisabled();
-    expect(within(panel).getByLabelText('Streaming am 30. Sept. übernehmen')).not.toBeChecked();
     expect(panel).toHaveTextContent('Bei 3 ausgewählten Umsätzen fehlt noch die Kategorie.');
     expect(within(panel).getByRole('button', { name: '4 Umsätze übernehmen' })).toBeDisabled();
+
+    // Aufklappen zeigt die einzelnen Umsätze
+    await user.click(within(panel).getByRole('button', { name: 'Café Mitte: 2 Umsätze zeigen' }));
+    expect(within(panel).getByLabelText('Kategorie für Café Mitte am 8. Okt.')).toBeInTheDocument();
+  });
+
+  it('filtert nach Richtung und fehlender Kategorie', async () => {
+    const { user } = await openWithFile();
+    const panel = await preview();
+    await user.click(within(panel).getByRole('button', { name: 'Einnahmen (1)' }));
+    expect(within(panel).queryByLabelText('Kategorie für REWE Markt')).not.toBeInTheDocument();
+    expect(within(panel).getByLabelText('Kategorie für Erstattung')).toBeInTheDocument();
+
+    await user.click(within(panel).getByRole('button', { name: 'Alle (3)' }));
+    await user.click(within(panel).getByLabelText('Nur ohne Kategorie (2)'));
+    expect(within(panel).queryByLabelText('Kategorie für REWE Markt')).not.toBeInTheDocument();
+    expect(within(panel).getByLabelText('Kategorie für Café Mitte')).toBeInTheDocument();
+  });
+
+  it('ordnet den Rest je Richtung einer Sammelkategorie zu', async () => {
+    const { user } = await openWithFile();
+    const panel = await preview();
+    await user.click(within(panel).getByRole('button', { name: 'Rest zuordnen …' }));
+
+    const box = await screen.findByRole('dialog', { name: 'Rest zuordnen' });
+    await user.selectOptions(within(box).getByLabelText('2 Ausgaben'), 'Versicherungen · Sonstige Versicherungen');
+    await user.selectOptions(within(box).getByLabelText('1 Einnahmen'), 'Einkommen · Lohn');
+    await user.click(within(box).getByRole('button', { name: 'Zuordnen' }));
+
+    expect(await screen.findByText('3 Umsätze zugeordnet')).toBeInTheDocument();
+    expect(within(panel).getByLabelText('Kategorie für Café Mitte')).toHaveDisplayValue('Versicherungen · Sonstige Versicherungen');
+    // Vorhandene Vorschläge bleiben
+    expect(within(panel).getByLabelText('Kategorie für REWE Markt')).toHaveDisplayValue('Lebenshaltung · Lebensmittel');
+    expect(within(panel).getByRole('button', { name: '4 Umsätze übernehmen' })).toBeEnabled();
   });
 
   it('lässt fehlende Kategorien von der KI vorschlagen, nur mit den Namen der Empfänger', async () => {
@@ -55,10 +91,9 @@ describe('Umsätze importieren', () => {
     expect(await screen.findByText('2 Umsätze vorbelegt, 1 neue Kategorie vorgeschlagen, bitte kurz prüfen')).toBeInTheDocument();
     // Je Name und Richtung einmal, ohne Beträge
     expect(sent.payees).toEqual([{ name: 'Café Mitte', income: false }, { name: 'Erstattung', income: true }]);
-    expect(within(panel).getByLabelText('Kategorie für Café Mitte am 7. Okt.')).toHaveDisplayValue('Lebenshaltung · Kleidung');
-    expect(within(panel).getByLabelText('Kategorie für Café Mitte am 8. Okt.')).toHaveDisplayValue('Lebenshaltung · Kleidung');
+    expect(within(panel).getByLabelText('Kategorie für Café Mitte')).toHaveDisplayValue('Lebenshaltung · Kleidung');
     // Der vorhandene Vorschlag bleibt
-    expect(within(panel).getByLabelText('Kategorie für REWE Markt am 5. Okt.')).toHaveDisplayValue('Lebenshaltung · Lebensmittel');
+    expect(within(panel).getByLabelText('Kategorie für REWE Markt')).toHaveDisplayValue('Lebenshaltung · Lebensmittel');
     expect(panel).toHaveTextContent('Für 1 Empfänger ohne Kategorie');
   });
 
@@ -76,14 +111,14 @@ describe('Umsätze importieren', () => {
 
     expect(await screen.findByText('Einkommen · Erstattungen angelegt, 1 Umsätze zugeordnet')).toBeInTheDocument();
     expect(sent.category).toEqual({ name: 'Erstattungen', type: 'income', parent_id: 10 });
-    await waitFor(() => expect(within(panel).getByLabelText('Kategorie für Erstattung am 9. Okt.')).toHaveDisplayValue('Einkommen · Erstattungen'));
+    await waitFor(() => expect(within(panel).getByLabelText('Kategorie für Erstattung')).toHaveDisplayValue('Einkommen · Erstattungen'));
     expect(within(panel).queryByRole('group', { name: 'Vorgeschlagene neue Kategorien' })).not.toBeInTheDocument();
   });
 
-  it('legt aus der Kategorie-Auswahl direkt eine neue Kategorie an', async () => {
+  it('legt aus der Kategorie-Auswahl einer Gruppe direkt eine neue Kategorie an', async () => {
     const { user } = await openWithFile();
     const panel = await preview();
-    await user.selectOptions(within(panel).getByLabelText('Kategorie für Café Mitte am 7. Okt.'), '+ Neue Kategorie …');
+    await user.selectOptions(within(panel).getByLabelText('Kategorie für Café Mitte'), '+ Neue Kategorie …');
 
     const box = await screen.findByRole('dialog', { name: 'Neue Kategorie' });
     // Ausgabe: nur Ausgaben-Hauptkategorien und neue Hauptkategorie als Fix- oder variable Kosten
@@ -96,20 +131,18 @@ describe('Umsätze importieren', () => {
 
     expect(await screen.findByText('Lebenshaltung · Café angelegt')).toBeInTheDocument();
     expect(sent.category).toEqual({ name: 'Café', type: 'variable_expense', parent_id: 20 });
-    // Gleicher Empfänger bekommt sie mit
-    await waitFor(() => expect(within(panel).getByLabelText('Kategorie für Café Mitte am 8. Okt.')).toHaveDisplayValue('Lebenshaltung · Café'));
+    await waitFor(() => expect(within(panel).getByLabelText('Kategorie für Café Mitte')).toHaveDisplayValue('Lebenshaltung · Café'));
   });
 
-  it('ordnet gleiche Empfänger mit zu, bietet je Richtung passende Kategorien und übernimmt', async () => {
+  it('setzt die Kategorie für die ganze Gruppe, bietet je Richtung passende Kategorien und übernimmt', async () => {
     const { user, router } = await openWithFile();
     const panel = await preview();
     // Einnahmen bekommen nur Einkommens-Kategorien
-    const refund = within(panel).getByLabelText('Kategorie für Erstattung am 9. Okt.');
+    const refund = within(panel).getByLabelText('Kategorie für Erstattung');
     expect(within(refund).getAllByRole('option').map((o) => o.textContent)).toEqual(['Kategorie wählen', 'Einkommen · Lohn', '+ Neue Kategorie …']);
 
-    await user.selectOptions(within(panel).getByLabelText('Kategorie für Café Mitte am 7. Okt.'), '4');
-    expect(within(panel).getByLabelText('Kategorie für Café Mitte am 8. Okt.')).toHaveDisplayValue('Lebenshaltung · Kleidung');
-    await user.click(within(panel).getByLabelText('Erstattung am 9. Okt. übernehmen'));
+    await user.selectOptions(within(panel).getByLabelText('Kategorie für Café Mitte'), '4');
+    await user.click(within(panel).getByLabelText('Erstattung übernehmen'));
     await user.click(within(panel).getByRole('button', { name: '3 Umsätze übernehmen' }));
 
     expect(await screen.findByText('3 Umsätze übernommen')).toBeInTheDocument();

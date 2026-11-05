@@ -17,7 +17,7 @@ from fintrack.auth.session import get_own, protect_blueprint
 from fintrack.budget.schemas import CategoryCreate, CategoryUpdate, MonthQuery, TransactionCreate, TransactionUpdate
 from fintrack.budget.service import calculate_budget_summary, create_default_categories
 from fintrack.extensions import db
-from fintrack.models import Category, Contract, Transaction
+from fintrack.models import Category, CategoryRule, Contract, Transaction
 
 bp = Blueprint('budget', __name__)
 # Nur mit Anmeldung
@@ -133,6 +133,8 @@ def delete_category(category_id):
     if Transaction.query.filter(Transaction.category_id.in_(category_ids)).count():
         raise ApiError(409, 'Die Kategorie enthält noch Buchungen und kann nicht gelöscht werden')
 
+    # Regeln für den Import hängen an der Kategorie und gehen mit
+    CategoryRule.query.filter(CategoryRule.category_id.in_(category_ids)).delete(synchronize_session=False)
     for sub_category in sub_categories:
         db.session.delete(sub_category)
     db.session.delete(category)

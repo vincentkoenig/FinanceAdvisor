@@ -15,7 +15,7 @@ from datetime import datetime
 
 from fintrack.api import ApiError
 from fintrack.extensions import db
-from fintrack.models import (Asset, AssetTransaction, Category, ChatHistory, Contract, DailyInsight, Dividend,
+from fintrack.models import (Asset, AssetTransaction, Category, CategoryRule, ChatHistory, Contract, DailyInsight, Dividend,
                              PortfolioAnalysis, SavingsPlan, Transaction, UserAsset, Watchlist)
 from fintrack.portfolio.analysis import parse_stored_list
 from fintrack.account.schemas import EXPORT_FORMAT, EXPORT_VERSION
@@ -148,6 +148,10 @@ def export_user_data(user):
              "transaction_ref": transaction_ref.get(c.transaction_id), "created_at": _iso(c.created_at)}
             for c in _by_id(Contract, user_id)
         ],
+        "category_rules": [
+            {"pattern": r.pattern, "income": r.income, "category_ref": category_ref[r.category_id]}
+            for r in _by_id(CategoryRule, user_id) if r.category_id in category_ref
+        ],
     }
 
 
@@ -179,9 +183,10 @@ def import_user_data(user, data):
     user_id = user.id
     ensure_account_is_empty(user_id)
 
-    # Vorhandene (Standard-)Kategorien werden durch die aus der Datei ersetzt.
+    # Vorhandene (Standard-)Kategorien werden durch die aus der Datei ersetzt, ihre Regeln mit.
     # Unterkategorien zuerst und getrennt löschen - PostgreSQL prüft den
     # Verweis auf die Hauptkategorie sofort
+    CategoryRule.query.filter_by(user_id=user_id).delete()
     Category.query.filter_by(user_id=user_id).filter(Category.parent_id.isnot(None)).delete()
     Category.query.filter_by(user_id=user_id).delete()
     db.session.flush()
@@ -250,6 +255,10 @@ def import_user_data(user, data):
         _create(Contract, user_id=user_id, transaction_id=transaction_ids.get(entry.transaction_ref),
                 **entry.model_dump(exclude={'transaction_ref'}))
 
+    for entry in data.category_rules:
+        _create(CategoryRule, user_id=user_id, pattern=entry.pattern, income=entry.income,
+                category_id=category_ids[entry.category_ref])
+
     db.session.commit()
 
     counts = {
@@ -258,6 +267,6 @@ def import_user_data(user, data):
         "savings_plans": len(data.savings_plans), "watchlist": len(data.watchlist),
         "dividends": len(data.dividends), "chat_history": len(data.chat_history),
         "analyses": len(data.analyses), "insights": len(data.insights),
-        "contracts": len(data.contracts),
+        "contracts": len(data.contracts), "category_rules": len(data.category_rules),
     }
     return counts, new_assets

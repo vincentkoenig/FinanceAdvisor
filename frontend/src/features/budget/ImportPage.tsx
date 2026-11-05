@@ -1,6 +1,7 @@
 // Umsätze importieren. Frage der Seite: Welche Umsätze aus dem Bankexport sollen ins Haushaltsbuch?
 // CSV-Export oder Kontoauszug als PDF wählen → (bei CSV Spalten zuordnen, falls nicht erkannt) →
-// Vorschau prüfen, Kategorien setzen (fehlende auf Wunsch von der KI, neue direkt hier anlegen) → übernehmen.
+// Vorschau prüfen: neue Umsätze nach Empfänger gruppiert, Kategorie je Gruppe (Vorschläge aus früheren Buchungen,
+// Regeln und bekannten Händlern, fehlende auf Wunsch von der KI, neue Kategorien direkt hier) → übernehmen.
 // Gespeichert wird erst beim Übernehmen; die Datei selbst bleibt nirgends liegen.
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
@@ -11,11 +12,12 @@ import {
 import { Dialog } from '../../components/Dialog';
 import { Icon } from '../../components/Icon';
 import { useToast } from '../../components/Toast';
-import { dayShort } from '../../lib/format';
+import { dayShort, parseDay } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import {
-  MAPPING_FIELDS, type Choice, type Proposal, applySuggestions, assignCategory, assignToPayees, categoryOptions, initialChoices,
-  payeesWithoutCategory, proposalsFrom, toCommit,
+  MAPPING_FIELDS, type Choice, type Group, type GroupFilter, type Proposal, applySuggestions, assignCategory, assignRest, assignToPayees,
+  categoryOptions, groupRows, initialChoices, payeesWithoutCategory, proposalsFrom, setGroupCategory, setGroupSelected, toCommit,
+  visibleGroups,
 } from './importModel';
 
 export function ImportPage() {
@@ -35,7 +37,11 @@ export function ImportPage() {
   const [error, setError] = useState<string | null>(null);
   // Von der KI vorgeschlagene neue Kategorien und die Zeile, für die gerade eine neue angelegt wird
   const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [creatingFor, setCreatingFor] = useState<ImportRow | null>(null);
+  // Für wen gerade eine neue Kategorie angelegt wird (eine Zeile oder eine ganze Gruppe)
+  const [creatingFor, setCreatingFor] = useState<{ income: boolean; apply: (id: number) => void } | null>(null);
+  const [filter, setFilter] = useState<GroupFilter>({ direction: 'all', onlyMissing: false, sort: 'count' });
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [restOpen, setRestOpen] = useState(false);
 
   const load = (chosen: File, withMapping?: ColumnMapping) => {
     setError(null);
@@ -71,6 +77,9 @@ export function ImportPage() {
   };
 
   const summary = preview ? toCommit(preview.rows, choices) : null;
+  const groups = preview ? groupRows(preview.rows, choices) : [];
+  const shown = visibleGroups(groups, filter);
+  const others = preview ? preview.rows.filter((r) => r.status !== 'new') : [];
   const openPayees = preview ? payeesWithoutCategory(preview.rows, choices) : [];
 
   const suggest = () => {
@@ -220,14 +229,58 @@ export function ImportPage() {
               ))}
             </div>
           )}
-          <div className="rows">
-            {preview.rows.map((row) => (
-              <PreviewRow key={row.key} row={row} choice={choices[row.key]} categories={categories.data ?? []}
-                onSelect={(selected) => setChoices((c) => ({ ...c, [row.key]: { ...c[row.key], selected } }))}
-                onCategory={(category) => setChoices((c) => assignCategory(preview.rows, c, row.key, category))}
-                onNewCategory={() => setCreatingFor(row)} />
-            ))}
+          <div className="import-toolbar">
+            <div className="segmented" role="group" aria-label="Richtung">
+              {([['all', 'Alle'], ['expense', 'Ausgaben'], ['income', 'Einnahmen']] as const).map(([value, label]) => (
+                <button type="button" key={value} aria-pressed={filter.direction === value}
+                  onClick={() => setFilter((f) => ({ ...f, direction: value }))}>
+                  {label} ({groups.filter((g) => value === 'all' || (value === 'income') === g.income).length})
+                </button>
+              ))}
+            </div>
+            <label className="check-label">
+              <input type="checkbox" className="check" checked={filter.onlyMissing}
+                onChange={(e) => setFilter((f) => ({ ...f, onlyMissing: e.target.checked }))} />
+              Nur ohne Kategorie ({groups.filter((g) => g.missing > 0).length})
+            </label>
+            <select className="select select-sm" aria-label="Sortieren" value={filter.sort}
+              onChange={(e) => setFilter((f) => ({ ...f, sort: e.target.value as GroupFilter['sort'] }))}>
+              <option value="count">Meiste Umsätze zuerst</option>
+              <option value="amount">Größter Betrag zuerst</option>
+              <option value="name">Nach Name</option>
+            </select>
+            {summary!.missing > 0 && (
+              <button className="btn btn-sm" onClick={() => setRestOpen(true)}>Rest zuordnen …</button>
+            )}
           </div>
+          <div className="rows">
+            {shown.map((group) => (
+              <GroupRow key={group.key} group={group} categories={categories.data ?? []} open={Boolean(open[group.key])}
+                onToggle={() => setOpen((o) => ({ ...o, [group.key]: !o[group.key] }))}
+                onSelect={(selected) => setChoices((c) => setGroupSelected(group, c, selected))}
+                onCategory={(category) => setChoices((c) => setGroupCategory(group, c, category))}
+                onNewCategory={() => setCreatingFor({ income: group.income, apply: (id) => setChoices((c) => setGroupCategory(group, c, id)) })}>
+                {group.rows.map((row) => (
+                  <PreviewRow key={row.key} row={row} choice={choices[row.key]} categories={categories.data ?? []}
+                    onSelect={(selected) => setChoices((c) => ({ ...c, [row.key]: { ...c[row.key], selected } }))}
+                    onCategory={(category) => setChoices((c) => ({ ...c, [row.key]: { ...c[row.key], category } }))}
+                    onNewCategory={() => setCreatingFor({ income: row.amount > 0, apply: (id) => setChoices((c) => assignCategory(preview.rows, c, row.key, id)) })} />
+                ))}
+              </GroupRow>
+            ))}
+            {shown.length === 0 && <p className="empty-line">Keine Empfänger für diesen Filter.</p>}
+          </div>
+          {others.length > 0 && (
+            <details className="import-others">
+              <summary>Schon erfasst oder importiert ({others.length})</summary>
+              <div className="rows">
+                {others.map((row) => (
+                  <PreviewRow key={row.key} row={row} choice={choices[row.key]} categories={categories.data ?? []}
+                    onSelect={() => {}} onCategory={() => {}} onNewCategory={() => {}} />
+                ))}
+              </div>
+            </details>
+          )}
           {preview.skipped.length > 0 && (
             <p className="hint">Übersprungen: {preview.skipped.map((s) => `Zeile ${s.line} (${s.reason})`).join(', ')}</p>
           )}
@@ -241,11 +294,114 @@ export function ImportPage() {
           </div>
         </section>
       )}
-      {creatingFor && preview && (
-        <NewCategoryDialog income={creatingFor.amount > 0} categories={categories.data ?? []} onClose={() => setCreatingFor(null)}
-          onCreated={(id) => setChoices((c) => assignCategory(preview.rows, c, creatingFor.key, id))} />
+      {creatingFor && (
+        <NewCategoryDialog income={creatingFor.income} categories={categories.data ?? []} onClose={() => setCreatingFor(null)}
+          onCreated={creatingFor.apply} />
+      )}
+      {restOpen && preview && (
+        <RestDialog categories={categories.data ?? []} rows={preview.rows} choices={choices} onClose={() => setRestOpen(false)}
+          onApply={(expense, income) => {
+            const result = assignRest(preview.rows, choices, expense, income);
+            setChoices(result.choices);
+            notify(`${result.filled} Umsätze zugeordnet`);
+            setRestOpen(false);
+          }} />
       )}
     </>
+  );
+}
+
+const SOURCE_LABEL = { learned: 'wie zuletzt', rule: 'Regel', merchant: 'Händler' } as const;
+const period = (first: string, last: string) => {
+  const month = (iso: string) => parseDay(iso).toLocaleDateString('de-DE', { month: 'short', year: 'numeric' });
+  return month(first) === month(last) ? month(first) : `${month(first)} – ${month(last)}`;
+};
+
+type GroupProps = {
+  group: Group;
+  categories: Category[];
+  open: boolean;
+  onToggle: () => void;
+  onSelect: (selected: boolean) => void;
+  onCategory: (category: number | null) => void;
+  onNewCategory: () => void;
+  children: React.ReactNode;
+};
+
+/** Ein Empfänger mit allen seinen neuen Umsätzen: eine Kategorie für alle, aufklappbar für Einzelne */
+function GroupRow({ group, categories, open, onToggle, onSelect, onCategory, onNewCategory, children }: GroupProps) {
+  const { eur } = useMoney();
+  const count = group.rows.length;
+  const all = group.selected === count;
+  return (
+    <div className={`import-group${group.selected === 0 ? ' is-paused' : ''}`}>
+      <div className="row import-row">
+        <input type="checkbox" className="check" checked={group.selected > 0} aria-label={`${group.name} übernehmen`}
+          ref={(el) => { if (el) el.indeterminate = group.selected > 0 && !all; }}
+          onChange={(e) => onSelect(e.target.checked)} />
+        <button type="button" className="grow group-toggle" onClick={onToggle} aria-expanded={open}
+          aria-label={`${group.name}: ${count} Umsätze ${open ? 'zuklappen' : 'zeigen'}`}>
+          <span className="trunc">
+            {group.name}
+            {group.source && group.category !== null && <span className="pill pill-inline">{SOURCE_LABEL[group.source]}</span>}
+          </span>
+          <span className="sub-line trunc">{count === 1 ? '1 Umsatz' : `${count} Umsätze`} · {period(group.first, group.last)}</span>
+        </button>
+        <span className={`end strong${group.income ? ' pos' : ''}`}>{eur(group.total, { sign: group.income })}</span>
+        <div className="import-category">
+          <select className="select" value={group.category === 'mixed' ? 'mixed' : group.category ?? ''} disabled={group.selected === 0}
+            aria-label={`Kategorie für ${group.name}`}
+            onChange={(e) => (e.target.value === 'new' ? onNewCategory() : e.target.value !== 'mixed' && onCategory(e.target.value === '' ? null : Number(e.target.value)))}>
+            <option value="">Kategorie wählen</option>
+            {group.category === 'mixed' && <option value="mixed">Verschiedene</option>}
+            {categoryOptions(categories, group.income).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+            <option value="new">+ Neue Kategorie …</option>
+          </select>
+        </div>
+      </div>
+      {open && <div className="rows import-group-rows">{children}</div>}
+    </div>
+  );
+}
+
+/** "Rest zuordnen": alle ausgewählten Umsätze ohne Kategorie je Richtung in eine Sammelkategorie */
+function RestDialog({ categories, rows, choices, onClose, onApply }: {
+  categories: Category[]; rows: ImportRow[]; choices: Record<string, Choice>;
+  onClose: () => void; onApply: (expense: number | null, income: number | null) => void;
+}) {
+  const open = rows.filter((r) => r.status === 'new' && choices[r.key].selected && choices[r.key].category === null);
+  const expenses = open.filter((r) => r.amount < 0).length;
+  const incomes = open.length - expenses;
+  // Vorbelegt mit einer Kategorie namens "Sonstiges"/"Sonstige Einnahmen", falls es sie gibt
+  const pick = (income: boolean) => categoryOptions(categories, income).find((c) => /sonstig/i.test(c.label))?.id ?? null;
+  const [expense, setExpense] = useState<number | null>(expenses ? pick(false) : null);
+  const [income, setIncome] = useState<number | null>(incomes ? pick(true) : null);
+
+  const select = (id: string, label: string, isIncome: boolean, value: number | null, set: (v: number | null) => void) => (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <select className="select" id={id} value={value ?? ''} onChange={(e) => set(e.target.value === '' ? null : Number(e.target.value))}>
+        <option value="">Nicht zuordnen</option>
+        {categoryOptions(categories, isIncome).map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
+      </select>
+    </div>
+  );
+
+  return (
+    <Dialog title="Rest zuordnen" onClose={onClose}>
+      <p className="muted">
+        Alle ausgewählten Umsätze, die noch keine Kategorie haben, bekommen diese Sammelkategorie. Im Haushaltsbuch kannst du
+        sie später jederzeit umstellen.
+      </p>
+      <div className="dialog-form">
+        {expenses > 0 && select('rest-expense', `${expenses} Ausgaben`, false, expense, setExpense)}
+        {incomes > 0 && select('rest-income', `${incomes} Einnahmen`, true, income, setIncome)}
+      </div>
+      <div className="dialog-actions">
+        <button className="btn" onClick={onClose}>Abbrechen</button>
+        <button className="btn btn-primary" onClick={() => onApply(expense, income)} disabled={expense === null && income === null}>Zuordnen</button>
+      </div>
+    </Dialog>
   );
 }
 

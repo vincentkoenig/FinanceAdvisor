@@ -334,6 +334,23 @@ class Contract(db.Model):
     created_at = db.Column(db.DateTime, default=db.func.now())
 
 
+class CategoryRule(db.Model):
+    """
+    CategoryRule Tabelle - feste Zuordnung beim Kontoimport: Steht pattern als ganzes Wort
+    (kleingeschrieben) im Empfänger, sonst im Verwendungszweck eines Umsatzes derselben
+    Richtung (income = Einnahme), schlägt die Vorschau category_id vor.
+    Siehe imports/rules.py.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    pattern = db.Column(db.String(100), nullable=False)
+    income = db.Column(db.Boolean, nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id', ondelete='CASCADE'), nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'pattern', 'income'),)
+
+
 # ─── PYDANTIC SCHEMAS ─────────────────────────────────────────────────────────
 
 class AllocationItem(PydanticBaseModel):

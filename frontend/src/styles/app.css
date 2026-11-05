@@ -286,6 +286,15 @@ details.fold .fold-peek, details.fold .fold-chev { display: none; }
 .import-category { width: 260px; flex: none; }
 .import-proposals { display: flex; flex-direction: column; gap: 4px; margin-bottom: 16px; padding: 12px 16px; border-radius: 12px; box-shadow: inset 0 0 0 1px var(--rule-strong); }
 .import-proposals .row { gap: 8px; }
+.import-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 12px; }
+.import-toolbar .select-sm { width: auto; height: 36px; }
+.check-label { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-small); color: var(--muted); cursor: pointer; }
+.import-group { box-shadow: inset 0 -1px 0 var(--rule); }
+.import-group > .row { box-shadow: none; }
+.group-toggle { display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.import-group-rows { margin: 0 0 8px 30px; padding-left: 12px; box-shadow: inset 2px 0 0 var(--rule-strong); }
+.import-others { margin-top: 12px; }
+.import-others summary { cursor: pointer; color: var(--muted); font-size: var(--fs-small); padding: 8px 0; }
 .import-suggest { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; margin-bottom: 12px; }
 .import-category .pill { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .file-results { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }

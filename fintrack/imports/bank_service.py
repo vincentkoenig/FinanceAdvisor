@@ -6,6 +6,8 @@ Vorschau (nichts wird gespeichert), je Umsatz:
 - 'covered':   passt zu einer wiederkehrenden Buchung, die in diesem Monat läuft
                (z.B. Miete, Gehalt) - sonst stünde er doppelt im Haushaltsbuch
 - 'new':       wird übernommen, mit vorgeschlagener Kategorie, falls eine passt
+               (Reihenfolge: gleicher Empfänger wie früher > eigene Regel > bekannter Händler >
+               gemeinsames Wort mit früheren Buchungen; category_source sagt, woher)
 
 Übernehmen: nur die bestätigten Umsätze, alles in einer Datenbank-Transaktion.
 """
@@ -17,6 +19,7 @@ from datetime import datetime
 
 from fintrack.api import ApiError
 from fintrack.extensions import db
+from fintrack.imports.rules import RuleBook
 from fintrack.models import Category, Transaction
 
 # Ein Umsatz gilt als "schon erfasst", wenn er so nah am Betrag der wiederkehrenden Buchung liegt
@@ -103,18 +106,28 @@ def _suggestions(user_id, categories):
     return by_text, by_word
 
 
-def _suggest(row, learned):
-    """Erst derselbe Empfänger, dann ein gemeinsames Wort (Empfänger vor Verwendungszweck)."""
+def _suggest(row, learned, rules):
+    """
+    (Kategorie, Quelle) oder (None, None). Erst derselbe Empfänger wie bei einer früheren Buchung
+    (so wirken Korrekturen im Haushaltsbuch), dann eigene Regeln, bekannte Händler und zuletzt ein
+    gemeinsames Wort mit früheren Buchungen (Empfänger vor Verwendungszweck).
+    """
     by_text, by_word = learned
     income = row.amount > 0
     exact = by_text.get((income, _norm(description_for(row.counterparty, row.purpose))))
     if exact:
-        return exact
+        return exact, 'learned'
+    own = rules.own_rule(income, row.counterparty, row.purpose)
+    if own:
+        return own, 'rule'
+    merchant = rules.merchant(income, row.counterparty, row.purpose)
+    if merchant:
+        return merchant, 'merchant'
     for text in (row.counterparty, row.purpose):
         for word in sorted(words(text)):
             if (income, word) in by_word:
-                return by_word[(income, word)]
-    return None
+                return by_word[(income, word)], 'learned'
+    return None, None
 
 
 def build_preview(user_id, rows):
@@ -126,6 +139,7 @@ def build_preview(user_id, rows):
     recurring = [(t, categories.get(t.category_id)) for t in
                  Transaction.query.filter_by(user_id=user_id, is_recurring=True).order_by(Transaction.id).all()]
     learned = _suggestions(user_id, categories)
+    rules = RuleBook(user_id)
     used = set()
 
     result = []
@@ -134,7 +148,7 @@ def build_preview(user_id, rows):
             "key": key, "occurrence": occurrence, "line": row.line, "date": row.day.isoformat(), "amount": row.amount,
             "counterparty": row.counterparty, "purpose": row.purpose,
             "description": description_for(row.counterparty, row.purpose),
-            "status": 'new', "covered_by": None, "category_id": None,
+            "status": 'new', "covered_by": None, "category_id": None, "category_source": None,
         }
         if key in imported:
             entry["status"] = 'duplicate'
@@ -144,7 +158,7 @@ def build_preview(user_id, rows):
                 entry["status"] = 'covered'
                 entry["covered_by"] = {"id": booking.id, "description": booking.description, "amount": booking.amount}
             else:
-                entry["category_id"] = _suggest(row, learned)
+                entry["category_id"], entry["category_source"] = _suggest(row, learned, rules)
         result.append(entry)
     return result
 
