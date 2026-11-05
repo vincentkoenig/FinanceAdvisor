@@ -22,6 +22,8 @@ export type ImportRow = {
   status: ImportStatus;
   covered_by: { id: number; description: string | null; amount: number } | null;
   category_id: number | null;
+  /** Woher der Vorschlag stammt: frühere Buchung, eigene Regel, bekannter Händler */
+  category_source: 'learned' | 'rule' | 'merchant' | null;
 };
 
 export type ImportPreview = {

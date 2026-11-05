@@ -76,6 +76,25 @@ describe('Einstellungen', () => {
     expect(main).toHaveTextContent('Hat Unterkategorien und bleibt deshalb eine Hauptkategorie.');
   });
 
+  it('zeigt Regeln für den Import, legt neue an und löscht sie', async () => {
+    renderApp('/settings');
+    const user = userEvent.setup();
+    const section = await screen.findByRole('region', { name: 'Regeln für den Import' });
+    expect(await within(section).findByText('vodafone')).toBeInTheDocument();
+    expect(section).toHaveTextContent('→ Versicherungen · Sonstige Versicherungen');
+
+    await user.type(within(section).getByLabelText('Wenn das Wort vorkommt'), 'Telekom');
+    await user.selectOptions(within(section).getByLabelText('dann Kategorie'), 'Wohnen · Miete');
+    await user.click(within(section).getByRole('button', { name: 'Regel speichern' }));
+
+    expect(await screen.findByText('Regel „telekom“ gespeichert')).toBeInTheDocument();
+    expect(sent.rule).toEqual({ pattern: 'Telekom', income: false, category_id: 3 });
+    expect(await within(section).findByText('telekom')).toBeInTheDocument();
+
+    await user.click(within(section).getByRole('button', { name: 'Regel vodafone löschen' }));
+    await waitFor(() => expect(within(section).queryByText('vodafone')).not.toBeInTheDocument());
+  });
+
   it('zeigt das gespeicherte Anlageprofil und speichert Änderungen', async () => {
     renderApp('/settings');
     const user = userEvent.setup();

@@ -64,6 +64,25 @@ class ImportCommit(RequestModel):
     rows: List[ImportRow] = Field(min_length=1, max_length=5000)
 
 
+class RuleCreate(RequestModel):
+    """Feste Zuordnung: Wort/Wortfolge im Empfänger oder Verwendungszweck -> Kategorie."""
+    pattern: str = Field(min_length=2, max_length=100)
+    income: bool
+    category_id: PositiveInt
+
+    @field_validator('pattern')
+    @classmethod
+    def normalized(cls, value):
+        value = ' '.join(value.split()).lower()
+        if len(value) < 2:
+            raise ValueError('Mindestens zwei Zeichen')
+        return value
+
+
+class RuleBatch(RequestModel):
+    rules: List[RuleCreate] = Field(min_length=1, max_length=2000)
+
+
 class Payee(RequestModel):
     name: str = Field(min_length=1, max_length=200)
     income: bool

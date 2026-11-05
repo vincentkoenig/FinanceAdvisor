@@ -42,6 +42,9 @@ const initialData = () => ({
     { id: 50, name: 'Versicherungen', type: 'fixed_expense', parent_id: null },
     { id: 5, name: 'Sonstige Versicherungen', type: 'fixed_expense', parent_id: 50 },
   ] as { id: number; name: string; type: string; parent_id: number | null }[],
+  rules: [
+    { id: 90, pattern: 'vodafone', income: false, category_id: 5, category_label: 'Versicherungen · Sonstige Versicherungen' },
+  ] as { id: number; pattern: string; income: boolean; category_id: number; category_label: string }[],
   trades: [
     { id: 21, asset_id: 1, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', type: 'buy', quantity: 100, price: 80, total: 8000, date: '2026-01-02' },
   ],
@@ -114,7 +117,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -162,6 +165,18 @@ export const handlers = [
     const parent = data.categories.find((x) => x.id === body.parent_id);
     Object.assign(c, { name: body.name, parent_id: body.parent_id, type: parent?.type ?? c.type });
     return HttpResponse.json({ message: 'Kategorie geändert' });
+  }),
+  http.get('/api/v1/me/category-rules', () => HttpResponse.json(data.rules)),
+  http.post('/api/v1/me/category-rules', async ({ request }) => {
+    const body = (await request.json()) as { pattern: string; income: boolean; category_id: number };
+    sent.rule = body;
+    const category = data.categories.find((c) => c.id === body.category_id)!;
+    data.rules.push({ id: nextId++, pattern: body.pattern.toLowerCase(), income: body.income, category_id: body.category_id, category_label: category.name });
+    return HttpResponse.json({ message: 'Regel gespeichert', saved: 1 }, { status: 201 });
+  }),
+  http.delete('/api/v1/me/category-rules/:id', ({ params }) => {
+    data.rules = data.rules.filter((r) => r.id !== Number(params.id));
+    return HttpResponse.json({ message: 'Regel gelöscht' });
   }),
   // Kategorien mit Buchungen lassen sich nicht löschen (wie auf dem Server)
   http.delete('/api/v1/me/categories/:id', ({ params }) => {
@@ -331,11 +346,11 @@ export const handlers = [
     }
     const row = (key: string, date: string, amount: number, counterparty: string, extra: object = {}) => ({
       key, occurrence: 0, line: 2, date, amount, counterparty, purpose: 'Kartenzahlung', description: counterparty,
-      status: 'new', covered_by: null, category_id: null, ...extra,
+      status: 'new', covered_by: null, category_id: null, category_source: null, ...extra,
     });
     const rows = [
       row('a', '2026-10-02', -1200, 'Vermieter', { status: 'covered', covered_by: { id: 13, description: 'Miete', amount: 1200 } }),
-      row('b', '2026-10-05', -54.9, 'REWE Markt', { category_id: 2 }),
+      row('b', '2026-10-05', -54.9, 'REWE Markt', { category_id: 2, category_source: 'merchant' }),
       row('c', '2026-10-07', -3.2, 'Café Mitte'),
       row('d', '2026-10-08', -4.5, 'Café Mitte'),
       row('e', '2026-10-09', 25, 'Erstattung'),

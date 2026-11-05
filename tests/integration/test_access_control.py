@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import pytest
 
 from fintrack.extensions import db
-from fintrack.models import (Asset, Category, ChatHistory, Contract, SavingsPlan, Transaction,
+from fintrack.models import (Asset, Category, CategoryRule, ChatHistory, Contract, SavingsPlan, Transaction,
                              UserAsset, Watchlist)
 from tests.conftest import flask_app
 
@@ -41,7 +41,7 @@ PUBLIC_ENDPOINTS = {
 
 # Texte, die nur in den Daten von Nutzer B vorkommen - tauchen sie in einer
 # Antwort an Nutzer A auf, sind fremde Daten durchgerutscht
-FOREIGN_MARKERS = [b'geheime Frage von B', b'B-Haupt', b'B-Unter', b'B-Buchung', b'Testaktie von B', b'B-Vertrag']
+FOREIGN_MARKERS = [b'b-regel', b'geheime Frage von B', b'B-Haupt', b'B-Unter', b'B-Buchung', b'Testaktie von B', b'B-Vertrag']
 
 
 def all_routes():
@@ -121,10 +121,12 @@ def two_users(make_user, login_client):
         Watchlist(user_id=user_b.id, asset_id=asset.id, price_added=10),
         ChatHistory(user_id=user_b.id, role='user', message='geheime Frage von B'),
     ])
+    b_rule = CategoryRule(user_id=user_b.id, pattern='b-regel', income=False, category_id=b_category.id)
+    db.session.add(b_rule)
     db.session.commit()
 
     b_data = SimpleNamespace(asset=asset, parent=b_parent, category=b_category,
-                             transaction=b_transaction, plan=b_plan, contract=b_contract)
+                             transaction=b_transaction, plan=b_plan, contract=b_contract, rule=b_rule)
     return login_client('a@test.com'), user_a, user_b, b_data
 
 
@@ -148,6 +150,7 @@ class TestForeignUserData:
         ('PUT', '/api/v1/me/transactions/{transaction}'),
         ('POST', '/api/v1/me/transactions/{transaction}/toggle-pause'),
         ('DELETE', '/api/v1/me/categories/{category}'),
+        ('DELETE', '/api/v1/me/category-rules/{rule}'),
         ('PUT', '/api/v1/me/categories/{category}'),
         ('DELETE', '/api/v1/me/savings-plans/{plan}'),
         ('POST', '/api/v1/me/savings-plans/{plan}/execute'),
@@ -162,7 +165,8 @@ class TestForeignUserData:
         """Objekte von B lassen sich über ihre ID weder ändern noch löschen"""
         client, _, user_b, b_data = two_users
         url = url_template.format(transaction=b_data.transaction.id, category=b_data.category.id,
-                                  plan=b_data.plan.id, asset=b_data.asset.id, contract=b_data.contract.id)
+                                  plan=b_data.plan.id, asset=b_data.asset.id, contract=b_data.contract.id,
+                                  rule=b_data.rule.id)
         # Gültiger Vertrags-Body, damit die Prüfung nicht schon an der Eingabe scheitert
         body = {'name': 'von A', 'category': 'other', 'amount': 1, 'interval': 'monthly',
                 'start_date': '2026-01-01'} if 'contracts' in url else None
@@ -177,6 +181,7 @@ class TestForeignUserData:
         db.session.expire_all()
         assert db.session.get(Transaction, b_data.transaction.id).is_paused is False
         assert db.session.get(Category, b_data.category.id) is not None
+        assert db.session.get(CategoryRule, b_data.rule.id) is not None
         assert db.session.get(SavingsPlan, b_data.plan.id).last_executed is None
         assert Watchlist.query.filter_by(user_id=user_b.id).count() == 1
         b_contract = db.session.get(Contract, b_data.contract.id)

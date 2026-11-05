@@ -17,10 +17,11 @@ from flask import Blueprint, jsonify, request
 from flask_login import current_user
 
 from fintrack.auth.session import current_user_key
-from fintrack.extensions import limiter
+from fintrack.extensions import db, limiter
+from fintrack.models import Category, CategoryRule
 
 from fintrack.api import ApiError, parse_body
-from fintrack.auth.session import protect_blueprint
+from fintrack.auth.session import get_own, protect_blueprint
 from fintrack.imports.bank_csv import CsvImportError, read_bank_csv
 from fintrack.imports.bank_pdf import read_statement, to_bank_rows
 from fintrack.imports.bank_service import build_preview, commit_rows
@@ -29,7 +30,8 @@ from fintrack.imports.depot_pdf import PdfImportError, extract_text, mask_person
 from fintrack.imports.depot_service import build_depot_preview, commit_trades
 from fintrack.imports.trade_republic_csv import is_trade_republic, read_trade_republic_csv
 from fintrack.imports.categorize import suggest_categories
-from fintrack.imports.schemas import CategorizeRequest, ColumnMapping, CryptoColumnMapping, DepotCommit, ImportCommit
+from fintrack.imports.schemas import (CategorizeRequest, ColumnMapping, CryptoColumnMapping, DepotCommit, ImportCommit,
+                                      RuleBatch, RuleCreate)
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +140,66 @@ def categorize_bank_import():
         logger.exception('Kategorien konnten nicht vorgeschlagen werden')
         raise ApiError(502, 'Die Kategorien konnten gerade nicht vorgeschlagen werden. Bitte versuche es gleich noch einmal.')
     return jsonify({"suggestions": suggestions}), 200
+
+
+# ─── REGELN ───────────────────────────────────────────────────────────────────
+
+def _rule_json(rule, labels):
+    return {"id": rule.id, "pattern": rule.pattern, "income": rule.income, "category_id": rule.category_id,
+            "category_label": labels.get(rule.category_id)}
+
+
+def _category_labels(user_id):
+    categories = Category.query.filter_by(user_id=user_id).all()
+    by_id = {c.id: c for c in categories}
+    return {c.id: f'{by_id[c.parent_id].name} · {c.name}' if c.parent_id in by_id else c.name for c in categories}
+
+
+def _save_rule(user_id, data):
+    """Legt an oder ändert (gleiches Muster in gleicher Richtung). Kategorie muss eigene und passend sein."""
+    category = get_own(Category, data.category_id)
+    if not category:
+        raise ApiError(404, 'Kategorie nicht gefunden')
+    if (category.type == 'income') != data.income:
+        raise ApiError(400, 'Einnahmen brauchen eine Einkommens-Kategorie, Ausgaben eine Ausgaben-Kategorie')
+    rule = CategoryRule.query.filter_by(user_id=user_id, pattern=data.pattern, income=data.income).first()
+    if rule is None:
+        rule = CategoryRule(user_id=user_id, pattern=data.pattern, income=data.income)
+        db.session.add(rule)
+    rule.category_id = category.id
+    return rule
+
+
+@bp.route('/me/category-rules', methods=['GET'])
+def list_rules():
+    """Eigene Regeln, alphabetisch nach Muster."""
+    labels = _category_labels(current_user.id)
+    rules = CategoryRule.query.filter_by(user_id=current_user.id).order_by(CategoryRule.pattern).all()
+    return jsonify([_rule_json(r, labels) for r in rules]), 200
+
+
+@bp.route('/me/category-rules', methods=['POST'])
+def save_rules():
+    """
+    Eine Regel ({pattern, income, category_id}) oder mehrere auf einmal ({"rules": [...]}, alles
+    oder nichts). Gleiches Muster in gleicher Richtung wird überschrieben.
+    """
+    body = request.get_json(silent=True) or {}
+    items = parse_body(RuleBatch).rules if 'rules' in body else [parse_body(RuleCreate)]
+    saved = [_save_rule(current_user.id, item) for item in items]
+    db.session.commit()
+    message = 'Regel gespeichert' if len(saved) == 1 else f'{len(saved)} Regeln gespeichert'
+    return jsonify({"message": message, "saved": len(saved)}), 201
+
+
+@bp.route('/me/category-rules/<int:rule_id>', methods=['DELETE'])
+def delete_rule(rule_id):
+    rule = get_own(CategoryRule, rule_id)
+    if not rule:
+        raise ApiError(404, 'Regel nicht gefunden')
+    db.session.delete(rule)
+    db.session.commit()
+    return jsonify({"message": "Regel gelöscht"}), 200
 
 
 # ─── DEPOT-ABRECHNUNGEN (PDF) ─────────────────────────────────────────────────

@@ -141,6 +141,12 @@ class ExportContract(_Entry):
     created_at: Optional[datetime] = None
 
 
+class ExportCategoryRule(_Entry):
+    pattern: str = Field(min_length=2, max_length=100)
+    income: bool
+    category_ref: PositiveInt
+
+
 class ExportFile(_Entry):
     format: Literal['fintrack-export']
     version: Literal[1]
@@ -159,6 +165,8 @@ class ExportFile(_Entry):
     insights: List[ExportInsight] = []
     # Seit Verträge dazukamen; ältere Dateien haben den Abschnitt nicht
     contracts: List[ExportContract] = []
+    # Seit den Regeln für den Kontoimport; ältere Dateien haben den Abschnitt nicht
+    category_rules: List[ExportCategoryRule] = []
 
     @model_validator(mode='after')
     def references_exist(self):
@@ -177,6 +185,9 @@ class ExportFile(_Entry):
         for category in self.categories:
             if category.parent_ref is not None and category.parent_ref not in main_category_refs:
                 raise ValueError(f'Kategorie "{category.name}" verweist auf keine gültige Hauptkategorie')
+        for rule in self.category_rules:
+            if rule.category_ref not in category_refs:
+                raise ValueError(f'Regel "{rule.pattern}" verweist auf eine unbekannte Kategorie')
         for transaction in self.transactions:
             if transaction.category_ref not in category_refs:
                 raise ValueError('Eine Buchung verweist auf eine unbekannte Kategorie')
