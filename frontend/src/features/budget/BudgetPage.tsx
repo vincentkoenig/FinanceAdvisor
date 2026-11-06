@@ -179,10 +179,10 @@ function Bookings({ bookings, month, categories, onEdit, onDelete }: BookingsPro
   return (
     <>
       <div className="table-wrap desktop-only">
-        <table className="table">
+        <table className="table table-fixed">
           <thead>
             <tr>
-              <th className="r date-col">Datum</th><th>Buchung</th><th className="r">Betrag</th>
+              <th className="r date-col">Datum</th><th>Buchung</th><th className="r amount-col">Betrag</th>
               <th className="r actions-col"><span className="sr-only">Aktionen</span></th>
             </tr>
           </thead>
@@ -191,12 +191,12 @@ function Bookings({ bookings, month, categories, onEdit, onDelete }: BookingsPro
               <tr key={b.id} className={paused(b) ? 'is-paused' : undefined}>
                 <td className="r muted">{dayMonth(dayInMonth(b, month))}</td>
                 <td>
-                  <span className="trunc">
-                    {name(b)}
+                  <span className="booking-name">
+                    <span className="trunc" title={name(b)}>{name(b)}</span>
                     {b.is_recurring && <span className="pill pill-inline">{paused(b) ? 'pausiert' : 'monatlich'}</span>}
                     {b.is_transfer && <span className="pill pill-inline">Umbuchung</span>}
                   </span>
-                  <span className="sub-line">{where(b)}</span>
+                  <span className="sub-line trunc">{where(b)}</span>
                 </td>
                 <td className={`r strong${signedAmount(b) > 0 ? ' pos' : ''}`}>{amount(b)}</td>
                 <td className="r nowrap">{actions(b)}</td>
