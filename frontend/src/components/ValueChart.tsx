@@ -43,9 +43,17 @@ function tradeWord(trades: Trade[]) {
     .filter(Boolean).join(' und ');
 }
 
-type Props = { points: HistoryPoint[]; marks?: TradeMark[]; height?: number };
+type Props = {
+  points: HistoryPoint[];
+  marks?: TradeMark[];
+  height?: number;
+  /** Was die Linie zeigt, für Screenreader */
+  label?: string;
+  /** Zusatzzeile im Tooltip zum Punkt mit diesem Index */
+  detail?: (index: number) => string;
+};
 
-export function ValueChart({ points, marks = [], height = 240 }: Props) {
+export function ValueChart({ points, marks = [], height = 240, label: subject = 'Depotwert', detail }: Props) {
   const [ref, width] = useWidth(600);
   const [hover, setHover] = useState<number | null>(null);
   const { hidden } = usePrivacy();
@@ -54,8 +62,8 @@ export function ValueChart({ points, marks = [], height = 240 }: Props) {
 
   const values = points.map((p) => p.value);
   const lowest = Math.min(...values);
-  // Eine Wertlinie braucht keine Null-Basis: die Skala beginnt knapp unter dem tiefsten Wert
-  const ticks = niceTicks(lowest * 0.97, Math.max(...values), 4);
+  // Eine Wertlinie braucht keine Null-Basis: die Skala beginnt knapp unter dem tiefsten Wert, auch im Minus
+  const ticks = niceTicks(lowest - Math.abs(lowest) * 0.03, Math.max(...values), 4);
   const bottom = ticks[0], top = ticks[ticks.length - 1];
   const padLeft = 12 + Math.max(...ticks.map((t) => tickLabel(t, hidden).length)) * 6.6;
   const plotWidth = width - padLeft;
@@ -80,7 +88,7 @@ export function ValueChart({ points, marks = [], height = 240 }: Props) {
 
   const first = points[0], last = points[points.length - 1];
   const allTrades = marks.flatMap((m) => m.trades);
-  const label = `Depotwert vom ${dayLong(first.date)} bis ${dayLong(last.date)}, zuletzt ${money(last.value)}`
+  const label = `${subject} vom ${dayLong(first.date)} bis ${dayLong(last.date)}, zuletzt ${money(last.value)}`
     + (allTrades.length ? `, ${tradeWord(allTrades)} im Zeitraum` : '');
   const hovered = hover === null ? null : points[hover];
   const hoveredTrades = marks.find((m) => m.index === hover)?.trades ?? [];
@@ -128,6 +136,7 @@ export function ValueChart({ points, marks = [], height = 240 }: Props) {
         }}>
           <div className="muted">{dayLong(hovered.date)}</div>
           <b>{money(hovered.value)}</b>
+          {detail && <div className="muted">{detail(hover!)}</div>}
           {hoveredTrades.map((t) => (
             <div key={t.id} className={`tip-trade trade-${t.type}`}>
               {t.type === 'buy' ? 'Kauf' : 'Verkauf'} {t.asset_symbol || t.asset_name} · {qty(t.quantity)} Stück · {money(t.total)}

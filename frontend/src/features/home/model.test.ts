@@ -10,7 +10,7 @@ const plan = (over: Partial<SavingsPlan>): SavingsPlan =>
   ({ id: 1, asset_id: 1, asset_name: 'X', asset_symbol: 'X', amount: 100, day_of_month: 1, last_executed: null, is_due: false, ...over });
 
 const summary = (over: Partial<BudgetSummary> = {}): BudgetSummary => ({
-  cumulative_balance: 0, current_month_balance: 1000, current_month_income: 3000,
+  cumulative_balance: 0, cash_balance: null, cash_as_of: null, last_booking: null, current_month_balance: 1000, current_month_income: 3000,
   current_month_fixed: 1200, current_month_variable: 800, ...over,
 });
 

@@ -16,9 +16,17 @@ const initialData = () => ({
     { asset_id: 2, name: 'Bitcoin', symbol: 'BTC-EUR', asset_type: 'crypto', quantity: 0.1, avg_buy_price: 50000, current_price: 40000, previous_close: null as number | null, bought_at: null, status: 'owned' },
   ],
   summary: {
-    cumulative_balance: 2000, current_month_balance: 1000, current_month_income: 3000,
+    cumulative_balance: 2000, cash_balance: 2000 as number | null, cash_as_of: '2026-10-01' as string | null, last_booking: '2026-10-28' as string | null, current_month_balance: 1000, current_month_income: 3000,
     current_month_fixed: 1200, current_month_variable: 800,
   },
+  balances: [
+    { id: 1, date: '2026-10-01', amount: 1500, expected: 1700, difference: -200 },
+    { id: 2, date: '2026-01-01', amount: -250.5, expected: null, difference: null },
+  ] as { id: number; date: string; amount: number; expected: number | null; difference: number | null }[],
+  wealth: [
+    { date: '2026-10-28', cash: 1900, depot: 13600, total: 15500 },
+    { date: '2026-10-29', cash: 2000, depot: 13800, total: 15800 },
+  ],
   history: [
     { date: '2026-10-28', value: 13600 },
     { date: '2026-10-29', value: 13800 },
@@ -117,7 +125,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown; balance?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -146,6 +154,19 @@ export const handlers = [
   http.get('/api/v1/me/positions', () => HttpResponse.json(data.positions)),
   http.get('/api/v1/me/budget/summary', () => HttpResponse.json(data.summary)),
   http.get('/api/v1/me/portfolio/history', () => HttpResponse.json(data.history)),
+  http.get('/api/v1/me/wealth/history', () => HttpResponse.json(data.wealth)),
+  http.get('/api/v1/me/balances', () => HttpResponse.json(data.balances)),
+  http.post('/api/v1/me/balances', async ({ request }) => {
+    const body = (await request.json()) as { date: string; amount: number };
+    sent.balance = body;
+    data.balances.unshift({ ...body, id: nextId++, expected: null, difference: null });
+    data.summary.cash_balance = body.amount;
+    return HttpResponse.json({ message: 'Kontostand gespeichert' }, { status: 201 });
+  }),
+  http.delete('/api/v1/me/balances/:id', ({ params }) => {
+    data.balances = data.balances.filter((b) => b.id !== Number(params.id));
+    return HttpResponse.json({ message: 'Kontostand gelöscht' });
+  }),
   http.get('/api/v1/me/savings-plans', () => HttpResponse.json(data.savingsPlans)),
   http.get('/api/v1/me/transactions', ({ request }) => {
     const month = new URL(request.url).searchParams.get('month');

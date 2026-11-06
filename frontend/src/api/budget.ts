@@ -23,7 +23,7 @@ export const useMonthBookings = (month: string) =>
 
 function useRefresh() {
   const client = useQueryClient();
-  return () => Promise.all([keys.bookings, keys.budgetSummary].map((queryKey) => client.invalidateQueries({ queryKey })));
+  return () => Promise.all([keys.bookings, keys.budgetSummary, keys.balances, keys.wealth].map((queryKey) => client.invalidateQueries({ queryKey })));
 }
 
 export type NewBooking = {

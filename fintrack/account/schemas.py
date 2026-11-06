@@ -147,6 +147,11 @@ class ExportCategoryRule(_Entry):
     category_ref: PositiveInt
 
 
+class ExportAccountBalance(_Entry):
+    date: date
+    amount: float
+
+
 class ExportFile(_Entry):
     format: Literal['fintrack-export']
     version: Literal[1]
@@ -167,6 +172,8 @@ class ExportFile(_Entry):
     contracts: List[ExportContract] = []
     # Seit den Regeln für den Kontoimport; ältere Dateien haben den Abschnitt nicht
     category_rules: List[ExportCategoryRule] = []
+    # Seit den eingetragenen Kontoständen; ältere Dateien haben den Abschnitt nicht
+    account_balances: List[ExportAccountBalance] = []
 
     @model_validator(mode='after')
     def references_exist(self):

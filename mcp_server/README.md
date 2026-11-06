@@ -10,7 +10,7 @@ Der Server nutzt dieselbe App, dieselben Modelle und dieselbe Berechnungslogik (
 Gibt eine Zusammenfassung des aktuellen Portfolios zurück — alle gehaltenen Assets mit Menge und durchschnittlichem Kaufpreis.
 
 ### `get_budget_status`
-Gibt eine Übersicht über den aktuellen Haushaltsbuch-Status zurück: Einnahmen, Fixkosten und variable Ausgaben des laufenden Monats, den Saldo des Monats, sowie den kumulierten Cash-Bestand seit der ersten Buchung.
+Gibt eine Übersicht über den aktuellen Haushaltsbuch-Status zurück: Einnahmen, Fixkosten und variable Ausgaben des laufenden Monats, den Saldo des Monats, sowie den Cash-Bestand aus dem eingetragenen Kontostand.
 
 ### `add_transaction`
 Legt eine neue, einmalige Buchung im Haushaltsbuch an. Nimmt einen Kategorienamen (z.B. `"Lebensmittel"`), einen Betrag, sowie optional eine Beschreibung und ein Datum entgegen. Der Kategorienname wird case-insensitiv gegen die vorhandenen Unterkategorien des Nutzers abgeglichen; ist keine passende Kategorie vorhanden, gibt das Tool eine Liste der verfügbaren Kategorien zurück. Für wiederkehrende Buchungen ist weiterhin das Web-Frontend zu nutzen.

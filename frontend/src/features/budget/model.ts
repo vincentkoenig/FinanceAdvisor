@@ -34,6 +34,9 @@ export function monthTotals(bookings: Booking[], month: Date): MonthTotals {
 export function asSummary(totals: MonthTotals, cumulative: number): BudgetSummary {
   return {
     cumulative_balance: cumulative,
+    cash_balance: null,
+    cash_as_of: null,
+    last_booking: null,
     current_month_balance: totals.left,
     current_month_income: totals.income,
     current_month_fixed: totals.fixed,

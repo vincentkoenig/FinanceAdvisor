@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderApp } from '../../test/renderApp';
-import { data, server, session } from '../../test/server';
+import { data, sent, server, session } from '../../test/server';
 
 beforeEach(() => {
   session.loggedIn = true;
@@ -27,6 +27,58 @@ describe('Übersicht', () => {
     expect(hero).toHaveTextContent('Gewinn seit Kauf+1.000,00 €+7,7 % auf 13.000 € Einstand');
     expect(hero).toHaveTextContent('Übrig im Oktober1.000,00 €von 3.000,00 € Einnahmen');
     expect(await within(hero).findByText('+200,00 €')).toBeInTheDocument();
+  });
+
+  it('zählt ohne Kontostand nur das Depot, auch wenn die Buchungen im Minus sind', async () => {
+    data.summary.cash_balance = null;
+    data.summary.cumulative_balance = -20000;
+    data.wealth = [];
+    renderApp('/');
+    const hero = await section('Gesamtvermögen');
+    await waitFor(() => expect(hero).toHaveTextContent('Gesamtvermögen14.000,00 €'));
+    expect(hero).not.toHaveTextContent('Cash');
+    expect(hero).not.toHaveTextContent('20.000');
+    expect(within(hero).getByRole('button', { name: 'Kontostand eintragen' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Vermögensverlauf' })).not.toBeInTheDocument();
+  });
+
+  it('zieht einen negativen Kontostand vom Depot ab', async () => {
+    data.summary.cash_balance = -1500;
+    renderApp('/');
+    const hero = await section('Gesamtvermögen');
+    expect(await within(hero).findByText('12.500,00 €')).toBeInTheDocument();
+    expect(hero).toHaveTextContent('Cash −1.500,00 €');
+    expect(hero).toHaveTextContent('Umsätze bis 28.10.2026 eingerechnet');
+  });
+
+  it('zeigt den Vermögensverlauf', async () => {
+    renderApp('/');
+    const panel = await section('Vermögensverlauf');
+    expect(within(panel).getByRole('img', { name: /^Gesamtvermögen vom .*zuletzt 15\.800,00 €/ })).toBeInTheDocument();
+  });
+
+  it('trägt einen Kontostand im Minus ein und zeigt die Abweichung', async () => {
+    renderApp('/');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Kontostände' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Kontostände' });
+    expect(await within(dialog).findByText(/−200,00 € gegenüber den Buchungen/)).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText('Kontostand in €'), '-250,50');
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    await waitFor(() => expect(sent.balance).toEqual({ date: '2026-10-30', amount: -250.5 }));
+    expect(await screen.findByText('Kontostand gespeichert')).toBeInTheDocument();
+  });
+
+  it('nennt ungültige Eingaben beim Kontostand und löscht Einträge', async () => {
+    renderApp('/');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Kontostände' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Kontostände' });
+    await user.click(within(dialog).getByRole('button', { name: 'Speichern' }));
+    expect(await within(dialog).findByText(/Bitte den Kontostand eingeben/)).toBeInTheDocument();
+    await user.click(await within(dialog).findByRole('button', { name: 'Kontostand vom 01.01.2026 löschen' }));
+    await waitFor(() => expect(within(dialog).queryByRole('button', { name: 'Kontostand vom 01.01.2026 löschen' })).not.toBeInTheDocument());
+    expect(data.balances).toHaveLength(1);
   });
 
   it('nennt den fälligen Sparplan unter dem Titel und in "Zu tun"', async () => {
@@ -106,7 +158,8 @@ describe('Übersicht', () => {
     data.history = [];
     data.trades = [];
     data.insight = { content: null };
-    data.summary = { cumulative_balance: 0, current_month_balance: 0, current_month_income: 0, current_month_fixed: 0, current_month_variable: 0 };
+    data.wealth = [];
+    data.summary = { cumulative_balance: 0, cash_balance: null, cash_as_of: null, last_booking: null, current_month_balance: 0, current_month_income: 0, current_month_fixed: 0, current_month_variable: 0 };
     renderApp('/');
     const hero = await section('Gesamtvermögen');
     await waitFor(() => expect(hero).toHaveTextContent('Gesamtvermögen0,00 €'));

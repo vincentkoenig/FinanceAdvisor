@@ -82,7 +82,7 @@ export function useCommitBankImport() {
   return useMutation({
     mutationFn: (rows: CommitRow[]) =>
       api<{ message: string; created: number; skipped: number }>('/me/import/bank/commit', { method: 'POST', body: { rows } }),
-    onSuccess: () => Promise.all([keys.bookings, keys.budgetSummary].map((queryKey) => client.invalidateQueries({ queryKey }))),
+    onSuccess: () => Promise.all([keys.bookings, keys.budgetSummary, keys.balances, keys.wealth].map((queryKey) => client.invalidateQueries({ queryKey }))),
   });
 }
 

@@ -95,7 +95,7 @@ def get_budget_status() -> str:
     """
     Gibt eine Übersicht über den aktuellen Haushaltsbuch-Status zurück -
     Einnahmen, Fixkosten, Variable Ausgaben und Saldo des laufenden
-    Monats, sowie den kumulierten Cash-Bestand seit Beginn der Buchungen.
+    Monats, sowie den Cash-Bestand aus dem eingetragenen Kontostand.
     Nutzt dieselbe Berechnungslogik wie die Budget-Seite der Web-App.
     """
     with app.app_context():
@@ -105,6 +105,7 @@ def get_budget_status() -> str:
             return str(error)
 
         summary = calculate_budget_summary(user.id)
+        cash = summary['cash_balance']
 
         return (
             f"Haushaltsbuch-Status für den aktuellen Monat:\n"
@@ -112,7 +113,7 @@ def get_budget_status() -> str:
             f"- Fixkosten: {summary['current_month_fixed']} €\n"
             f"- Variable Ausgaben: {summary['current_month_variable']} €\n"
             f"- Saldo diesen Monat: {summary['current_month_balance']} €\n\n"
-            f"Kumulierter Cash-Bestand seit Beginn: {summary['cumulative_balance']} €"
+            f"Cash-Bestand: {'kein Kontostand eingetragen' if cash is None else f'{cash} €'}"
         )
 
 

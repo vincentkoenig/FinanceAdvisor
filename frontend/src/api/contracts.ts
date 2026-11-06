@@ -77,7 +77,7 @@ function useChange<T, R>(request: (input: T) => Promise<R>) {
   return useMutation({
     mutationFn: request,
     // Verknüpfte Buchungen ändern sich mit (Ende bei Kündigung), darum auch das Haushaltsbuch neu laden
-    onSuccess: () => Promise.all([contractKeys.all, keys.bookings, keys.budgetSummary]
+    onSuccess: () => Promise.all([contractKeys.all, keys.bookings, keys.budgetSummary, keys.balances, keys.wealth]
       .map((queryKey) => client.invalidateQueries({ queryKey }))),
   });
 }

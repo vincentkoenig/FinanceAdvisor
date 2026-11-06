@@ -15,7 +15,13 @@ export type Position = {
 };
 
 export type BudgetSummary = {
+  /** Nur die Summe der Buchungen, kein Kontostand */
   cumulative_balance: number;
+  /** Aus dem eingetragenen Kontostand gerechnet; null, solange keiner eingetragen ist */
+  cash_balance: number | null;
+  cash_as_of: string | null;
+  /** Letzte einmalige Buchung: bis hierhin sind Umsätze im Cash-Bestand */
+  last_booking: string | null;
   current_month_balance: number;
   current_month_income: number;
   current_month_fixed: number;
@@ -78,6 +84,8 @@ export type Insight = { content: string | null; created_at?: string };
 export const keys = {
   positions: ['positions'] as const,
   budgetSummary: ['budget', 'summary'] as const,
+  balances: ['balances'] as const,
+  wealth: ['wealth'] as const,
   history: ['portfolio', 'history'] as const,
   savingsPlans: ['savings-plans'] as const,
   bookings: ['transactions'] as const,

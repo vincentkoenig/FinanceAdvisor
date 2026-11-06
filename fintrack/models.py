@@ -351,6 +351,21 @@ class CategoryRule(db.Model):
     __table_args__ = (db.UniqueConstraint('user_id', 'pattern', 'income'),)
 
 
+class AccountBalance(db.Model):
+    """
+    AccountBalance Tabelle - vom Nutzer eingetragener echter Kontostand am Ende eines Tages.
+    Buchungen allein kennen den Stand nicht: Von hier aus rechnet budget/service.py (CashLedger)
+    den Cash-Bestand weiter. Pro Tag ein Eintrag, ein neuer Wert ersetzt den alten.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'date'),)
+
+
 # ─── PYDANTIC SCHEMAS ─────────────────────────────────────────────────────────
 
 class AllocationItem(PydanticBaseModel):

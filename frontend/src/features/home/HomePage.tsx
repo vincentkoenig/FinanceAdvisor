@@ -1,9 +1,11 @@
 // Übersicht. Frage der Seite: Wie viel habe ich, und was ist heute zu tun?
 // Oben das Gesamtvermögen als grüne Leitfläche und daneben das Fällige (Sparpläne, bald endende
-// Kündigungsfristen), darunter Monatsfluss,
+// Kündigungsfristen), darunter der Vermögensverlauf (ab dem ersten Kontostand), Monatsfluss,
 // Tages-Update, Bewegung heute (ohne Tageskurse: größte Positionen) und letzte Buchungen
 // (auf dem Handy eingeklappt).
+import { useState } from 'react';
 import { Link } from 'react-router';
+import { useWealthHistory } from '../../api/balances';
 import { useContracts } from '../../api/contracts';
 import {
   type Booking, useBookings, useBudgetSummary, useExecutePlan, useInsight, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
@@ -13,8 +15,10 @@ import { Fold } from '../../components/Fold';
 import { Loaded } from '../../components/Loaded';
 import { MonthFlow } from '../../components/MonthFlow';
 import { useToast } from '../../components/Toast';
+import { ValueChart } from '../../components/ValueChart';
 import { dayShort, monthName, parseDay, pct, pctTone, tone } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
+import { BalancesDialog } from '../budget/BalancesDialog';
 import { dateLong, inDays, soonCancellable } from '../contracts/model';
 import {
   dayChange, largestPositions, monthFlow, planDates, portfolioTotals, recentBookings, signedAmount, token, topMovers,
@@ -29,6 +33,8 @@ export function HomePage() {
   const bookings = useBookings();
   const insight = useInsight();
   const contracts = useContracts();
+  const wealth = useWealthHistory();
+  const [balancesOpen, setBalancesOpen] = useState(false);
   const execute = useExecutePlan();
   const notify = useToast();
   const { eur, qty, text } = useMoney();
@@ -75,23 +81,26 @@ export function HomePage() {
           <Loaded queries={[positions, summary]} shape="figure">
             {() => {
               const depot = totals!.value;
-              const cash = summary.data!.cumulative_balance;
-              const total = depot + cash;
-              const showShare = depot > 0 && cash > 0;
+              // Ohne Kontostand ist Cash unbekannt: lieber nur das Depot als eine erfundene Summe
+              const { cash_balance: cash, last_booking: lastBooking } = summary.data!;
+              const total = depot + (cash ?? 0);
+              const showShare = depot > 0 && cash !== null && cash > 0;
               return (
                 <>
                   <div className="lead-figure"><CountUp value={total} format={eur} /></div>
                   {showShare && (
                     <div className="share-bar" role="img"
-                      aria-label={`Depot ${Math.round((depot / total) * 100)} %, Cash ${Math.round((cash / total) * 100)} %`}>
+                      aria-label={`Depot ${Math.round((depot / total) * 100)} %, Cash ${Math.round((cash! / total) * 100)} %`}>
                       <span style={{ width: `${(depot / total) * 100}%`, background: 'var(--accent)' }} />
                       <span style={{ flex: 1, background: 'var(--hero-track)' }} />
                     </div>
                   )}
                   <p className="lead-sub num">
                     <span className="dot" style={{ background: 'var(--accent)' }} />Depot <b>{eur(depot)}</b>
-                    <span className="dot dot-gap" style={{ background: 'var(--hero-track)' }} />Cash <b>{eur(cash)}</b>
+                    {cash !== null && <><span className="dot dot-gap" style={{ background: 'var(--hero-track)' }} />Cash <b>{eur(cash)}</b></>}
+                    <button className="link-btn" onClick={() => setBalancesOpen(true)}>{cash === null ? 'Kontostand eintragen' : 'Kontostände'}</button>
                   </p>
+                  {cash !== null && lastBooking && <p className="lead-sub">Umsätze bis {dateLong(lastBooking)} eingerechnet</p>}
                   <div className="strip">
                     <div>
                       <div className="kpi-label">Depot seit gestern</div>
@@ -166,6 +175,16 @@ export function HomePage() {
           </Loaded>
         </section>
       </div>
+
+      {wealth.data && wealth.data.length >= 2 && (
+        <section className="panel" aria-labelledby="h-wealth">
+          <div className="panel-head"><h2 id="h-wealth">Vermögensverlauf</h2></div>
+          <div className="chart-slot">
+            <ValueChart points={wealth.data.map((p) => ({ date: p.date, value: p.total }))} height={220} label="Gesamtvermögen"
+              detail={(i) => `Depot ${eur(wealth.data[i].depot)} · Cash ${eur(wealth.data[i].cash)}`} />
+          </div>
+        </section>
+      )}
 
       <div className="grid grid-3">
         <Fold id="h-flow" className="span-2" title={`${month[0].toUpperCase()}${month.slice(1)} im Haushaltsbuch`}
@@ -256,6 +275,8 @@ export function HomePage() {
           </Loaded>
         </Fold>
       </div>
+
+      {balancesOpen && <BalancesDialog onClose={() => setBalancesOpen(false)} />}
     </>
   );
 }
