@@ -3,9 +3,8 @@
 // Kündigungsfristen), darunter der Vermögensverlauf (ab dem ersten Kontostand), Monatsfluss,
 // Tages-Update, Bewegung heute (ohne Tageskurse: größte Positionen) und letzte Buchungen
 // (auf dem Handy eingeklappt).
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { Link } from 'react-router';
-import { useWealthHistory } from '../../api/balances';
 import { useContracts } from '../../api/contracts';
 import {
   type Booking, useBookings, useBudgetSummary, useExecutePlan, useInsight, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
@@ -15,14 +14,16 @@ import { Fold } from '../../components/Fold';
 import { Loaded } from '../../components/Loaded';
 import { MonthFlow } from '../../components/MonthFlow';
 import { useToast } from '../../components/Toast';
-import { ValueChart } from '../../components/ValueChart';
 import { dayShort, monthName, parseDay, pct, pctTone, tone } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
-import { BalancesDialog } from '../budget/BalancesDialog';
 import { dateLong, inDays, soonCancellable } from '../contracts/model';
 import {
   dayChange, largestPositions, monthFlow, planDates, portfolioTotals, recentBookings, signedAmount, token, topMovers,
 } from './model';
+
+// Beides braucht nicht jeder Besuch, darum nicht im Start der App
+const WealthPanel = lazy(() => import('./WealthPanel').then((m) => ({ default: m.WealthPanel })));
+const BalancesDialog = lazy(() => import('../budget/BalancesDialog').then((m) => ({ default: m.BalancesDialog })));
 
 export function HomePage() {
   const positions = usePositions();
@@ -33,7 +34,6 @@ export function HomePage() {
   const bookings = useBookings();
   const insight = useInsight();
   const contracts = useContracts();
-  const wealth = useWealthHistory();
   const [balancesOpen, setBalancesOpen] = useState(false);
   const execute = useExecutePlan();
   const notify = useToast();
@@ -176,15 +176,7 @@ export function HomePage() {
         </section>
       </div>
 
-      {wealth.data && wealth.data.length >= 2 && (
-        <section className="panel" aria-labelledby="h-wealth">
-          <div className="panel-head"><h2 id="h-wealth">Vermögensverlauf</h2></div>
-          <div className="chart-slot">
-            <ValueChart points={wealth.data.map((p) => ({ date: p.date, value: p.total }))} height={220} label="Gesamtvermögen"
-              detail={(i) => `Depot ${eur(wealth.data[i].depot)} · Cash ${eur(wealth.data[i].cash)}`} />
-          </div>
-        </section>
-      )}
+      <Suspense fallback={null}><WealthPanel /></Suspense>
 
       <div className="grid grid-3">
         <Fold id="h-flow" className="span-2" title={`${month[0].toUpperCase()}${month.slice(1)} im Haushaltsbuch`}
@@ -276,7 +268,7 @@ export function HomePage() {
         </Fold>
       </div>
 
-      {balancesOpen && <BalancesDialog onClose={() => setBalancesOpen(false)} />}
+      {balancesOpen && <Suspense fallback={null}><BalancesDialog onClose={() => setBalancesOpen(false)} /></Suspense>}
     </>
   );
 }
