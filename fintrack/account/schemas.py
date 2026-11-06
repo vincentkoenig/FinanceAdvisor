@@ -37,6 +37,8 @@ class ExportCategory(_Entry):
     name: str = Field(min_length=1, max_length=60)
     type: Literal['income', 'fixed_expense', 'variable_expense']
     parent_ref: Optional[PositiveInt] = None
+    # Seit den Umbuchungen; ältere Dateien haben das Feld nicht
+    is_transfer: bool = False
 
 
 class ExportTransaction(_Entry):

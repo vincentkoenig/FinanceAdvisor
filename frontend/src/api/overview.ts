@@ -55,6 +55,8 @@ export type Booking = {
   category_id?: number;
   category_name: string | null;
   category_type: CategoryType | null;
+  /** Umbuchung zwischen eigenen Konten: zählt nicht als Einnahme oder Ausgabe */
+  is_transfer?: boolean;
 };
 
 export type Trade = {

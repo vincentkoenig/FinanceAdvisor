@@ -203,6 +203,8 @@ def calculate_budget_summary(user_id):
 
         for transaction in all_relevant_transactions:
             category = db.session.get(Category, transaction.category_id)
+            if category and category.is_transfer:
+                continue
             category_type = category.type if category else None
             sign = 1 if category_type == 'income' else -1
             month_total += sign * transaction.amount
@@ -235,6 +237,14 @@ def calculate_budget_summary(user_id):
         "current_month_variable": round(current_month_variable, 2),
         **cash,
     }
+
+def ensure_transfer_categories(user_id):
+    """Legt die Kategorien "Umbuchungen" für Eingänge und Abgänge an, falls sie fehlen."""
+    for category_type in ('income', 'variable_expense'):
+        exists = Category.query.filter_by(user_id=user_id, type=category_type, is_transfer=True, parent_id=None).count()
+        if not exists:
+            db.session.add(Category(user_id=user_id, name='Umbuchungen', type=category_type, is_transfer=True))
+
 
 def create_default_categories(user_id):
     """
@@ -279,4 +289,5 @@ def create_default_categories(user_id):
                 )
                 db.session.add(sub_category)
 
+    ensure_transfer_categories(user_id)
     db.session.commit()

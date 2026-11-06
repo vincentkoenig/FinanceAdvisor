@@ -194,6 +194,7 @@ function Bookings({ bookings, month, categories, onEdit, onDelete }: BookingsPro
                   <span className="trunc">
                     {name(b)}
                     {b.is_recurring && <span className="pill pill-inline">{paused(b) ? 'pausiert' : 'monatlich'}</span>}
+                    {b.is_transfer && <span className="pill pill-inline">Umbuchung</span>}
                   </span>
                   <span className="sub-line">{where(b)}</span>
                 </td>
@@ -210,7 +211,7 @@ function Bookings({ bookings, month, categories, onEdit, onDelete }: BookingsPro
             <div className="grow">
               <span className="trunc">{name(b)}</span>
               <span className="sub-line">
-                {[dayShort(dayInMonth(b, month)), mainCategory(b.category_id, categories)?.name ?? b.category_name, b.is_recurring ? (paused(b) ? 'pausiert' : 'monatlich') : null]
+                {[dayShort(dayInMonth(b, month)), mainCategory(b.category_id, categories)?.name ?? b.category_name, b.is_recurring ? (paused(b) ? 'pausiert' : 'monatlich') : null, b.is_transfer ? 'Umbuchung' : null]
                   .filter(Boolean).join(' · ')}
               </span>
             </div>

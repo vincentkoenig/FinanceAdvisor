@@ -68,7 +68,7 @@ def contract_suggestions(user_id):
     for booking in Transaction.query.filter(Transaction.user_id == user_id, Transaction.import_hash.isnot(None),
                                             Transaction.is_recurring.is_(False)).all():
         category = categories.get(booking.category_id)
-        if category is not None and category.type != 'income':
+        if category is not None and category.type != 'income' and not category.is_transfer:
             groups[_norm(booking.description)].append(booking)
 
     # Was schon ein Vertrag ist (über Name oder verknüpfte Buchung), wird nicht noch einmal vorgeschlagen

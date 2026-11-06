@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from './client';
 import { type Booking, type CategoryType, keys } from './overview';
 
-export type Category = { id: number; name: string; type: CategoryType; parent_id: number | null };
+export type Category = { id: number; name: string; type: CategoryType; parent_id: number | null; is_transfer?: boolean };
 
 export const budgetKeys = {
   categories: ['categories'] as const,

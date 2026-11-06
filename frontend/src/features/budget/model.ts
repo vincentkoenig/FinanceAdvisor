@@ -24,7 +24,7 @@ export type MonthTotals = { income: number; fixed: number; variable: number; lef
 
 export function monthTotals(bookings: Booking[], month: Date): MonthTotals {
   const sum = (type: CategoryType) => bookings
-    .filter((b) => b.category_type === type && counts(b, month))
+    .filter((b) => b.category_type === type && !b.is_transfer && counts(b, month))
     .reduce((total, b) => total + b.amount, 0);
   const income = sum('income'), fixed = sum('fixed_expense'), variable = sum('variable_expense');
   return { income, fixed, variable, left: income - fixed - variable };
@@ -55,7 +55,7 @@ export function mainCategory(categoryId: number | undefined, categories: Categor
 export function expensesByCategory(bookings: Booking[], categories: Category[], month: Date) {
   const totals = new Map<string, number>();
   for (const b of bookings) {
-    if (b.category_type === 'income' || !counts(b, month)) continue;
+    if (b.category_type === 'income' || b.is_transfer || !counts(b, month)) continue;
     const label = mainCategory(b.category_id, categories)?.name ?? b.category_name ?? 'Ohne Kategorie';
     totals.set(label, (totals.get(label) ?? 0) + b.amount);
   }
@@ -78,7 +78,7 @@ export function sortBookings(bookings: Booking[], month: Date) {
 /** Größte variable Ausgabe für den Satz unter dem Titel */
 export function largestVariable(bookings: Booking[], month: Date) {
   return bookings
-    .filter((b) => b.category_type === 'variable_expense' && counts(b, month))
+    .filter((b) => b.category_type === 'variable_expense' && !b.is_transfer && counts(b, month))
     .sort((a, b) => b.amount - a.amount)[0] ?? null;
 }
 
