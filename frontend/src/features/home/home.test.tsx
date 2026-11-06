@@ -35,7 +35,7 @@ describe('Übersicht', () => {
     data.wealth = [];
     renderApp('/');
     const hero = await section('Gesamtvermögen');
-    await waitFor(() => expect(hero).toHaveTextContent('Gesamtvermögen14.000,00 €'));
+    await waitFor(() => expect(hero).toHaveTextContent('Kontostand eintragen14.000,00 €'));
     expect(hero).not.toHaveTextContent('Cash');
     expect(hero).not.toHaveTextContent('20.000');
     expect(within(hero).getByRole('button', { name: 'Kontostand eintragen' })).toBeInTheDocument();
@@ -162,7 +162,7 @@ describe('Übersicht', () => {
     data.summary = { cumulative_balance: 0, cash_balance: null, cash_as_of: null, last_booking: null, current_month_balance: 0, current_month_income: 0, current_month_fixed: 0, current_month_variable: 0 };
     renderApp('/');
     const hero = await section('Gesamtvermögen');
-    await waitFor(() => expect(hero).toHaveTextContent('Gesamtvermögen0,00 €'));
+    await waitFor(() => expect(hero).toHaveTextContent('Kontostand eintragen0,00 €'));
     expect(hero).toHaveTextContent('noch keine Käufe');
     expect(await screen.findByText(/Nichts zu tun/)).toBeInTheDocument();
     expect(await screen.findByText(/Noch keine Positionen/)).toBeInTheDocument();

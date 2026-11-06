@@ -11,6 +11,7 @@ import {
 } from '../../api/overview';
 import { CountUp } from '../../components/CountUp';
 import { Fold } from '../../components/Fold';
+import { Icon } from '../../components/Icon';
 import { Loaded } from '../../components/Loaded';
 import { MonthFlow } from '../../components/MonthFlow';
 import { useToast } from '../../components/Toast';
@@ -77,7 +78,12 @@ export function HomePage() {
 
       <div className="grid grid-3">
         <section className="panel hero span-2" aria-labelledby="h-net">
-          <h2 className="lead-label" id="h-net">Gesamtvermögen</h2>
+          <div className="hero-bar">
+            <h2 className="lead-label" id="h-net">Gesamtvermögen</h2>
+            <button className="btn btn-sm" onClick={() => setBalancesOpen(true)}>
+              <Icon name="wallet" size={16} />{summary.data?.cash_balance === null ? 'Kontostand eintragen' : 'Kontostände'}
+            </button>
+          </div>
           <Loaded queries={[positions, summary]} shape="figure">
             {() => {
               const depot = totals!.value;
@@ -98,7 +104,6 @@ export function HomePage() {
                   <p className="lead-sub num">
                     <span className="dot" style={{ background: 'var(--accent)' }} />Depot <b>{eur(depot)}</b>
                     {cash !== null && <><span className="dot dot-gap" style={{ background: 'var(--hero-track)' }} />Cash <b>{eur(cash)}</b></>}
-                    <button className="link-btn" onClick={() => setBalancesOpen(true)}>{cash === null ? 'Kontostand eintragen' : 'Kontostände'}</button>
                   </p>
                   {cash !== null && lastBooking && <p className="lead-sub">Umsätze bis {dateLong(lastBooking)} eingerechnet</p>}
                   <div className="strip">
