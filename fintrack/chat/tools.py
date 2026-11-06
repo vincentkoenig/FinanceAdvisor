@@ -99,8 +99,11 @@ tools = [
             "name": "get_budget_status",
             "description": (
                 "Get the user's household budget status - current month's income, "
-                "fixed costs, variable expenses, balance, and the cumulative cash "
-                "balance since tracking began. Use this when the user asks about "
+                "fixed costs, variable expenses and balance. cash_balance is the "
+                "current account balance, calculated from the balance the user entered "
+                "(null if none was entered); cumulative_balance is only the sum of all "
+                "bookings and not an account balance, so never present it as one. "
+                "Use this when the user asks about "
                 "their budget, savings, monthly expenses, income, or whether they "
                 "can afford something based on their current financial situation."
             ),

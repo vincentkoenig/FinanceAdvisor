@@ -15,7 +15,7 @@ from datetime import datetime
 
 from fintrack.api import ApiError
 from fintrack.extensions import db
-from fintrack.models import (Asset, AssetTransaction, Category, CategoryRule, ChatHistory, Contract, DailyInsight, Dividend,
+from fintrack.models import (AccountBalance, Asset, AssetTransaction, Category, CategoryRule, ChatHistory, Contract, DailyInsight, Dividend,
                              PortfolioAnalysis, SavingsPlan, Transaction, UserAsset, Watchlist)
 from fintrack.portfolio.analysis import parse_stored_list
 from fintrack.account.schemas import EXPORT_FORMAT, EXPORT_VERSION
@@ -23,7 +23,7 @@ from fintrack.account.schemas import EXPORT_FORMAT, EXPORT_VERSION
 # Tabellen mit Nutzerdaten, die beim Import leer sein müssen (Kategorien
 # zählen nicht - die legt jede Registrierung automatisch an)
 USER_DATA_MODELS = (Transaction, UserAsset, AssetTransaction, SavingsPlan, Watchlist,
-                    Dividend, ChatHistory, PortfolioAnalysis, DailyInsight, Contract)
+                    Dividend, ChatHistory, PortfolioAnalysis, DailyInsight, Contract, AccountBalance)
 
 
 def _iso(value):
@@ -152,6 +152,10 @@ def export_user_data(user):
             {"pattern": r.pattern, "income": r.income, "category_ref": category_ref[r.category_id]}
             for r in _by_id(CategoryRule, user_id) if r.category_id in category_ref
         ],
+        "account_balances": [
+            {"date": _iso(b.date), "amount": b.amount}
+            for b in _by_id(AccountBalance, user_id)
+        ],
     }
 
 
@@ -258,6 +262,8 @@ def import_user_data(user, data):
     for entry in data.category_rules:
         _create(CategoryRule, user_id=user_id, pattern=entry.pattern, income=entry.income,
                 category_id=category_ids[entry.category_ref])
+    for entry in data.account_balances:
+        _create(AccountBalance, user_id=user_id, date=entry.date, amount=entry.amount)
 
     db.session.commit()
 
@@ -268,5 +274,6 @@ def import_user_data(user, data):
         "dividends": len(data.dividends), "chat_history": len(data.chat_history),
         "analyses": len(data.analyses), "insights": len(data.insights),
         "contracts": len(data.contracts), "category_rules": len(data.category_rules),
+        "account_balances": len(data.account_balances),
     }
     return counts, new_assets

@@ -8,7 +8,7 @@ Eine KI-gestützte Finanz-Web-App mit **Flask**-API, **React**-Frontend und **Op
 ## Features
 
 ### 🏠 Übersicht
-- Gesamtvermögen aus live bewertetem Depot und kumuliertem Cash-Bestand, dazu die Veränderung seit gestern (Käufe und Verkäufe herausgerechnet) und der Gewinn seit Kauf
+- Gesamtvermögen aus live bewertetem Depot und Cash-Bestand (vom eingetragenen Kontostand aus mit den Buchungen weitergerechnet), Vermögensverlauf, dazu die Veränderung seit gestern (Käufe und Verkäufe herausgerechnet) und der Gewinn seit Kauf
 - „Zu tun“: fällige Sparpläne direkt ausführen, geplante mit ihrem nächsten Termin
 - Monatsfluss: wohin das Einkommen des Monats geht (Fixkosten, Variabel, Sparplan, frei übrig), dazu Tages-Update der KI, größte Positionen und letzte Buchungen
 

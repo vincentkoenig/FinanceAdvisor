@@ -14,10 +14,10 @@ from flask_login import current_user
 # Lokale Imports
 from fintrack.api import ApiError, parse_body, parse_query
 from fintrack.auth.session import get_own, protect_blueprint
-from fintrack.budget.schemas import CategoryCreate, CategoryUpdate, MonthQuery, TransactionCreate, TransactionUpdate
-from fintrack.budget.service import calculate_budget_summary, create_default_categories
+from fintrack.budget.schemas import BalanceCreate, CategoryCreate, CategoryUpdate, MonthQuery, TransactionCreate, TransactionUpdate
+from fintrack.budget.service import CashLedger, calculate_budget_summary, create_default_categories, wealth_series
 from fintrack.extensions import db
-from fintrack.models import Category, CategoryRule, Contract, Transaction
+from fintrack.models import AccountBalance, Category, CategoryRule, Contract, Transaction
 
 bp = Blueprint('budget', __name__)
 # Nur mit Anmeldung
@@ -336,3 +336,40 @@ def get_budget_summary():
     Berechnungslogik aus budget/service.py, die auch der MCP-Server nutzt.
     """
     return jsonify(calculate_budget_summary(current_user.id)), 200
+
+
+# ─── KONTOSTÄNDE ──────────────────────────────────────────────────────────────
+
+@bp.route('/me/balances', methods=['GET'])
+def get_balances():
+    """Eingetragene Kontostände, neueste zuerst, mit der Abweichung zu den Buchungen."""
+    return jsonify(CashLedger(current_user.id).entries()), 200
+
+
+@bp.route('/me/balances', methods=['POST'])
+def save_balance():
+    """Kontostand eines Tages eintragen; ein vorhandener Wert für diesen Tag wird ersetzt."""
+    data = parse_body(BalanceCreate)
+    balance = AccountBalance.query.filter_by(user_id=current_user.id, date=data.date).first()
+    if balance:
+        balance.amount = data.amount
+    else:
+        db.session.add(AccountBalance(user_id=current_user.id, date=data.date, amount=data.amount))
+    db.session.commit()
+    return jsonify({"message": "Kontostand gespeichert"}), 201
+
+
+@bp.route('/me/balances/<int:balance_id>', methods=['DELETE'])
+def delete_balance(balance_id):
+    balance = get_own(AccountBalance, balance_id)
+    if not balance:
+        raise ApiError(404, 'Kontostand nicht gefunden')
+    db.session.delete(balance)
+    db.session.commit()
+    return jsonify({"message": "Kontostand gelöscht"}), 200
+
+
+@bp.route('/me/wealth/history', methods=['GET'])
+def get_wealth_history():
+    """Gesamtvermögen je Tag aus Cash und Depot für den Vermögensverlauf."""
+    return jsonify(wealth_series(current_user.id)), 200

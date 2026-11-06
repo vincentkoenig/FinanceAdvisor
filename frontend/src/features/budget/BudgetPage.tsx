@@ -13,6 +13,7 @@ import { useToast } from '../../components/Toast';
 import { dayShort, isoDay, monthKey, parseDay } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import { monthFlow, signedAmount } from '../home/model';
+import { BalancesDialog } from './BalancesDialog';
 import { AddBookingDialog, DeleteBookingDialog, EditBookingDialog } from './dialogs';
 import {
   asSummary, counts, dayInMonth, daysForAverage, expensesByCategory, largestVariable, mainCategory, monthStart, monthTotals, sortBookings,
@@ -22,7 +23,7 @@ const monthLabel = (month: Date) => month.toLocaleDateString('de-DE', { month: '
 const monthOnly = (month: Date) => month.toLocaleDateString('de-DE', { month: 'long' });
 const dayMonth = (iso: string) => parseDay(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
 
-type Open = { type: 'add' } | { type: 'edit'; booking: Booking } | { type: 'delete'; booking: Booking } | null;
+type Open = { type: 'add' } | { type: 'balances' } | { type: 'edit'; booking: Booking } | { type: 'delete'; booking: Booking } | null;
 
 export function BudgetPage() {
   const { eur } = useMoney();
@@ -77,7 +78,10 @@ export function BudgetPage() {
                 <div className={`lead-figure${totals!.left < 0 ? ' neg' : ''}`}><CountUp value={totals!.left} format={eur} /></div>
                 <p className="lead-sub num">
                   {totals!.income > 0 && <>{Math.round((totals!.left / totals!.income) * 100)} % der Einnahmen · </>}
-                  {summary.data ? <>Cash-Bestand insgesamt {eur(summary.data.cumulative_balance)}</> : 'Cash-Bestand lädt …'}
+                  {!summary.data ? 'Cash-Bestand lädt …'
+                    : summary.data.cash_balance === null ? 'Kontostand noch nicht eingetragen'
+                      : <>Cash-Bestand insgesamt {eur(summary.data.cash_balance)}</>}
+                  <button className="link-btn" onClick={() => setOpen({ type: 'balances' })}>Kontostände</button>
                 </p>
                 <div className="hero-flow">
                   {/* Sparpläne kennen nur ihre letzte Ausführung, darum zählen sie nur im laufenden Monat */}
@@ -133,6 +137,7 @@ export function BudgetPage() {
         </Loaded>
       </section>
 
+      {open?.type === 'balances' && <BalancesDialog onClose={() => setOpen(null)} />}
       {open?.type === 'add' && <AddBookingDialog defaultDate={defaultDate} onClose={() => setOpen(null)} />}
       {open?.type === 'edit' && <EditBookingDialog booking={open.booking} onClose={() => setOpen(null)} />}
       {open?.type === 'delete' && <DeleteBookingDialog booking={open.booking} onClose={() => setOpen(null)} />}

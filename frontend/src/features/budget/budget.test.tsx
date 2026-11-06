@@ -28,6 +28,15 @@ describe('Haushaltsbuch', () => {
     expect(router.state.location.pathname).toBe('/budget');
   });
 
+  it('sagt, wenn der Kontostand fehlt, statt die Summe der Buchungen als Cash zu zeigen', async () => {
+    data.summary.cash_balance = null;
+    data.summary.cumulative_balance = -20000;
+    renderApp('/budget');
+    const panel = await screen.findByRole('region', { name: /^Übrig im/ });
+    await waitFor(() => expect(panel).toHaveTextContent('Kontostand noch nicht eingetragen'));
+    expect(panel).not.toHaveTextContent('20.000');
+  });
+
   it('zeigt, was im Monat übrig bleibt, mit Monatsfluss und Cash-Bestand', async () => {
     renderApp('/budget');
     const panel = await hero();

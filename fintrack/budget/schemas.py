@@ -58,6 +58,19 @@ class TransactionUpdate(RequestModel):
         return (value or '').strip() or None
 
 
+class BalanceCreate(RequestModel):
+    """Echter Kontostand am Ende eines Tages; im Dispo negativ."""
+    date: date
+    amount: float = Field(ge=-1_000_000_000, le=1_000_000_000, allow_inf_nan=False)
+
+    @field_validator('date')
+    @classmethod
+    def not_in_future(cls, value):
+        if value > value.today():
+            raise ValueError('Der Kontostand darf nicht in der Zukunft liegen')
+        return value
+
+
 class MonthQuery(RequestModel):
     # Optionaler Monatsfilter im Format JJJJ-MM, z.B. 2026-10
     month: Optional[str] = Field(default=None, pattern=r'^\d{4}-(0[1-9]|1[0-2])$')
