@@ -309,7 +309,12 @@ details.fold .fold-peek, details.fold .fold-chev { display: none; }
 .check { width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
 .dialog-extra { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }
 .table .date-col { width: 64px; }
-.table .actions-col { width: 96px; }
+.table .actions-col { width: 124px; }
+/* Feste Spalten: ein langer Verwendungszweck wird gekürzt, statt die Tabelle breiter zu machen */
+.table-fixed { table-layout: fixed; }
+.table-fixed .amount-col { width: 132px; }
+.booking-name { display: flex; align-items: center; min-width: 0; }
+.booking-name .pill { flex: none; }
 .input-lg { height: 52px; font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .switch { appearance: none; flex: none; width: 34px; height: 20px; margin: 1px 0 0; border-radius: 999px; background: var(--field-edge); position: relative; cursor: pointer; transition: background var(--t-hover); }
 .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #ffffff; transition: transform var(--t-hover); }
