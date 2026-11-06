@@ -40,7 +40,7 @@ describe('Haushaltsbuch', () => {
   it('zeigt, was im Monat übrig bleibt, mit Monatsfluss und Cash-Bestand', async () => {
     renderApp('/budget');
     const panel = await hero();
-    await waitFor(() => expect(panel).toHaveTextContent('Übrig im Oktober1.745,10 €'));
+    await waitFor(() => expect(panel).toHaveTextContent('Kontostände1.745,10 €'));
     expect(panel).toHaveTextContent('58 % der Einnahmen · Cash-Bestand insgesamt 2.000,00 €');
     // Der Sparplan wurde im Oktober ausgeführt (50 €) und kommt aus dem freien Rest
     expect(within(panel).getByRole('img', { name: 'Fixkosten 40 %, Variable Ausgaben 2 %, Investiert per Sparplan 2 %, Frei übrig 57 %' })).toBeInTheDocument();
@@ -74,7 +74,7 @@ describe('Haushaltsbuch', () => {
     expect(await screen.findByText('September 2026')).toBeInTheDocument();
     // Gehalt beginnt erst im Oktober, die Miete läuft seit Januar
     expect(await screen.findByText('1 im September')).toBeInTheDocument();
-    expect(await hero()).toHaveTextContent('Übrig im September−1.200,00 €');
+    expect(await hero()).toHaveTextContent('Kontostände−1.200,00 €');
     expect(screen.getByText(/Die Ausgaben liegen 1.200,00 € über den Einnahmen/)).toBeInTheDocument();
   });
 
@@ -84,7 +84,7 @@ describe('Haushaltsbuch', () => {
     await user.click((await screen.findAllByRole('button', { name: 'Miete pausieren' }))[0]);
     expect(await screen.findByText('Miete pausiert, zählt ab diesem Monat nicht mehr')).toBeInTheDocument();
     await waitFor(() => expect(within(table()).getAllByText('pausiert')).toHaveLength(1));
-    expect(await hero()).toHaveTextContent('Übrig im Oktober2.945,10 €');
+    expect(await hero()).toHaveTextContent('Kontostände2.945,10 €');
   });
 
   it('löscht erst nach Rückfrage und warnt bei wiederkehrenden Buchungen', async () => {

@@ -71,7 +71,10 @@ export function BudgetPage() {
 
       <div className="grid grid-3">
         <section className="panel hero span-2" aria-labelledby="h-left">
-          <h2 className="lead-label" id="h-left">Übrig im {monthOnly(month)}</h2>
+          <div className="hero-bar">
+            <h2 className="lead-label" id="h-left">Übrig im {monthOnly(month)}</h2>
+            <button className="btn btn-sm" onClick={() => setOpen({ type: 'balances' })}><Icon name="wallet" size={16} />Kontostände</button>
+          </div>
           <Loaded queries={[bookings]} shape="figure">
             {() => (
               <>
@@ -81,7 +84,6 @@ export function BudgetPage() {
                   {!summary.data ? 'Cash-Bestand lädt …'
                     : summary.data.cash_balance === null ? 'Kontostand noch nicht eingetragen'
                       : <>Cash-Bestand insgesamt {eur(summary.data.cash_balance)}</>}
-                  <button className="link-btn" onClick={() => setOpen({ type: 'balances' })}>Kontostände</button>
                 </p>
                 <div className="hero-flow">
                   {/* Sparpläne kennen nur ihre letzte Ausführung, darum zählen sie nur im laufenden Monat */}
