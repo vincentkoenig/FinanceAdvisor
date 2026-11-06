@@ -95,3 +95,25 @@ describe('Buchungsliste', () => {
     expect(largestVariable([], OCT)).toBeNull();
   });
 });
+
+describe('Umbuchungen', () => {
+  const month = new Date(2026, 9, 1, 12);
+  const row = (over: Partial<Booking>): Booking => ({
+    id: 1, amount: 100, description: 'X', date: '2026-10-05', is_recurring: false, is_paused: false,
+    category_id: 1, category_name: 'Umbuchungen', category_type: 'income', ...over,
+  });
+
+  it('zählen nicht als Einnahme oder Ausgabe', () => {
+    const totals = monthTotals([
+      row({ is_transfer: true }), row({ id: 2, is_transfer: true, category_type: 'variable_expense' }),
+      row({ id: 3, category_type: 'variable_expense', amount: 40 }),
+    ], month);
+    expect(totals).toEqual({ income: 0, fixed: 0, variable: 40, left: -40 });
+  });
+
+  it('stehen nicht bei den größten Ausgaben', () => {
+    const list = [row({ amount: 900, is_transfer: true, category_type: 'variable_expense' }), row({ id: 2, amount: 40, category_type: 'variable_expense', category_name: 'Essen' })];
+    expect(largestVariable(list, month)?.id).toBe(2);
+    expect(expensesByCategory(list, [], month)).toEqual([{ label: 'Essen', value: 40 }]);
+  });
+});

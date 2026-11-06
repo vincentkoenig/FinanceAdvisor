@@ -261,12 +261,15 @@ class Category(db.Model):
     Zweistufig über parent_id: Hauptkategorie (parent_id = NULL) und
     Unterkategorie (parent_id verweist auf die Hauptkategorie).
     type unterscheidet zwischen Einkommen, Fixkosten und variablen Ausgaben.
+    is_transfer: Umbuchung zwischen eigenen Konten. Zählt für den Kontostand, aber nicht
+    als Einnahme oder Ausgabe; die Richtung kommt weiter aus type.
     """
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     name = db.Column(db.String, nullable=False)
     type = db.Column(db.String, nullable=False)  # income, fixed_expense oder variable_expense
     parent_id = db.Column(db.Integer, db.ForeignKey('category.id'))
+    is_transfer = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
 
 
 class Transaction(db.Model):

@@ -36,7 +36,8 @@ def get_categories():
             "id": category.id,
             "name": category.name,
             "type": category.type,
-            "parent_id": category.parent_id
+            "parent_id": category.parent_id,
+            "is_transfer": category.is_transfer
         }
         for category in categories
     ]), 200
@@ -50,6 +51,7 @@ def add_category():
     """
     data = parse_body(CategoryCreate)
 
+    parent = None
     if data.parent_id is not None:
         parent = get_own(Category, data.parent_id)
         if not parent:
@@ -65,7 +67,8 @@ def add_category():
     if any(s.name.strip().lower() == name.lower() for s in siblings):
         raise ApiError(409, f'Die Kategorie „{name}“ gibt es hier schon')
 
-    category = Category(user_id=current_user.id, name=name, type=data.type, parent_id=data.parent_id)
+    category = Category(user_id=current_user.id, name=name, type=data.type, parent_id=data.parent_id,
+                        is_transfer=bool(parent and parent.is_transfer))
     db.session.add(category)
     db.session.commit()
 
@@ -87,7 +90,11 @@ def update_category(category_id):
         raise ApiError(404, 'Kategorie nicht gefunden')
 
     new_type = category.type
+    # Unterkategorien folgen ihrer Hauptkategorie, die Hauptkategorien "Umbuchungen" bleiben, wo sie sind
+    new_transfer = category.is_transfer and category.parent_id is None
     if data.parent_id is not None:
+        if new_transfer:
+            raise ApiError(400, 'Die Kategorie „Umbuchungen“ muss eine Hauptkategorie bleiben')
         parent = get_own(Category, data.parent_id)
         if not parent:
             raise ApiError(404, 'Hauptkategorie nicht gefunden')
@@ -98,6 +105,7 @@ def update_category(category_id):
         if Category.query.filter_by(parent_id=category.id).count():
             raise ApiError(400, 'Eine Hauptkategorie mit Unterkategorien kann keine Unterkategorie werden')
         new_type = parent.type
+        new_transfer = parent.is_transfer
 
     name = data.name.strip()
     siblings = Category.query.filter(Category.user_id == current_user.id, Category.type == new_type,
@@ -110,6 +118,7 @@ def update_category(category_id):
     category.name = name
     category.parent_id = data.parent_id
     category.type = new_type
+    category.is_transfer = new_transfer
     db.session.commit()
 
     return jsonify({"message": "Kategorie geändert"}), 200
@@ -126,6 +135,8 @@ def delete_category(category_id):
 
     if not category:
         raise ApiError(404, 'Kategorie nicht gefunden')
+    if category.is_transfer and category.parent_id is None:
+        raise ApiError(409, 'Die Kategorie „Umbuchungen“ wird für eigene Überweisungen gebraucht')
 
     sub_categories = Category.query.filter_by(parent_id=category.id).all()
     category_ids = [category.id] + [sub.id for sub in sub_categories]
@@ -210,7 +221,8 @@ def get_transactions():
             "paused_at": transaction.paused_at.strftime('%Y-%m-%d') if transaction.paused_at else None,
             "category_id": transaction.category_id,
             "category_name": category.name if category else None,
-            "category_type": category.type if category else None
+            "category_type": category.type if category else None,
+            "is_transfer": bool(category and category.is_transfer)
         })
 
     return jsonify(result), 200

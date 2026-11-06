@@ -57,7 +57,8 @@ def _allowed(user_id):
     by_id = {c.id: c for c in categories}
     labels, income, expense = {}, set(), set()
     for category in categories:
-        if category.id in with_children:
+        # Umbuchungen bleiben dem Nutzer vorbehalten, die KI lässt eigene Konten ohnehin leer
+        if category.id in with_children or category.is_transfer:
             continue
         main = by_id.get(category.parent_id) if category.parent_id else None
         labels[category.id] = f'{main.name} · {category.name}' if main else category.name

@@ -14,6 +14,7 @@ import json
 from datetime import datetime
 
 from fintrack.api import ApiError
+from fintrack.budget.service import ensure_transfer_categories
 from fintrack.extensions import db
 from fintrack.models import (AccountBalance, Asset, AssetTransaction, Category, CategoryRule, ChatHistory, Contract, DailyInsight, Dividend,
                              PortfolioAnalysis, SavingsPlan, Transaction, UserAsset, Watchlist)
@@ -81,7 +82,7 @@ def export_user_data(user):
         },
         "categories": [
             {"ref": category_ref[c.id], "name": c.name, "type": c.type,
-             "parent_ref": category_ref.get(c.parent_id)}
+             "parent_ref": category_ref.get(c.parent_id), "is_transfer": c.is_transfer}
             for c in categories
         ],
         "transactions": [
@@ -205,9 +206,12 @@ def import_user_data(user, data):
     category_ids = {}
     for entry in sorted(data.categories, key=lambda c: c.parent_ref is not None):
         category = _create(Category, user_id=user_id, name=entry.name, type=entry.type,
-                           parent_id=category_ids.get(entry.parent_ref))
+                           parent_id=category_ids.get(entry.parent_ref), is_transfer=entry.is_transfer)
         db.session.flush()
         category_ids[entry.ref] = category.id
+
+    # Dateien aus der Zeit vor den Umbuchungen bringen diese Kategorien nicht mit
+    ensure_transfer_categories(user_id)
 
     transaction_ids = {}
     for entry in data.transactions:
