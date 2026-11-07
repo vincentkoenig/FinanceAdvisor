@@ -8,7 +8,10 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from fintrack.imports.depot_pdf import decode_glyph_names, mask_personal_data
+from datetime import date
+
+from fintrack.imports.depot_pdf import (ExtractedDocument, ExtractedTrade, correct_trade_dates,
+                                        decode_glyph_names, mask_personal_data)
 
 
 def glyphs(text):
@@ -44,6 +47,38 @@ class TestDecodeGlyphNames:
 
     def test_unknown_sign_becomes_question_mark(self):
         assert decode_glyph_names('/LA020000/SD990000/LB020000') == 'A?B'
+
+
+def document(*days):
+    return ExtractedDocument(is_trade_statement=True, note=None, trades=[
+        ExtractedTrade(type='buy', isin='US0378331005', name='Beispiel', trade_date=day, quantity=1, price=1, fees=0, currency='EUR')
+        for day in days
+    ])
+
+
+class TestCorrectTradeDates:
+    TEXT = '[NUMMER] 22.10.2020 1\n22.10.2020\nKurswert EUR 66,20\nValuta 26.10.2020 ------\n09.04.11'
+
+    def test_scrambled_year_becomes_the_date_in_the_document(self):
+        assert correct_trade_dates(document(date(2210, 10, 20)), self.TEXT).trades[0].trade_date == date(2020, 10, 22)
+
+    def test_correct_date_stays_even_if_it_is_the_value_date(self):
+        assert correct_trade_dates(document(date(2020, 10, 26)), self.TEXT).trades[0].trade_date == date(2020, 10, 26)
+
+    def test_several_days_use_the_same_month(self):
+        text = '01.03.2024 Kauf\n15.04.2024 Kauf'
+        result = correct_trade_dates(document(date(2401, 3, 20)), text)
+        assert result.trades[0].trade_date == date(2024, 3, 1)
+
+    def test_unclear_date_stays_and_asks_for_a_check(self):
+        text = '01.03.2024 Kauf\n15.03.2024 Kauf'
+        result = correct_trade_dates(document(date(2401, 3, 20)), text)
+        assert result.trades[0].trade_date == date(2401, 3, 20)
+        assert 'Datum von Beispiel prüfen' in result.note
+
+    def test_document_without_german_dates_is_left_alone(self):
+        result = correct_trade_dates(document(date(2024, 3, 1)), '2024-03-01 Kauf')
+        assert result.trades[0].trade_date == date(2024, 3, 1)
 
 
 class TestRecipientIsRemoved:

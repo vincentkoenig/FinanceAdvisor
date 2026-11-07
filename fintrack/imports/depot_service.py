@@ -8,7 +8,8 @@ Vorschau je Ausführung:
 - 'duplicate':    gleicher Kauf/Verkauf (Asset, Tag, Stück) ist schon gebucht
 - 'unknown':      zur ISIN wurde nichts gefunden - lässt sich so nicht übernehmen
 - 'insufficient': Verkauf von mehr Stück, als nach den Käufen davor im Depot wären
-- 'invalid':      Stück oder Kurs fehlen, oder beim Verkauf sind die Gebühren höher als der Erlös
+- 'invalid':      Stück oder Kurs fehlen, das Datum liegt in der Zukunft, oder beim Verkauf sind
+                  die Gebühren höher als der Erlös
 - 'new':          kann übernommen werden
 Als Preis zählt der Kurs inklusive Gebühren je Stück (beim Verkauf abzüglich) -
 so stimmt der Einstand mit dem überein, was tatsächlich bezahlt wurde.
@@ -16,7 +17,7 @@ so stimmt der Einstand mit dem überein, was tatsächlich bezahlt wurde.
 
 import hashlib
 from collections import defaultdict
-from datetime import datetime
+from datetime import date, datetime
 
 from fintrack.api import ApiError
 from fintrack.extensions import db
@@ -97,7 +98,7 @@ def build_depot_preview(user_id, trades):
     # Käufe vor Verkäufen am selben Tag, damit ein Verkauf die Stücke aus dem Kauf sieht
     for trade in sorted(trades, key=lambda t: (t.trade_date, t.type != 'buy')):
         isin = trade.isin.strip().upper()
-        valid = trade.quantity > 0 and trade.price > 0 and trade.fees >= 0
+        valid = trade.quantity > 0 and trade.price > 0 and trade.fees >= 0 and trade.trade_date <= date.today()
         price = effective_price(trade.type, trade.price, trade.fees, trade.quantity) if valid else None
         # Beim Verkauf kleiner Stückzahlen können die Gebühren den Erlös auffressen - so nicht buchbar
         valid = valid and price > 0

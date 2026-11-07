@@ -179,13 +179,48 @@ class ExtractedDocument(PydanticBaseModel):
 INSTRUCTIONS = (
     'Du liest den Text einer deutschen Wertpapierabrechnung (z.B. Trade Republic, HypoVereinsbank, Sparplan). '
     'Gib jede Kauf- und Verkaufsausführung als eigenen Eintrag zurück: Art (buy/sell), ISIN, Name des Wertpapiers, '
-    'Ausführungs- bzw. Handelstag, Stückzahl, Ausführungskurs je Stück in Euro (ohne Gebühren), die Summe aller '
+    'Ausführungs- bzw. Handelstag (nicht Valuta; im Dokument TT.MM.JJJJ, also 22.10.2020 als 2020-10-22), Stückzahl, Ausführungskurs je Stück in Euro (ohne Gebühren), die Summe aller '
     'Gebühren und Provisionen in Euro (Steuern nicht) und die Währung des Kurses. Wenn der Kurs in einer anderen '
     'Währung steht, rechne mit dem in der Abrechnung genannten Devisenkurs in Euro um. '
     'Ist das Dokument keine Kauf- oder Verkaufsabrechnung (z.B. Depotauszug, Dividende, Kostenausweis), setze '
     'is_trade_statement auf false und gib keine Einträge zurück. Erfinde nichts; fehlt eine Angabe, lass den '
     'Eintrag weg und erkläre es in note. Persönliche Angaben sind durch Platzhalter wie [NUMMER] ersetzt.'
 )
+
+
+_GERMAN_DATE = re.compile(r'(?<![\d.])(\d{2})\.(\d{2})\.(\d{4})(?!\d)')
+
+
+def _dates_in(lines):
+    found = set()
+    for line in lines:
+        for day, month, year in _GERMAN_DATE.findall(line):
+            try:
+                found.add(date(int(year), int(month), int(day)))
+            except ValueError:
+                pass
+    return found
+
+
+def correct_trade_dates(document, text):
+    """
+    Das Sprachmodell verdreht Daten gelegentlich (22.10.2020 wurde 2210-10-20). Das fällt nicht auf,
+    bringt aber Käufe und Verkäufe durcheinander. Ein Handelstag muss deshalb im Dokument stehen.
+    Sonst gilt der einzige Tag außer der Valuta, notfalls der einzige im selben Monat.
+    """
+    lines = text.splitlines()
+    known = _dates_in(lines)
+    trade_days = _dates_in(line for line in lines if 'valuta' not in line.lower())
+    for trade in document.trades:
+        if not known or trade.trade_date in known:
+            continue
+        same_month = {day for day in trade_days if day.month == trade.trade_date.month}
+        options = trade_days if len(trade_days) == 1 else same_month
+        if len(options) == 1:
+            trade.trade_date = next(iter(options))
+        else:
+            document.note = ' '.join(filter(None, [document.note, f'Bitte das Datum von {trade.name} prüfen.']))
+    return document
 
 
 def read_trades(masked_text):
@@ -196,4 +231,4 @@ def read_trades(masked_text):
         temperature=0,
         response_format=ExtractedDocument,
     )
-    return response.choices[0].message.parsed
+    return correct_trade_dates(response.choices[0].message.parsed, masked_text)
