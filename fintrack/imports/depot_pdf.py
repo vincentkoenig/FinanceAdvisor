@@ -29,6 +29,37 @@ MAX_PAGES = 20
 MAX_CHARS = 30_000
 
 ISIN = re.compile(r'\b[A-Z]{2}[A-Z0-9]{9}\d\b')
+
+# Manche Banken (z.B. die HypoVereinsbank) drucken mit IBM-Schriften ohne Zeichentabelle: Statt
+# Buchstaben stehen im PDF deren IBM-Namen (GCGID), z.B. /LB020000 für "B" und /ND100000 für "0".
+_GLYPH = re.compile(r'/([A-Z]{2})(\d{2})0000')
+_SPACED_WORD = re.compile(r'(?<!\S)(?:[A-Za-zÄÖÜäöüß-] ){3,}[A-Za-zÄÖÜäöüß-](?!\S)')
+_GLYPH_SIGNS = {
+    'SP01': ' ', 'SP02': '!', 'SP05': "'", 'SP06': '(', 'SP07': ')', 'SP08': ',', 'SP09': '_', 'SP10': '-', 'SP11': '.',
+    'SP12': '/', 'SP13': ':', 'SP14': ';', 'SP15': '?', 'SM03': '&', 'SM04': '*', 'SM24': '§',
+    'LA17': 'ä', 'LA18': 'Ä', 'LO17': 'ö', 'LO18': 'Ö', 'LU17': 'ü', 'LU18': 'Ü', 'LS61': 'ß',
+}
+
+
+def _read_glyph(match):
+    kind, number = match.group(1), int(match.group(2))
+    if kind == 'ND' and 1 <= number <= 10:
+        return str(number % 10)
+    if kind[0] == 'L' and number in (1, 2):
+        return kind[1].lower() if number == 1 else kind[1]
+    return _GLYPH_SIGNS.get(f'{kind}{number:02d}', '?')
+
+
+def decode_glyph_names(text):
+    """
+    Übersetzt IBM-Zeichennamen in Text. Normaler Text bleibt, wie er ist. Gesperrte Überschriften
+    ("V e r k a u f") rückt sie zusammen: Sie sagen, ob es Kauf oder Verkauf ist.
+    """
+    if not _GLYPH.search(text):
+        return text
+    return _SPACED_WORD.sub(lambda match: match.group(0).replace(' ', ''), _GLYPH.sub(_read_glyph, text))
+
+
 _PATTERNS = [
     # IBAN (mit oder ohne Leerzeichen)
     (re.compile(r'\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}(?:\s?[A-Z0-9]{1,4})?\b'), '[IBAN]'),
@@ -42,19 +73,46 @@ _PATTERNS = [
 # Lange Ziffernfolgen (Kunden-, Depot-, Auftragsnummern); Beträge haben Komma oder Punkt und bleiben
 _NUMBER = re.compile(r'(?<![\d,.])\d[\d ]{6,}\d(?![\d,.])')
 # Zeilen mit Anrede oder Kennnummern ganz weglassen
-_PERSONAL_LINE = re.compile(r'^\s*(herr|frau|kunde|kundennummer|depotnummer|depot-nr|konto|kontonummer|'
+_PERSONAL_LINE = re.compile(r'^\s*(herrn?|frau|kunde|kundennummer|depotnummer|depot-nr|konto|kontonummer|'
                             r'steuer-?id|steuernummer|bic|iban)\b', re.I)
 
 
 # Adresse und Straße stehen oben im Briefkopf; weiter unten könnten die Muster Beträge treffen
 ADDRESS_LINES = 15
+# Empfänger im Anschriftenfeld: nach der Anrede bis zur Zeile mit Postleitzahl und Ort
+# Ansprechpartner ohne Leerzeichen, z.B. "FrauMuster" im Kopf von HVB-Abrechnungen
+_GLUED_NAME = re.compile(r'^\s*(Herrn?|Frau)[A-ZÄÖÜ]')
+_SALUTATION = re.compile(r'^\s*(herrn?|frau)\b', re.I)
+_POSTCODE_LINE = re.compile(r'^\s*\d{5}\s+\S')
+RECIPIENT_LINES = 6
+
+
+def _recipient_lines(lines):
+    """
+    Zeilennummern mit dem Empfänger, auch an anderer Stelle im Dokument: Abrechnungen nennen
+    die Depotinhaber oft ein zweites Mal, und Namen haben kein Muster wie eine IBAN.
+    """
+    key = lambda line: line.strip().rstrip(',').lower()
+    hidden, known = set(), set()
+    for start, line in enumerate(lines):
+        if not _SALUTATION.match(line):
+            continue
+        block = lines[start + 1:start + 1 + RECIPIENT_LINES]
+        end = next((index for index, entry in enumerate(block) if _POSTCODE_LINE.match(entry)), None)
+        if end is not None:
+            hidden.update(range(start + 1, start + end + 2))
+            known.update(key(entry) for entry in block[:end + 1] if key(entry))
+    hidden.update(index for index, line in enumerate(lines) if key(line) in known)
+    return hidden
 
 
 def mask_personal_data(text):
     """Entfernt persönliche Angaben; ISINs, Beträge, Daten und Stückzahlen bleiben."""
     lines = []
-    for number, line in enumerate(text.splitlines()):
-        if _PERSONAL_LINE.match(line):
+    source = text.splitlines()
+    recipient = _recipient_lines(source)
+    for number, line in enumerate(source):
+        if number in recipient or _PERSONAL_LINE.match(line) or _GLUED_NAME.match(line):
             lines.append('[ENTFERNT]')
             continue
         isins = {}
@@ -86,7 +144,7 @@ def extract_text(data: bytes):
             raise PdfImportError('Das PDF ist passwortgeschützt.')
         if len(reader.pages) > MAX_PAGES:
             raise PdfImportError(f'Höchstens {MAX_PAGES} Seiten pro PDF.')
-        text = '\n'.join(page.extract_text() or '' for page in reader.pages)
+        text = decode_glyph_names('\n'.join(page.extract_text() or '' for page in reader.pages))
     except (PdfReadError, ValueError, KeyError) as error:
         if isinstance(error, PdfImportError):
             raise
