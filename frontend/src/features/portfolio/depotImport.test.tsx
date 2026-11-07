@@ -1,8 +1,10 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { strToU8, zipSync } from 'fflate';
+import { http, HttpResponse } from 'msw';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { renderApp } from '../../test/renderApp';
-import { sent, session } from '../../test/server';
+import { sent, server, session } from '../../test/server';
 
 beforeEach(() => {
   session.loggedIn = true;
@@ -38,6 +40,32 @@ describe('Abrechnungen importieren', () => {
     expect(await screen.findByText('1 Ausführungen gebucht')).toBeInTheDocument();
     expect(sent.depotImport).toEqual([{ type: 'buy', symbol: 'EUNL.DE', name: 'iShares Core MSCI World', date: '2026-10-01', quantity: 10, price: 100.1 }]);
     await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio'));
+  });
+
+  it('nimmt ein ZIP an und bucht einen Verkauf, dessen Kauf in einer anderen Datei liegt', async () => {
+    const trade = (key: string, type: string, date: string, status: string) => ({
+      key, type, isin: 'DE0007164600', name: 'SAP', date, quantity: 5, quote: 100, fees: 0, price: 100,
+      symbol: 'SAP.DE', asset_name: 'SAP SE', asset_id: 3, status,
+    });
+    server.use(http.post('/api/v1/me/import/depot/preview', async ({ request }) => {
+      const sale = (await request.text()).includes('verkauf');
+      return HttpResponse.json({
+        is_trade_statement: true, note: null, sent_text: 'ABRECHNUNG',
+        rows: [sale ? trade('v', 'sell', '2025-06-02', 'insufficient') : trade('k', 'buy', '2025-01-02', 'new')],
+      });
+    }));
+    const packed = zipSync({
+      'Verkauf.pdf': new Uint8Array(strToU8('verkauf')), 'Kauf.pdf': new Uint8Array(strToU8('kauf')),
+    });
+    renderApp('/portfolio/import');
+    const user = userEvent.setup();
+    await user.upload(await screen.findByLabelText('Dateien wählen'), new File([packed.slice()], 'hvb.zip', { type: 'application/zip' }));
+
+    const preview = await screen.findByRole('region', { name: 'Vorschau' });
+    await waitFor(() => expect(within(preview).getByRole('button', { name: '2 Ausführungen buchen' })).toBeEnabled());
+    expect(preview).not.toHaveTextContent('zu wenig Stück');
+    await user.click(within(preview).getByRole('button', { name: '2 Ausführungen buchen' }));
+    await waitFor(() => expect(sent.depotImport).toHaveLength(2));
   });
 
   it('liest einen Krypto-Export als CSV und fragt bei unbekannten Spalten nach', async () => {

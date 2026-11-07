@@ -204,8 +204,9 @@ def delete_rule(rule_id):
 
 # ─── DEPOT-ABRECHNUNGEN (PDF) ─────────────────────────────────────────────────
 
+# Großzügiger als der Kontoimport: Ein Archiv kann viele hundert einzelne Abrechnungen enthalten
 @bp.route('/me/import/depot/preview', methods=['POST'])
-@limiter.limit("40 per hour", key_func=current_user_key)
+@limiter.limit("600 per hour", key_func=current_user_key)
 def preview_depot_import():
     """
     Liest eine PDF-Abrechnung (Inhalt der Anfrage oder Formularfeld "file"),
