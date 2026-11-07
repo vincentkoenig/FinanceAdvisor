@@ -24,7 +24,7 @@ const STATUS_TEXT: Record<Exclude<DepotRow['status'], 'new'>, string> = {
   duplicate: 'schon gebucht',
   unknown: 'Wertpapier nicht gefunden',
   insufficient: 'zu wenig Stück im Depot',
-  invalid: 'Kurs nach Gebühren nicht über 0',
+  invalid: 'Datum oder Kurs nicht plausibel',
 };
 
 const CRYPTO_FIELDS: { field: CryptoField; label: string }[] = [
