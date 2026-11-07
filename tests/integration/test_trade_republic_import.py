@@ -10,6 +10,8 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
+from datetime import date
+
 import pytest
 
 from fintrack.imports.bank_csv import CsvImportError
@@ -88,6 +90,19 @@ def test_preview_and_booking(client):
 
     etf = Asset.query.filter_by(symbol='EUNL.DE').one()
     assert UserAsset.query.filter_by(asset_id=etf.id).one().quantity == pytest.approx(1.5)
+
+
+def test_split_from_the_export_is_not_applied_twice(client, fake_yahoo):
+    """Der Export rechnet den Split selbst ein; Yahoo kennt ihn auch und darf ihn nicht noch einmal anwenden."""
+    fake_yahoo.splits['BSP.DE'] = [(date(2026, 2, 1), 10.0)]
+    export = '\n'.join([HEADER,
+        line('2026-01-05', 'TRADING', 'BUY', 'Beispiel AG', 'DE0000000001', '1', '100.0'),
+        line('2026-02-01', 'CORPORATE_ACTION', 'SPLIT', 'Beispiel AG', 'DE0000000001', '9'),
+    ]).encode()
+
+    rows = client.post('/api/v1/me/import/crypto/preview', data=export, content_type='text/csv').get_json()['rows']
+
+    assert [(r['quantity'], r['split_factor']) for r in rows] == [(pytest.approx(10.0), 1.0)]
 
 
 def test_selling_everything_after_fractional_buys_and_split(client):

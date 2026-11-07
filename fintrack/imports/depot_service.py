@@ -128,8 +128,11 @@ def _identify(identifier, cache, name=None):
     return None
 
 
-def build_depot_preview(user_id, trades):
-    """trades: Liste von ExtractedTrade. Gibt die Vorschau-Einträge zurück, nach Datum sortiert."""
+def build_depot_preview(user_id, trades, apply_splits=True):
+    """
+    trades: Liste von ExtractedTrade. Gibt die Vorschau-Einträge zurück, nach Datum sortiert.
+    apply_splits=False für Quellen, die Splits schon selbst eingerechnet haben (Trade-Republic-Export).
+    """
     cache = {}
     holdings = defaultdict(float)
     for position in UserAsset.query.filter_by(user_id=user_id).all():
@@ -146,7 +149,7 @@ def build_depot_preview(user_id, trades):
         valid = valid and (price > 0 or trade.type == 'sell')
         price = price if valid else None
         match = _identify(isin, cache, trade.name) if valid else None
-        split = _split_factor(match['symbol'], trade.trade_date, cache) if match else 1.0
+        split = _split_factor(match['symbol'], trade.trade_date, cache) if match and apply_splits else 1.0
         quantity = round(trade.quantity * split, 8)
         entry = {
             "key": hashlib.sha256(f'{isin}|{trade.type}|{trade.trade_date}|{trade.quantity}|{trade.price}'

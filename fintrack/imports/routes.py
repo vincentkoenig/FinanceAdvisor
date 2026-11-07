@@ -265,8 +265,10 @@ def preview_crypto_import():
             mapping = CryptoColumnMapping.model_validate(json.loads(request.args['mapping'])).columns
         except json.JSONDecodeError:
             raise ApiError(400, 'Die Spaltenzuordnung ist kein gültiges JSON')
+    # Der Trade-Republic-Export enthält Splits und rechnet sie selbst ein, Yahoo darf es nicht noch einmal
+    from_trade_republic = mapping is None and is_trade_republic(data)
     try:
-        if mapping is None and is_trade_republic(data):
+        if from_trade_republic:
             columns, used_mapping, trades, skipped = read_trade_republic_csv(data)
         else:
             columns, used_mapping, trades, skipped = read_crypto_csv(data, mapping)
@@ -276,6 +278,6 @@ def preview_crypto_import():
     return jsonify({
         "columns": columns,
         "mapping": used_mapping,
-        "rows": build_depot_preview(current_user.id, trades),
+        "rows": build_depot_preview(current_user.id, trades, apply_splits=not from_trade_republic),
         "skipped": skipped,
     }), 200
