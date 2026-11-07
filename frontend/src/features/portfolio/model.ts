@@ -117,6 +117,9 @@ export function dividendsThisYear(dividends: Dividend[], today: Date) {
 }
 
 /** Runde Achsenwerte (Schritte 1, 2, 2,5 oder 5 × 10ⁿ), der oberste liegt über dem Höchstwert */
+/** Rundungsreste bei Bruchstücken gelten als gleich, wie QUANTITY_EPSILON auf dem Server */
+export const QUANTITY_EPSILON = 1e-6;
+
 export function niceTicks(min: number, max: number, count = 4) {
   if (max === min) max = min + 1;
   const raw = (max - min) / count;

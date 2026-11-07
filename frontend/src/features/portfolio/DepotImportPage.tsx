@@ -1,16 +1,19 @@
 // Abrechnungen importieren. Frage der Seite: Welche Käufe und Verkäufe sollen ins Depot?
-// Dateien wählen (auch mehrere): PDF-Abrechnungen von Brokern (persönliche Angaben werden entfernt, dann
+// Dateien wählen (auch mehrere oder ein ZIP): PDF-Abrechnungen von Brokern (persönliche Angaben werden entfernt, dann
 // liest die KI die Ausführungen aus), den Trade-Republic-Export und CSV-Exporte von Krypto-Apps wie Bison (ohne KI, Spalten notfalls
 // von Hand zuordnen) → Vorschau prüfen → buchen. Gespeichert wird erst beim Buchen, die Dateien nirgends.
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import {
   type CryptoField, type CryptoMapping, type DepotRow, UnknownColumnsError, previewCryptoImport, previewDepotImport, useCommitDepotImport,
 } from '../../api/imports';
+import { usePositions } from '../../api/overview';
 import { Icon } from '../../components/Icon';
 import { useToast } from '../../components/Toast';
 import { dayShort, qty } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
+import { recheckSales } from './depotModel';
+import { filesFromZip, isZip } from './zip';
 
 type FileResult =
   | { kind: 'rows'; name: string; rows: DepotRow[]; info: string; sent?: string }
@@ -39,6 +42,7 @@ const count = (n: number) => `${n} Ausführung${n === 1 ? '' : 'en'}`;
 
 export function DepotImportPage() {
   const commit = useCommitDepotImport();
+  const positions = usePositions();
   const notify = useToast();
   const navigate = useNavigate();
   const { eur } = useMoney();
@@ -68,15 +72,32 @@ export function DepotImportPage() {
   };
 
   const remember = (result: FileResult) => {
-    if (result.kind === 'rows') setSelected((current) => ({ ...current, ...Object.fromEntries(result.rows.map((r) => [r.key, r.status === 'new'])) }));
+    // Auch "zu wenig Stück" bleibt gewählt: Die Stücke können aus einer anderen Datei kommen
+    if (result.kind === 'rows') {
+      setSelected((current) => ({ ...current, ...Object.fromEntries(result.rows.map((r) => [r.key, r.status === 'new' || r.status === 'insufficient'])) }));
+    }
   };
 
   // Nacheinander, damit die Reihenfolge stimmt und der Server nicht mit vielen Auswertungen auf einmal belastet wird
   const pick = async (list: FileList | null) => {
     if (!list?.length) return;
     setError(null);
+    // Archive zuerst auspacken, damit der Fortschritt alle Dateien zählt
+    const queue: File[] = [];
     for (const file of Array.from(list)) {
+      if (!isZip(file)) {
+        queue.push(file);
+        continue;
+      }
       setReading(file.name);
+      try {
+        queue.push(...await filesFromZip(file));
+      } catch (failure) {
+        setFiles((current) => [...current, { kind: 'error', name: file.name, error: (failure as Error).message }]);
+      }
+    }
+    for (const [index, file] of queue.entries()) {
+      setReading(queue.length > 1 ? `${file.name} (${index + 1} von ${queue.length})` : file.name);
       const result = await read(file);
       remember(result);
       setFiles((current) => [...current, result]);
@@ -96,7 +117,10 @@ export function DepotImportPage() {
   const rows = files.flatMap((f) => (f.kind === 'rows' ? f.rows : []));
   // Dieselbe Ausführung aus zwei Dateien nur einmal
   const unique = rows.filter((row, index) => rows.findIndex((r) => r.key === row.key) === index);
-  const chosen = unique.filter((r) => r.status === 'new' && selected[r.key]);
+  // Ob Verkäufe aufgehen, zeigt sich erst über alle Dateien
+  const held = useMemo(() => Object.fromEntries((positions.data ?? []).map((p) => [p.symbol, p.quantity])), [positions.data]);
+  const status = recheckSales(unique, held, selected);
+  const chosen = unique.filter((r) => status.get(r.key) === 'new' && selected[r.key]);
 
   const save = () => commit.mutate(
     chosen.map((r) => ({ type: r.type, symbol: r.symbol!, name: r.asset_name ?? r.name, date: r.date, quantity: r.quantity, price: r.price! })),
@@ -132,14 +156,14 @@ export function DepotImportPage() {
         <div className="panel-head"><h2 id="h-pdf">Dateien</h2></div>
         <div className="file-row">
           <label className="btn btn-primary" htmlFor="depot-files"><Icon name="upload" size={16} />Dateien wählen</label>
-          <input key={inputKey} className="sr-only" type="file" id="depot-files" accept="application/pdf,.pdf,.csv,text/csv" multiple
+          <input key={inputKey} className="sr-only" type="file" id="depot-files" accept="application/pdf,.pdf,.csv,text/csv,.zip,application/zip" multiple
             onChange={(e) => pick(e.target.files)} disabled={reading !== null || commit.isPending} />
-          <span className="muted trunc" role="status">{reading ? `Liest ${reading} …` : files.length ? `${files.length} gelesen` : 'Mehrere Dateien auf einmal gehen'}</span>
+          <span className="muted trunc" role="status">{reading ? `Liest ${reading} …` : files.length ? `${files.length} gelesen` : 'Mehrere Dateien oder ein ZIP auf einmal gehen'}</span>
         </div>
         <p className="hint">
           PDFs: Vor dem Auswerten entfernt FinTrack Name, Adresse, IBAN sowie Kunden- und Depotnummern. Nur der Rest (Wertpapier,
           ISIN, Datum, Stück, Kurs, Gebühren) geht zum Auslesen an OpenAI. CSV-Dateien liest FinTrack selbst, ohne KI.
-          Keine Datei wird gespeichert.
+          Keine Datei wird gespeichert. Die Reihenfolge ist egal, Käufe und Verkäufe werden nach Datum gebucht.
         </p>
         {files.length > 0 && (
           <ul className="file-results">
@@ -197,9 +221,10 @@ export function DepotImportPage() {
           <div className="rows">
             {unique.map((r) => {
               const label = `${r.type === 'buy' ? 'Kauf' : 'Verkauf'} ${r.asset_name ?? r.name} am ${dayShort(r.date)}`;
+              const state = status.get(r.key) ?? r.status;
               return (
-                <div className={`row import-row${r.status !== 'new' || !selected[r.key] ? ' is-paused' : ''}`} key={r.key}>
-                  <input type="checkbox" className="check" checked={r.status === 'new' && Boolean(selected[r.key])} disabled={r.status !== 'new'}
+                <div className={`row import-row${state !== 'new' || !selected[r.key] ? ' is-paused' : ''}`} key={r.key}>
+                  <input type="checkbox" className="check" checked={state === 'new' && Boolean(selected[r.key])} disabled={state !== 'new'}
                     onChange={(e) => setSelected((s) => ({ ...s, [r.key]: e.target.checked }))} aria-label={`${label} buchen`} />
                   <div className="grow">
                     <span className="trunc">
@@ -211,7 +236,7 @@ export function DepotImportPage() {
                     </span>
                   </div>
                   <span className="end strong">{r.price !== null ? eur(r.price * r.quantity) : '–'}</span>
-                  {r.status !== 'new' && <span className="pill">{STATUS_TEXT[r.status]}</span>}
+                  {state !== 'new' && <span className="pill">{STATUS_TEXT[state]}</span>}
                 </div>
               );
             })}
@@ -219,7 +244,7 @@ export function DepotImportPage() {
           {error && <p className="err" role="alert">{error}</p>}
           <div className="dialog-actions">
             <button className="btn" onClick={reset} disabled={commit.isPending}>Verwerfen</button>
-            <button className="btn btn-primary" onClick={save} disabled={commit.isPending || chosen.length === 0}>
+            <button className="btn btn-primary" onClick={save} disabled={commit.isPending || chosen.length === 0 || reading !== null || !positions.isSuccess}>
               {commit.isPending ? 'Bucht …' : chosen.length === 1 ? '1 Ausführung buchen' : `${chosen.length} Ausführungen buchen`}
             </button>
           </div>
