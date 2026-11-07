@@ -10,7 +10,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from datetime import date
 
-from fintrack.imports.depot_pdf import (ExtractedDocument, ExtractedTrade, correct_trade_dates,
+from fintrack.imports.depot_pdf import (ExtractedDocument, ExtractedTrade, apply_statement_figures, correct_trade_dates,
                                         decode_glyph_names, mask_personal_data)
 
 
@@ -49,11 +49,39 @@ class TestDecodeGlyphNames:
         assert decode_glyph_names('/LA020000/SD990000/LB020000') == 'A?B'
 
 
-def document(*days):
+def document(*days, quantity=1, price=1):
     return ExtractedDocument(is_trade_statement=True, note=None, trades=[
-        ExtractedTrade(type='buy', isin='US0378331005', name='Beispiel', trade_date=day, quantity=1, price=1, fees=0, currency='EUR')
+        ExtractedTrade(type='buy', isin='US0378331005', name='Beispiel', trade_date=day, quantity=quantity, price=price, fees=0, currency='EUR')
         for day in days
     ])
+
+
+class TestApplyStatementFigures:
+    SAVINGS_PLAN = ('ST 0,683 BEISPIEL MSCI EUR.SRI LU1861137484\n[NUMMER]     01.10.2021  1\n'
+                    'EUR 71,75 01.10.2021  Girosammelverwahrung\nKurswert EUR 49,01  Wertpapierprovision* EUR 0,98')
+
+    def test_page_number_is_not_the_quantity(self):
+        trade = apply_statement_figures(document(date(2021, 10, 1), price=49.01), self.SAVINGS_PLAN).trades[0]
+        assert trade.quantity == 0.683
+        assert round(trade.price * trade.quantity, 2) == 49.01
+
+    def test_price_from_the_statement_stays_when_it_fits(self):
+        trade = apply_statement_figures(document(date(2021, 10, 1), quantity=0.683, price=71.75), self.SAVINGS_PLAN).trades[0]
+        assert trade.price == 71.75
+
+    def test_thousands_in_quantity_and_market_value(self):
+        text = 'ST 1.200\nBEISPIEL AG\n[NUMMER] 04.11.2020 1\nKurswert EUR 3.426,00'
+        trade = apply_statement_figures(document(date(2020, 11, 4), price=3426), text).trades[0]
+        assert (trade.quantity, trade.price) == (1200, 2.855)
+
+    def test_corporate_action_is_not_booked(self):
+        result = apply_statement_figures(document(date(2022, 8, 25), price=2.5), 'Abrechnung Kapitalmaßnahme\nST 8\nTESLA')
+        assert (result.is_trade_statement, result.trades) == (False, [])
+        assert 'Aktiensplit' in result.note
+
+    def test_documents_with_several_trades_are_left_alone(self):
+        result = apply_statement_figures(document(date(2024, 1, 2), date(2024, 1, 3)), 'ST 5\nKurswert EUR 10,00')
+        assert [t.quantity for t in result.trades] == [1, 1]
 
 
 class TestCorrectTradeDates:

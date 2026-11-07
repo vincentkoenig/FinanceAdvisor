@@ -145,6 +145,17 @@ def fetch_dividends(symbol, since):
             for timestamp, amount in dividends.items() if timestamp.date() > since]
 
 
+def fetch_splits(symbol):
+    """
+    Aktiensplits als Liste von (Tag, Verhältnis), z.B. (2020-08-31, 5.0) für 5:1. Die Kurshistorie
+    von Yahoo ist um Splits bereinigt, Stückzahlen aus alten Abrechnungen müssen es auch sein.
+    """
+    splits = yf.Ticker(yahoo_symbol(symbol)).splits
+    if splits is None or splits.empty:
+        return []
+    return [(timestamp.date(), float(ratio)) for timestamp, ratio in splits.items() if ratio and ratio > 0]
+
+
 def search_quotes(query, max_results=15):
     """
     Rohe Suchtreffer von yfinance für Name, Symbol oder ISIN, in der

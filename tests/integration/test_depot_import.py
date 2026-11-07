@@ -143,13 +143,54 @@ class TestPreview:
 
         assert statuses == [('sell', 'insufficient'), ('buy', 'unknown')]
 
-    def test_sell_where_fees_eat_the_proceeds_is_not_bookable(self, account, ai):
+    def test_later_stock_splits_are_applied(self, account, ai, fake_yahoo):
+        fake_yahoo.splits['EUNL.DE'] = [(date(2020, 8, 31), 5.0), (date(2022, 8, 25), 3.0)]
+        ai.return_value = ExtractedDocument(is_trade_statement=True, note=None, trades=[
+            trade(day=date(2020, 8, 12), quantity=1, price=1221.80, fees=23.50),
+            trade(day=date(2022, 8, 25), quantity=4, price=300.0, fees=0),
+            trade(kind='sell', day=date(2022, 8, 29), quantity=19, price=280.0, fees=0),
+        ])
+
+        rows = {r['date']: r for r in preview(account).get_json()['rows']}
+
+        before = rows['2020-08-12']
+        assert (before['quantity'], before['split_factor']) == (15, 15)
+        assert round(before['price'] * before['quantity'], 2) == 1245.30
+        assert round(before['quote'], 4) == round(1221.80 / 15, 4)
+        on_split_day = rows['2022-08-25']
+        assert (on_split_day['quantity'], on_split_day['split_factor']) == (4, 1)
+        assert rows['2022-08-29']['status'] == 'new'
+
+    def test_unknown_isin_is_searched_by_name_and_marked(self, account, ai, fake_yahoo):
+        fake_yahoo.quotes['TAIWAN SEMICONDUCT'] = [quote('TSM', 'NYQ', 'Taiwan Semiconductor Manufacturing')]
+        fake_yahoo.add_stock('TSM', currency='USD', exchange='NYQ')
+        sample = trade(isin='US8740391003', quantity=2, price=117.0, fees=27.0)
+        sample.name = 'TAIWAN SEMICONDUCT.MANUFACT.CO'
+        ai.return_value = ExtractedDocument(is_trade_statement=True, note=None, trades=[sample])
+
+        row = preview(account).get_json()['rows'][0]
+
+        assert (row['symbol'], row['found_by'], row['status']) == ('TSM', 'name', 'new')
+
+    def test_found_by_isin_is_not_marked(self, account, ai):
+        row = preview(account).get_json()['rows'][0]
+        assert (row['found_by'], row['split_factor']) == ('isin', 1.0)
+
+    def test_sell_where_fees_eat_the_proceeds_is_booked_at_zero(self, account, ai):
         ai.return_value = ExtractedDocument(is_trade_statement=True, note=None, trades=[
             trade(), trade(kind='sell', quantity=0.01, price=50.0, fees=1.0)])
 
         rows = preview(account).get_json()['rows']
 
-        assert [(r['type'], r['status'], r['price']) for r in rows] == [('buy', 'new', 100.1), ('sell', 'invalid', None)]
+        assert [(r['type'], r['status'], r['price']) for r in rows] == [('buy', 'new', 100.1), ('sell', 'new', 0.0)]
+
+    def test_spin_off_factors_near_one_are_no_split(self, account, ai, fake_yahoo):
+        fake_yahoo.splits['EUNL.DE'] = [(date(2030, 6, 3), 1.048), (date(2030, 7, 1), 0.1)]
+        ai.return_value = ExtractedDocument(is_trade_statement=True, note=None, trades=[trade(day=date(2026, 1, 2), quantity=20)])
+
+        row = preview(account).get_json()['rows'][0]
+
+        assert (row['quantity'], row['split_factor']) == (2, 0.1)
 
     def test_buy_then_sell_in_the_same_file(self, account, ai):
         ai.return_value = ExtractedDocument(is_trade_statement=True, note=None, trades=[
