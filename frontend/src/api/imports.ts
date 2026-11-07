@@ -118,6 +118,10 @@ export type DepotRow = {
   asset_name: string | null;
   asset_id: number | null;
   status: DepotStatus;
+  /** Stück heute je Stück laut Abrechnung, nach Aktiensplits (1 = kein Split) */
+  split_factor?: number;
+  /** 'name': Wertpapier nicht über die ISIN, sondern über den Namen gefunden - bitte prüfen */
+  found_by?: 'isin' | 'name' | null;
 };
 
 export type DepotPreview = { is_trade_statement: boolean; note: string | null; rows: DepotRow[]; sent_text: string };

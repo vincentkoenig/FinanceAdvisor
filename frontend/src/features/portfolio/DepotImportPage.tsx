@@ -10,7 +10,7 @@ import {
 import { usePositions } from '../../api/overview';
 import { Icon } from '../../components/Icon';
 import { useToast } from '../../components/Toast';
-import { dayShort, qty } from '../../lib/format';
+import { dayShort, parseDay, qty } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import { recheckSales } from './depotModel';
 import { filesFromZip, isZip } from './zip';
@@ -37,6 +37,8 @@ const CRYPTO_FIELDS: { field: CryptoField; label: string }[] = [
   { field: 'fee', label: 'Gebühr' },
 ];
 
+// Mit Jahr: In einem Archiv liegen Abrechnungen aus vielen Jahren
+const dayLong = (iso: string) => parseDay(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'short', year: 'numeric' });
 const isCsv = (file: File) => /\.csv$/i.test(file.name) || file.type === 'text/csv';
 const count = (n: number) => `${n} Ausführung${n === 1 ? '' : 'en'}`;
 
@@ -232,10 +234,13 @@ export function DepotImportPage() {
                       {r.asset_name ?? r.name}
                     </span>
                     <span className="sub-line trunc">
-                      {[dayShort(r.date), r.symbol ?? r.isin, `${qty(r.quantity)} × ${eur(r.quote)}`, r.fees ? `${eur(r.fees)} Gebühren` : null].filter(Boolean).join(' · ')}
+                      {[dayLong(r.date), r.symbol ?? r.isin, `${qty(r.quantity)} × ${eur(r.quote)}`, r.fees ? `${eur(r.fees)} Gebühren` : null,
+                        r.split_factor && r.split_factor !== 1 ? `nach Aktiensplit, laut Abrechnung ${qty(r.quantity / r.split_factor)} Stück` : null]
+                        .filter(Boolean).join(' · ')}
                     </span>
                   </div>
                   <span className="end strong">{r.price !== null ? eur(r.price * r.quantity) : '–'}</span>
+                  {r.found_by === 'name' && state !== 'unknown' && <span className="pill pill-warn" title={`ISIN ${r.isin} nicht gefunden, Treffer über den Namen`}>über Namen gefunden, prüfen</span>}
                   {state !== 'new' && <span className="pill">{STATUS_TEXT[state]}</span>}
                 </div>
               );

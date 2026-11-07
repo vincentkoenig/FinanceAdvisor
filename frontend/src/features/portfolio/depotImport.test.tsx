@@ -32,7 +32,7 @@ describe('Abrechnungen importieren', () => {
     expect(within(files).getByText('WERTPAPIERABRECHNUNG [NUMMER]')).toBeInTheDocument();
 
     const preview = screen.getByRole('region', { name: 'Vorschau' });
-    expect(preview).toHaveTextContent('KaufiShares Core MSCI World1. Okt. · EUNL.DE · 10 × 100,00 € · 1,00 € Gebühren1.001,00 €');
+    expect(preview).toHaveTextContent('KaufiShares Core MSCI World1. Okt. 2026 · EUNL.DE · 10 × 100,00 € · 1,00 € Gebühren1.001,00 €');
     expect(preview).toHaveTextContent('schon gebucht');
     expect(within(preview).getByLabelText('Verkauf iShares Core MSCI World am 1. Okt. buchen')).toBeDisabled();
 

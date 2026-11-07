@@ -5,7 +5,7 @@ imports/schemas.py - Eingaben für den Import von Kontoumsätzen.
 from datetime import date
 from typing import Dict, List, Literal, Optional
 
-from pydantic import Field, PositiveFloat, PositiveInt, field_validator
+from pydantic import Field, PositiveFloat, PositiveInt, field_validator, model_validator
 
 from fintrack.api import RequestModel
 from fintrack.imports.bank_csv import FIELDS
@@ -100,7 +100,14 @@ class DepotTrade(RequestModel):
     name: str = Field(min_length=1, max_length=200)
     date: date
     quantity: PositiveFloat
-    price: PositiveFloat
+    # Ein Verkauf kann nach Gebühren 0 € bringen (z.B. nach einer Insolvenz), ein Kauf nicht
+    price: float = Field(ge=0)
+
+    @model_validator(mode='after')
+    def buy_costs_something(self):
+        if self.type == 'buy' and self.price <= 0:
+            raise ValueError('Ein Kauf braucht einen Preis über 0')
+        return self
 
 
 class DepotCommit(RequestModel):

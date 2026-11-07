@@ -184,7 +184,9 @@ INSTRUCTIONS = (
     'Währung steht, rechne mit dem in der Abrechnung genannten Devisenkurs in Euro um. '
     'Ist das Dokument keine Kauf- oder Verkaufsabrechnung (z.B. Depotauszug, Dividende, Kostenausweis), setze '
     'is_trade_statement auf false und gib keine Einträge zurück. Erfinde nichts; fehlt eine Angabe, lass den '
-    'Eintrag weg und erkläre es in note. Persönliche Angaben sind durch Platzhalter wie [NUMMER] ersetzt.'
+    'Eintrag weg und erkläre es in note. Persönliche Angaben sind durch Platzhalter wie [NUMMER] ersetzt. '
+    'Bei der HypoVereinsbank steht die Stückzahl hinter "ST" (z.B. "ST 0,683"); die einzelne Zahl hinter dem '
+    'Datum ist die Blattnummer und keine Stückzahl.'
 )
 
 
@@ -223,6 +225,41 @@ def correct_trade_dates(document, text):
     return document
 
 
+_STATEMENT_QUANTITY = re.compile(r'^\s*ST\s+(\d{1,3}(?:\.\d{3})*(?:,\d+)?|\d+(?:,\d+)?)(?!\S)', re.M)
+_MARKET_VALUE = re.compile(r'Kurswert\s+EUR\s+(\d{1,3}(?:\.\d{3})*,\d+|\d+,\d+)')
+_CORPORATE_ACTION = re.compile(r'Kapitalma(ß|ss)nahme', re.I)
+
+
+def _german_number(text):
+    return float(text.replace('.', '').replace(',', '.'))
+
+
+def apply_statement_figures(document, text):
+    """
+    Stückzahl und Kurs so, wie sie in einer einzelnen Abrechnung stehen. Das Sprachmodell hat bei
+    HVB-Abrechnungen die Blattnummer als Stückzahl genommen und mal den Kurs, mal den Kurswert als
+    Preis. Steht genau eine Stückzahl ("ST 0,683") und genau ein Kurswert im Dokument, gelten diese.
+    Kapitalmaßnahmen (Aktiensplit, Umtausch) sind kein Kauf oder Verkauf und werden nicht gebucht.
+    """
+    if _CORPORATE_ACTION.search(text):
+        document.is_trade_statement = False
+        document.trades = []
+        document.note = 'Kapitalmaßnahme (z.B. Aktiensplit oder Umtausch), wird nicht als Kauf oder Verkauf gebucht'
+        return document
+    if len(document.trades) != 1:
+        return document
+    trade = document.trades[0]
+    quantities = {_german_number(value) for value in _STATEMENT_QUANTITY.findall(text)}
+    if len(quantities) == 1:
+        trade.quantity = quantities.pop()
+    values = {_german_number(value) for value in _MARKET_VALUE.findall(text)}
+    if len(values) == 1 and trade.quantity > 0:
+        market_value = values.pop()
+        if abs(trade.price * trade.quantity - market_value) > max(0.01, market_value * 0.005):
+            trade.price = round(market_value / trade.quantity, 6)
+    return document
+
+
 def read_trades(masked_text):
     """Schickt den maskierten Text an das Sprachmodell und gibt ExtractedDocument zurück."""
     response = get_openai_client().beta.chat.completions.parse(
@@ -231,4 +268,5 @@ def read_trades(masked_text):
         temperature=0,
         response_format=ExtractedDocument,
     )
-    return correct_trade_dates(response.choices[0].message.parsed, masked_text)
+    document = correct_trade_dates(response.choices[0].message.parsed, masked_text)
+    return apply_statement_figures(document, masked_text)

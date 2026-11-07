@@ -8,14 +8,20 @@ Vorschau je Ausführung:
 - 'duplicate':    gleicher Kauf/Verkauf (Asset, Tag, Stück) ist schon gebucht
 - 'unknown':      zur ISIN wurde nichts gefunden - lässt sich so nicht übernehmen
 - 'insufficient': Verkauf von mehr Stück, als nach den Käufen davor im Depot wären
-- 'invalid':      Stück oder Kurs fehlen, das Datum liegt in der Zukunft, oder beim Verkauf sind
-                  die Gebühren höher als der Erlös
+- 'invalid':      Stück oder Kurs fehlen, oder das Datum liegt in der Zukunft
+Fressen beim Verkauf die Gebühren den Erlös auf (z.B. Wirecard nach der Insolvenz), wird er zu 0 €
+gebucht: Die Stücke sind weg, sonst bliebe die Position für immer im Depot.
 - 'new':          kann übernommen werden
+Aktiensplits nach dem Handelstag werden eingerechnet (1 Tesla von 2020 sind nach 5:1 und 3:1 heute 15),
+weil auch die Kurshistorie um Splits bereinigt ist. Findet die Suche die ISIN nicht, wird über den
+Namen gesucht; solche Treffer sind markiert (found_by = 'name'), damit man sie prüft.
 Als Preis zählt der Kurs inklusive Gebühren je Stück (beim Verkauf abzüglich) -
 so stimmt der Einstand mit dem überein, was tatsächlich bezahlt wurde.
 """
 
 import hashlib
+import logging
+import re
 from collections import defaultdict
 from datetime import date, datetime
 
@@ -53,11 +59,28 @@ def _already_booked(user_id, asset_id, trade_type, day, quantity):
     return False
 
 
-def _find_asset(isin, cache):
-    """Bestes Suchergebnis zur ISIN (Euro-Börse zuerst) oder None."""
+logger = logging.getLogger(__name__)
+
+# Rechtsformen und Kürzel, die eine Suche über den Namen nur stören
+_NAME_NOISE = {'AG', 'SE', 'INC', 'NV', 'N', 'V', 'CO', 'CORP', 'PLC', 'SA', 'HOLDING', 'GMBH', 'LTD', 'KGAA', 'ADR', 'REG', 'SHS'}
+
+
+def _name_query(name):
+    """'TAIWAN SEMICONDUCT.MANUFACT.CO' -> 'TAIWAN SEMICONDUCT' (die ersten zwei aussagekräftigen Wörter)"""
+    words = [word for word in re.split(r'[\s.,/()-]+', name or '') if word and word.upper() not in _NAME_NOISE]
+    return ' '.join(words[:2])
+
+
+def _find_asset(isin, cache, name=None):
+    """Bestes Suchergebnis zur ISIN (Euro-Börse zuerst), sonst über den Namen, oder None."""
     if isin not in cache:
         results = search_assets(isin)
-        match = dict(results[0]) if results else None
+        found_by = 'isin'
+        query = _name_query(name)
+        if not results and query:
+            results = search_assets(query)
+            found_by = 'name'
+        match = dict(results[0], found_by=found_by) if results else None
         # Die Suche kennt Assets nur über Name/Symbol, nicht über die ISIN: schon angelegte nachschlagen
         if match and match['asset_id'] is None:
             known = Asset.query.filter_by(symbol=match['symbol']).first()
@@ -78,10 +101,28 @@ def _find_crypto(ticker, cache):
     return cache[symbol]
 
 
-def _identify(identifier, cache):
+def _split_factor(symbol, day, cache):
+    """Wie viele Stück heute aus einem Stück am Tag day geworden sind (Splits danach multipliziert)."""
+    key = f'splits:{symbol}'
+    if key not in cache:
+        try:
+            cache[key] = yahoo.fetch_splits(symbol)
+        except Exception:
+            logger.warning('Splits für %s nicht abrufbar', symbol, exc_info=True)
+            cache[key] = []
+    factor = 1.0
+    for split_day, ratio in cache[key]:
+        # Nur echte Splits (2:1, 3:2, 1:10 ...). Yahoo führt auch Abspaltungen als "Split" mit krummem
+        # Faktor nahe 1 (Merck/Organon 1,048): Die Stückzahl im Depot ändert sich dabei nicht
+        if split_day > day and (ratio >= 1.5 or ratio <= 2 / 3):
+            factor *= ratio
+    return factor
+
+
+def _identify(identifier, cache, name=None):
     """ISIN (Wertpapier) oder Kürzel (Kryptowährung) -> Suchtreffer oder None."""
     if ISIN.fullmatch(identifier):
-        return _find_asset(identifier, cache)
+        return _find_asset(identifier, cache, name)
     if TICKER.fullmatch(identifier):
         return _find_crypto(identifier, cache)
     return None
@@ -100,15 +141,20 @@ def build_depot_preview(user_id, trades):
         isin = trade.isin.strip().upper()
         valid = trade.quantity > 0 and trade.price > 0 and trade.fees >= 0 and trade.trade_date <= date.today()
         price = effective_price(trade.type, trade.price, trade.fees, trade.quantity) if valid else None
-        # Beim Verkauf kleiner Stückzahlen können die Gebühren den Erlös auffressen - so nicht buchbar
-        valid = valid and price > 0
+        if valid and trade.type == 'sell':
+            price = max(price, 0.0)
+        valid = valid and (price > 0 or trade.type == 'sell')
         price = price if valid else None
-        match = _identify(isin, cache) if valid else None
+        match = _identify(isin, cache, trade.name) if valid else None
+        split = _split_factor(match['symbol'], trade.trade_date, cache) if match else 1.0
+        quantity = round(trade.quantity * split, 8)
         entry = {
             "key": hashlib.sha256(f'{isin}|{trade.type}|{trade.trade_date}|{trade.quantity}|{trade.price}'
                                   .encode()).hexdigest()[:24],
             "type": trade.type, "isin": isin, "name": trade.name, "date": trade.trade_date.isoformat(),
-            "quantity": trade.quantity, "price": price, "quote": trade.price, "fees": trade.fees,
+            "quantity": quantity, "price": round(price / split, 8) if price else price,
+            "quote": round(trade.price / split, 8), "fees": trade.fees,
+            "split_factor": split, "found_by": match.get('found_by') if match else None,
             "symbol": match['symbol'] if match else None,
             "asset_name": match['name'] if match else None,
             "asset_id": match['asset_id'] if match else None,
@@ -118,16 +164,16 @@ def build_depot_preview(user_id, trades):
             entry["status"] = 'invalid'
         elif match is None:
             entry["status"] = 'unknown'
-        elif _already_booked(user_id, match['asset_id'], trade.type, trade.trade_date, trade.quantity):
+        elif _already_booked(user_id, match['asset_id'], trade.type, trade.trade_date, quantity):
             entry["status"] = 'duplicate'
         else:
             holding_key = match['asset_id'] or match['symbol']
             if trade.type == 'buy':
-                holdings[holding_key] += trade.quantity
-            elif holdings[holding_key] + QUANTITY_EPSILON < trade.quantity:
+                holdings[holding_key] += quantity
+            elif holdings[holding_key] + QUANTITY_EPSILON < quantity:
                 entry["status"] = 'insufficient'
             else:
-                holdings[holding_key] -= trade.quantity
+                holdings[holding_key] -= quantity
         entries.append(entry)
     return entries
 
