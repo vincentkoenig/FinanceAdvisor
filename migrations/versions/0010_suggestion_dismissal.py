@@ -5,7 +5,7 @@ tauchten auf einem anderen Gerät wieder auf. Jetzt merkt sie sich der Server, j
 Nutzer ein Eintrag pro kleingeschriebenem Empfängernamen. Neue Tabelle, an
 bestehenden Daten ändert sich nichts.
 
-Revision ID: 0010_contract_suggestion_dismissal
+Revision ID: 0010_suggestion_dismissal
 Revises: 0009_category_is_transfer
 Create Date: 2026-11-08 11:00:00.000000
 
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '0010_contract_suggestion_dismissal'
+revision = '0010_suggestion_dismissal'
 down_revision = '0009_category_is_transfer'
 branch_labels = None
 depends_on = None
