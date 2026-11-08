@@ -3,9 +3,9 @@ contracts/schemas.py - Eingabe-Schemas für Verträge.
 """
 
 from datetime import date
-from typing import Literal, Optional
+from typing import Annotated, List, Literal, Optional
 
-from pydantic import Field, PositiveFloat, PositiveInt, field_validator, model_validator
+from pydantic import Field, StringConstraints, PositiveFloat, PositiveInt, field_validator, model_validator
 
 from fintrack.api import RequestModel
 
@@ -53,6 +53,11 @@ class ContractBooking(RequestModel):
         if (self.category_id is None) == (self.transaction_id is None):
             raise ValueError('Entweder eine Kategorie für eine neue Buchung oder eine vorhandene Buchung angeben')
         return self
+
+
+class SuggestionDismiss(RequestModel):
+    """Schlüssel (kleingeschriebene Empfängernamen) eines Vorschlags, der nicht mehr erscheinen soll."""
+    keys: List[Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]] =         Field(min_length=1, max_length=100)
 
 
 class ContractCancel(RequestModel):

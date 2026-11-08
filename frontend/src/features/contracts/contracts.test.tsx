@@ -214,17 +214,20 @@ describe('Verträge', () => {
 
   it('schlägt regelmäßige Abbuchungen als Vertrag vor und blendet sie aus', async () => {
     data.contractSuggestions = [
-      { key: 'beispiel ag', name: 'Beispiel AG', amount: 34.38, interval: 'monthly', first_date: '2026-07-01', last_date: '2026-10-01', count: 4, category_id: 5, category_name: 'Sonstige Versicherungen', kind: 'insurance' },
-      { key: 'gym', name: 'Gym', amount: 29, interval: 'monthly', first_date: '2026-08-01', last_date: '2026-10-01', count: 3, category_id: 4, category_name: 'Kleidung', kind: 'fitness' },
+      { key: 'beispiel ag', keys: ['beispiel ag'], aliases: [], name: 'Beispiel AG', amount: 34.38, interval: 'monthly', first_date: '2026-07-01', last_date: '2026-10-01', count: 4, category_id: 5, category_name: 'Sonstige Versicherungen', kind: 'insurance' },
+      { key: 'gym', keys: ['gym', 'gym berlin'], aliases: ['Gym Berlin'], name: 'Gym', amount: 29, interval: 'monthly', first_date: '2026-08-01', last_date: '2026-10-01', count: 3, category_id: 4, category_name: 'Kleidung', kind: 'fitness' },
     ];
     renderApp('/contracts');
     const user = userEvent.setup();
     const panel = await region('Erkannt in deinen Umsätzen');
     expect(panel).toHaveTextContent('Beispiel AG34,38 € monatlich · 4× seit 1. Juli · Sonstige Versicherungen');
+    // Zusammengefasste Empfänger: der andere Name steht darunter
+    expect(panel).toHaveTextContent('auch als Gym Berlin');
 
     await user.click(within(panel).getByRole('button', { name: 'Gym ausblenden' }));
     await waitFor(() => expect(panel).not.toHaveTextContent('Gym'));
-    expect(localStorage.getItem('fintrack.contracts.dismissed')).toBe('["gym"]');
+    // Der Server merkt sich alle Namen des Vorschlags
+    expect(sent.dismissed).toEqual({ keys: ['gym', 'gym berlin'] });
 
     await user.click(within(panel).getByRole('button', { name: 'Beispiel AG als Vertrag anlegen' }));
     const box = await screen.findByRole('dialog', { name: 'Vertrag hinzufügen' });
@@ -238,6 +241,18 @@ describe('Verträge', () => {
     expect(await screen.findByText(/^Beispiel AG gespeichert/)).toBeInTheDocument();
     expect(sent.contract).toMatchObject({ name: 'Beispiel AG', category: 'insurance', amount: 34.38, interval: 'monthly', renewal_months: 12 });
     expect(sent.link).toBeUndefined();
+  });
+
+  it('übergibt früher im Browser ausgeblendete Vorschläge an den Server', async () => {
+    localStorage.setItem('fintrack.contracts.dismissed', '["gym"]');
+    data.contractSuggestions = [
+      { key: 'gym', keys: ['gym'], aliases: [], name: 'Gym', amount: 29, interval: 'monthly', first_date: '2026-08-01', last_date: '2026-10-01', count: 3, category_id: 4, category_name: 'Kleidung', kind: 'fitness' },
+    ];
+    renderApp('/contracts');
+    await waitFor(() => expect(sent.dismissed).toEqual({ keys: ['gym'] }));
+    await waitFor(() => expect(localStorage.getItem('fintrack.contracts.dismissed')).toBeNull());
+    await screen.findByRole('region', { name: 'Alle Verträge' });
+    expect(screen.queryByRole('region', { name: 'Erkannt in deinen Umsätzen' })).not.toBeInTheDocument();
   });
 
   it('erklärt die leere Seite', async () => {

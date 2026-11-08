@@ -12,9 +12,9 @@ gespeichert wird.
 """
 
 from datetime import date, datetime
-from typing import List, Literal, Optional
+from typing import Annotated, List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, NonNegativeFloat, PositiveInt, model_validator
+from pydantic import BaseModel, ConfigDict, Field, NonNegativeFloat, PositiveInt, StringConstraints, model_validator
 
 EXPORT_FORMAT = 'fintrack-export'
 EXPORT_VERSION = 1
@@ -176,6 +176,8 @@ class ExportFile(_Entry):
     category_rules: List[ExportCategoryRule] = []
     # Seit den eingetragenen Kontoständen; ältere Dateien haben den Abschnitt nicht
     account_balances: List[ExportAccountBalance] = []
+    # Ausgeblendete Vertragsvorschläge (Empfängernamen); ältere Dateien haben den Abschnitt nicht
+    dismissed_suggestions: List[Annotated[str, StringConstraints(min_length=1, max_length=200)]] = []
 
     @model_validator(mode='after')
     def references_exist(self):

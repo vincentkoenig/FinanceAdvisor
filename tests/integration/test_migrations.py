@@ -105,3 +105,18 @@ class TestUpgradeCommand:
 
         assert result.exit_code == 0, result.output
         assert 'Neue Datenbank angelegt' in result.output
+
+
+def test_revision_ids_fit_into_alembic_version():
+    """
+    alembic_version.version_num ist varchar(32). SQLite prüft die Länge nicht,
+    PostgreSQL schon - eine längere ID bricht erst beim Deploy.
+    """
+    import re
+    versions = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                            'migrations', 'versions')
+    for name in os.listdir(versions):
+        if name.endswith('.py'):
+            with open(os.path.join(versions, name), encoding='utf-8') as handle:
+                revision = re.search(r"^revision = '([^']+)'", handle.read(), re.M).group(1)
+            assert len(revision) <= 32, f'{name}: Revision-ID "{revision}" ist länger als 32 Zeichen'

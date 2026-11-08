@@ -16,7 +16,7 @@ from datetime import datetime
 from fintrack.api import ApiError
 from fintrack.budget.service import ensure_transfer_categories
 from fintrack.extensions import db
-from fintrack.models import (AccountBalance, Asset, AssetTransaction, Category, CategoryRule, ChatHistory, Contract, DailyInsight, Dividend,
+from fintrack.models import (AccountBalance, Asset, AssetTransaction, Category, CategoryRule, ChatHistory, Contract, ContractSuggestionDismissal, DailyInsight, Dividend,
                              PortfolioAnalysis, SavingsPlan, Transaction, UserAsset, Watchlist)
 from fintrack.portfolio.analysis import parse_stored_list
 from fintrack.account.schemas import EXPORT_FORMAT, EXPORT_VERSION
@@ -157,6 +157,7 @@ def export_user_data(user):
             {"date": _iso(b.date), "amount": b.amount}
             for b in _by_id(AccountBalance, user_id)
         ],
+        "dismissed_suggestions": [d.key for d in _by_id(ContractSuggestionDismissal, user_id)],
     }
 
 
@@ -268,6 +269,8 @@ def import_user_data(user, data):
                 category_id=category_ids[entry.category_ref])
     for entry in data.account_balances:
         _create(AccountBalance, user_id=user_id, date=entry.date, amount=entry.amount)
+    for key in dict.fromkeys(data.dismissed_suggestions):
+        _create(ContractSuggestionDismissal, user_id=user_id, key=key)
 
     db.session.commit()
 
@@ -279,5 +282,6 @@ def import_user_data(user, data):
         "analyses": len(data.analyses), "insights": len(data.insights),
         "contracts": len(data.contracts), "category_rules": len(data.category_rules),
         "account_balances": len(data.account_balances),
+        "dismissed_suggestions": len(set(data.dismissed_suggestions)),
     }
     return counts, new_assets

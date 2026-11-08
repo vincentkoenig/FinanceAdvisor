@@ -159,23 +159,23 @@ export function suggestCategory(leaves: { id: number; name: string; label: strin
     ?? leaves[0];
 }
 
-// Ausgeblendete Vorschläge (Schlüssel der Abbuchung). Nur eine Bequemlichkeit dieses Browsers:
-// ohne Speicher (privates Fenster) erscheinen sie eben wieder.
-const DISMISSED_KEY = 'fintrack.contracts.dismissed';
+// Früher merkte sich nur der Browser ausgeblendete Vorschläge. Was dort noch steht,
+// wird einmal an den Server geschickt und danach hier gelöscht.
+const LEGACY_DISMISSED_KEY = 'fintrack.contracts.dismissed';
 
-export function readDismissed(): string[] {
+export function readLegacyDismissed(): string[] {
   try {
-    const value = JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? '[]');
-    return Array.isArray(value) ? value.filter((v) => typeof v === 'string') : [];
+    const value = JSON.parse(localStorage.getItem(LEGACY_DISMISSED_KEY) ?? '[]');
+    return Array.isArray(value) ? value.filter((v) => typeof v === 'string' && v.length > 0 && v.length <= 200).slice(0, 100) : [];
   } catch {
     return [];
   }
 }
 
-export function saveDismissed(keys: string[]) {
+export function clearLegacyDismissed() {
   try {
-    localStorage.setItem(DISMISSED_KEY, JSON.stringify(keys));
+    localStorage.removeItem(LEGACY_DISMISSED_KEY);
   } catch {
-    // Speicher nicht verfügbar: dann nur bis zum Neuladen ausgeblendet
+    // Speicher nicht verfügbar: dann gibt es auch nichts zu löschen
   }
 }
