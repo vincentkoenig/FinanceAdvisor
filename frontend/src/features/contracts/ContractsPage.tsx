@@ -2,15 +2,15 @@
 // Oben die Kosten aller laufenden Verträge als Leitfläche, daneben die Fristen der nächsten Wochen,
 // darunter aus Kontoumsätzen erkannte Verträge und alle Verträge nach Art. Ein Klick auf einen Vertrag
 // öffnet ihn zum Bearbeiten und Kündigen.
-import { useState } from 'react';
-import { type Contract, type ContractSuggestion, useContractSuggestions, useContracts } from '../../api/contracts';
+import { useEffect, useState } from 'react';
+import { type Contract, type ContractSuggestion, useContractSuggestions, useContracts, useDismissSuggestions } from '../../api/contracts';
 import { CountUp } from '../../components/CountUp';
 import { Icon } from '../../components/Icon';
 import { Loaded } from '../../components/Loaded';
 import { dayShort } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import { CancelContractDialog, ContractDialog, DeleteContractDialog } from './dialogs';
-import { SOON_DAYS, STATUS_PILL, byCategory, dateLong, deadlineText, hasDeadline, inDays, intervalLabel, readDismissed, saveDismissed, soonCancellable } from './model';
+import { SOON_DAYS, STATUS_PILL, byCategory, dateLong, deadlineText, hasDeadline, inDays, clearLegacyDismissed, intervalLabel, readLegacyDismissed, soonCancellable } from './model';
 
 type Open =
   | { type: 'add'; suggestion?: ContractSuggestion }
@@ -28,14 +28,15 @@ export function ContractsPage() {
   const soon = soonCancellable(list);
   const next = list.find(hasDeadline);
   const suggestions = useContractSuggestions();
-  // Ausgeblendete Vorschläge merkt sich nur dieser Browser
-  const [dismissed, setDismissed] = useState(readDismissed);
-  const found = (suggestions.data ?? []).filter((s) => !dismissed.includes(s.key));
-  const dismiss = (key: string) => {
-    const keys = [...dismissed, key];
-    setDismissed(keys);
-    saveDismissed(keys);
-  };
+  const dismissSuggestions = useDismissSuggestions();
+  const found = suggestions.data ?? [];
+  const dismiss = (s: ContractSuggestion) => dismissSuggestions.mutate(s.keys ?? [s.key]);
+  // Früher im Browser ausgeblendete Vorschläge einmal an den Server übergeben
+  useEffect(() => {
+    const legacy = readLegacyDismissed();
+    if (legacy.length) dismissSuggestions.mutate(legacy, { onSuccess: clearLegacyDismissed });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur beim ersten Öffnen der Seite
+  }, []);
 
   return (
     <>
@@ -106,10 +107,11 @@ export function ContractsPage() {
                 <div className="grow">
                   <span className="trunc">{s.name}</span>
                   <span className="sub-line">{eur(s.amount)} {intervalLabel(s.interval)} · {s.count}× seit {dayShort(s.first_date)} · {s.category_name}</span>
+                  {s.aliases?.length > 0 && <span className="sub-line">auch als {s.aliases.join(', ')}</span>}
                 </div>
                 <button className="btn btn-sm btn-primary" onClick={() => setOpen({ type: 'add', suggestion: s })}
                   aria-label={`${s.name} als Vertrag anlegen`}>Als Vertrag</button>
-                <button className="icon-btn" onClick={() => dismiss(s.key)} aria-label={`${s.name} ausblenden`} title="Ausblenden">
+                <button className="icon-btn" onClick={() => dismiss(s)} aria-label={`${s.name} ausblenden`} title="Ausblenden">
                   <Icon name="close" size={16} />
                 </button>
               </div>

@@ -78,7 +78,7 @@ const initialData = () => ({
     contract({ id: 54, name: 'Streaming', category: 'subscription', amount: 13.99, interval: 'monthly', start_date: '2022-05-03', renewal_months: 1, notice_value: 0, notice_unit: 'days', cancel_by: '2026-11-02', cancel_effective: '2026-11-02', next_term_end: '2026-11-02', days_to_cancel: 3 }),
     contract({ id: 53, name: 'Fitnessstudio', category: 'fitness', amount: 29.9, interval: 'monthly', start_date: '2025-01-01', renewal_months: 1, notice_value: 1, status: 'cancelled', cancelled_at: '2026-10-01', end_date: '2026-12-31', ends_on: '2026-12-31' }),
   ] as Contract[],
-  contractSuggestions: [] as { key: string; name: string; amount: number; interval: string; first_date: string; last_date: string; count: number; category_id: number; category_name: string; kind: string }[],
+  contractSuggestions: [] as { key: string; keys?: string[]; aliases?: string[]; name: string; amount: number; interval: string; first_date: string; last_date: string; count: number; category_id: number; category_name: string; kind: string }[],
   insight: { content: 'Dein Depot hat diese Woche 1,4 % zugelegt.', created_at: '2026-10-30 07:00' } as { content: string | null; created_at?: string },
 });
 
@@ -125,7 +125,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown; balance?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown; balance?: unknown; dismissed?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -302,6 +302,12 @@ export const handlers = [
   }),
 
   http.get('/api/v1/me/contracts/suggestions', () => HttpResponse.json(data.contractSuggestions)),
+  http.post('/api/v1/me/contracts/suggestions/dismissed', async ({ request }) => {
+    const body = (await request.json()) as { keys: string[] };
+    sent.dismissed = body;
+    data.contractSuggestions = data.contractSuggestions.filter((s) => !(s.keys ?? [s.key]).some((k) => body.keys.includes(k)));
+    return HttpResponse.json({ message: 'Vorschlag ausgeblendet' });
+  }),
   http.get('/api/v1/me/contracts', () => {
     const yearly = data.contracts.filter((c) => c.status !== 'ended').reduce((sum, c) => sum + c.yearly_cost, 0);
     return HttpResponse.json({ contracts: data.contracts, yearly_total: Math.round(yearly * 100) / 100, monthly_total: Math.round((yearly / 12) * 100) / 100 });

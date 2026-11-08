@@ -53,7 +53,11 @@ export const contractKeys = { all: ['contracts'] as const, suggestions: ['contra
 /** Regelmäßige Abbuchung aus importierten Umsätzen, die noch kein Vertrag ist */
 export type ContractSuggestion = {
   key: string;
+  /** Alle Empfängernamen (kleingeschrieben), die zu diesem Vorschlag zusammengefasst wurden */
+  keys: string[];
   name: string;
+  /** Frühere oder andere Schreibweisen des Empfängers, z.B. nach einer Umbenennung bei der Bank */
+  aliases: string[];
   amount: number;
   interval: PaymentInterval;
   first_date: string;
@@ -66,6 +70,18 @@ export type ContractSuggestion = {
 
 export const useContractSuggestions = () =>
   useQuery({ queryKey: contractKeys.suggestions, queryFn: () => api<ContractSuggestion[]>('/me/contracts/suggestions'), staleTime: 60_000 });
+
+/** Vorschläge ausblenden; der Server merkt sie sich für alle Geräte */
+export const useDismissSuggestions = () => {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (keys: string[]) => api('/me/contracts/suggestions/dismissed', { method: 'POST', body: { keys } }),
+    // Sofort aus der Liste nehmen, nicht erst nach der Antwort
+    onMutate: (keys) => client.setQueryData<ContractSuggestion[]>(contractKeys.suggestions,
+      (list) => list?.filter((s) => !(s.keys ?? [s.key]).some((k) => keys.includes(k)))),
+    onSettled: () => client.invalidateQueries({ queryKey: contractKeys.suggestions }),
+  });
+};
 
 export const useContracts = () =>
   useQuery({ queryKey: contractKeys.all, queryFn: () => api<ContractsOverview>('/me/contracts'), staleTime: 60_000 });

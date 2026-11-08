@@ -12,12 +12,12 @@ from flask_login import current_user
 from fintrack.api import ApiError, parse_body
 from fintrack.auth.session import get_own, protect_blueprint
 from fintrack.contracts.booking import create_booking, sync_booking_end
-from fintrack.contracts.detect import contract_suggestions
-from fintrack.contracts.schemas import ContractBooking, ContractCancel, ContractInput
+from fintrack.contracts.detect import contract_suggestions, dismissed_keys
+from fintrack.contracts.schemas import ContractBooking, ContractCancel, ContractInput, SuggestionDismiss
 from fintrack.contracts.service import contracts_overview, serialize_contract
 from fintrack.contracts.terms import contract_status, today_berlin
 from fintrack.extensions import db
-from fintrack.models import Category, Contract, Transaction
+from fintrack.models import Category, Contract, ContractSuggestionDismissal, Transaction
 
 bp = Blueprint('contracts', __name__)
 # Nur mit Anmeldung
@@ -41,6 +41,19 @@ def get_contracts():
 def get_contract_suggestions():
     """Wiederkehrende Abbuchungen aus importierten Umsätzen, die noch kein Vertrag sind."""
     return jsonify(contract_suggestions(current_user.id)), 200
+
+
+@bp.route('/me/contracts/suggestions/dismissed', methods=['POST'])
+def dismiss_suggestion():
+    """Vorschlag ausblenden - auf allen Geräten. Schon ausgeblendete Schlüssel werden übersprungen."""
+    data = parse_body(SuggestionDismiss)
+    known = dismissed_keys(current_user.id)
+    for key in dict.fromkeys(k.lower() for k in data.keys):
+        if key not in known:
+            db.session.add(ContractSuggestionDismissal(user_id=current_user.id, key=key))
+    db.session.commit()
+
+    return jsonify({"message": "Vorschlag ausgeblendet"}), 200
 
 
 @bp.route('/me/contracts', methods=['POST'])

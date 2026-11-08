@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 import pytest
 
 from fintrack.extensions import db
-from fintrack.models import Category, Contract, Transaction
+from fintrack.models import Category, Contract, ContractSuggestionDismissal, Transaction
 
 
 @pytest.fixture
@@ -89,6 +89,87 @@ class TestDetection:
         db.session.commit()
 
         assert suggestions(client) == []
+
+
+class TestMerging:
+    """Ein Vertrag, dessen Empfängername sich bei der Bank geändert hat, wird nur einmal vorgeschlagen."""
+
+    def test_renamed_payee_is_one_suggestion(self, account):
+        client, user, cats = account
+        imported(user, cats['insurance'], 'ALLIANZ VERSICHERUNGS-AG', 12.90,
+                 date(2026, 4, 1), date(2026, 5, 1), date(2026, 6, 1))
+        imported(user, cats['insurance'], 'Allianz Hausrat', 12.90,
+                 date(2026, 7, 1), date(2026, 8, 1), date(2026, 9, 1))
+
+        [found] = suggestions(client)
+        assert found['name'] == 'Allianz Hausrat'
+        assert found['aliases'] == ['ALLIANZ VERSICHERUNGS-AG']
+        assert found['keys'] == ['allianz hausrat', 'allianz versicherungs-ag']
+        assert (found['count'], found['first_date'], found['interval']) == (6, '2026-04-01', 'monthly')
+
+    def test_different_amounts_stay_separate(self, account):
+        client, user, cats = account
+        months = (date(2026, 7, 1), date(2026, 8, 1), date(2026, 9, 1))
+        imported(user, cats['insurance'], 'Allianz Hausrat', 12.90, *months)
+        imported(user, cats['insurance'], 'Allianz Kfz', 48.00, *months)
+
+        assert sorted(s['name'] for s in suggestions(client)) == ['Allianz Hausrat', 'Allianz Kfz']
+
+    def test_two_contracts_with_same_amount_stay_separate(self, account):
+        """Zusammen kämen sie alle zwei Wochen - das ist kein Vertrag, also einzeln vorschlagen."""
+        client, user, cats = account
+        imported(user, cats['insurance'], 'Streaming Film', 9.99, date(2026, 7, 1), date(2026, 8, 1), date(2026, 9, 1))
+        imported(user, cats['insurance'], 'Streaming Musik', 9.99, date(2026, 7, 15), date(2026, 8, 15), date(2026, 9, 15))
+
+        found = suggestions(client)
+        assert sorted(s['name'] for s in found) == ['Streaming Film', 'Streaming Musik']
+        assert all(s['aliases'] == [] for s in found)
+
+    def test_existing_contract_hides_all_names(self, account):
+        client, user, cats = account
+        imported(user, cats['insurance'], 'ALLIANZ VERSICHERUNGS-AG', 12.90, date(2026, 4, 1), date(2026, 5, 1), date(2026, 6, 1))
+        imported(user, cats['insurance'], 'Allianz Hausrat', 12.90, date(2026, 7, 1), date(2026, 8, 1), date(2026, 9, 1))
+        db.session.add(Contract(user_id=user.id, name='Allianz Hausrat', category='insurance', amount=12.90,
+                                interval='monthly', start_date=date(2026, 4, 1), renewal_months=12,
+                                notice_value=3, notice_unit='months'))
+        db.session.commit()
+
+        assert suggestions(client) == []
+
+
+class TestDismiss:
+
+    def test_dismissed_suggestion_stays_hidden(self, account):
+        client, user, cats = account
+        imported(user, cats['insurance'], 'ALLIANZ VERSICHERUNGS-AG', 12.90, date(2026, 4, 1), date(2026, 5, 1), date(2026, 6, 1))
+        imported(user, cats['insurance'], 'Allianz Hausrat', 12.90, date(2026, 7, 1), date(2026, 8, 1), date(2026, 9, 1))
+        imported(user, cats['food'], 'Gym', 29, date(2026, 7, 3), date(2026, 8, 3), date(2026, 9, 3))
+
+        response = client.post('/api/v1/me/contracts/suggestions/dismissed', json={'keys': ['allianz hausrat']})
+        assert response.status_code == 200
+        assert [s['name'] for s in suggestions(client)] == ['Gym']
+
+        # Doppelt schicken schadet nicht, und es bleibt beim Nutzer
+        client.post('/api/v1/me/contracts/suggestions/dismissed', json={'keys': ['allianz hausrat', 'Gym']})
+        assert suggestions(client) == []
+        assert ContractSuggestionDismissal.query.filter_by(user_id=user.id).count() == 2
+
+    def test_other_users_are_not_affected(self, account, make_user, login_client):
+        client, user, cats = account
+        client.post('/api/v1/me/contracts/suggestions/dismissed', json={'keys': ['gym']})
+        make_user('b@test.com')
+        login_client('b@test.com')
+
+        assert ContractSuggestionDismissal.query.filter_by(user_id=user.id).count() == 1
+        assert ContractSuggestionDismissal.query.count() == 1
+
+    @pytest.mark.parametrize('body', [{}, {'keys': []}, {'keys': ['']}, {'keys': ['x' * 201]}])
+    def test_invalid_input_is_rejected(self, account, body):
+        client, user, cats = account
+        response = client.post('/api/v1/me/contracts/suggestions/dismissed', json=body)
+
+        assert response.status_code == 400
+        assert ContractSuggestionDismissal.query.count() == 0
 
 
 class TestLearnedCategories:

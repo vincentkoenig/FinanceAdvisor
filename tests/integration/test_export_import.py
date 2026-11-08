@@ -19,7 +19,7 @@ import pytest
 
 from fintrack.budget.service import create_default_categories
 from fintrack.extensions import db
-from fintrack.models import (Asset, AssetTransaction, Category, ChatHistory, Contract, DailyInsight, Dividend,
+from fintrack.models import (Asset, AssetTransaction, Category, ChatHistory, Contract, ContractSuggestionDismissal, DailyInsight, Dividend,
                              PortfolioAnalysis, SavingsPlan, Transaction, UserAsset, Watchlist)
 
 
@@ -91,6 +91,7 @@ def full_account(make_user):
                  start_date=date(2025, 3, 15), min_term_months=24, renewal_months=1, notice_value=4,
                  notice_unit='weeks', cancelled_at=date(2026, 10, 1), end_date=date(2027, 3, 14),
                  created_at=datetime(2026, 10, 4)),
+        ContractSuggestionDismissal(user_id=user.id, key='gym berlin'),
     ])
     db.session.commit()
     return user
@@ -123,6 +124,7 @@ class TestExport:
         assert data['analyses'][0]['recommendations'] == ["Das geht's besser streuen"]
         assert data['profile']['monthly_budget'] == 750.0
         assert [c['name'] for c in data['contracts']] == ['Kfz "Golf"', 'Handy']
+        assert data['dismissed_suggestions'] == ['gym berlin']
 
     def test_export_contains_no_password_or_email(self, full_account, login_client):
         raw = login_client('a@test.com').get('/api/v1/me/export').data
