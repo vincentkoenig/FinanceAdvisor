@@ -73,7 +73,7 @@ describe('Portfolio', () => {
   it('zeigt die Tagesänderung pro Position und in Summe', async () => {
     data.positions[0].previous_close = 98;
     renderApp('/portfolio');
-    const table = (await screen.findByRole('button', { name: 'Heute' })).closest('table')!;
+    const table = (await within(await screen.findByRole('tabpanel')).findByRole('button', { name: 'Heute' })).closest('table')!;
     const [, etf, btc, total] = within(table).getAllByRole('row');
     expect(etf).toHaveTextContent('+2,0 %+200,00 €');
     expect(btc).toHaveTextContent('–');
@@ -130,5 +130,42 @@ describe('Portfolio', () => {
     expect(screen.getByText(/Noch keine Positionen. Mit „Asset hinzufügen“/)).toBeInTheDocument();
     await userEvent.setup().click(screen.getByRole('tab', { name: /Dividenden/ }));
     expect(screen.getByText(/Noch keine Dividenden/)).toBeInTheDocument();
+  });
+
+  it('zeigt Gewinner und Verlierer als Heatmap, heute oder seit Kauf', async () => {
+    data.positions[0].previous_close = 98;
+    renderApp('/portfolio');
+    const panel = await screen.findByRole('region', { name: 'Gewinner und Verlierer' });
+    const user = userEvent.setup();
+    expect(await within(panel).findByRole('button', { name: /^iShares Core MSCI World, heute \+2,0 %, 10\.000,00 €, 71 % vom Depot$/ })).toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: /^Bitcoin, heute ohne Kurs/ })).toBeInTheDocument();
+
+    await user.click(within(panel).getByRole('button', { name: 'Seit Kauf' }));
+    expect(within(panel).getByRole('button', { name: /^Bitcoin, seit Kauf −20,0 %/ })).toHaveClass('down');
+    expect(localStorage.getItem('ft-heat-mode')).toBe('total');
+
+    await user.click(within(panel).getByRole('button', { name: /^iShares Core MSCI World, seit Kauf/ }));
+    expect(await screen.findByRole('dialog', { name: 'iShares Core MSCI World' })).toBeInTheDocument();
+  });
+
+  it('vergleicht die Rendite ohne Käufe und Verkäufe mit dem MSCI World', async () => {
+    renderApp('/portfolio');
+    const user = userEvent.setup();
+    await user.click(within(await hero()).getByRole('button', { name: 'Rendite' }));
+    const panel = await screen.findByRole('region', { name: 'Rendite ohne Käufe und Verkäufe' });
+    await waitFor(() => expect(panel).toHaveTextContent('+5,0 %MSCI World +2,0 % in einem Monat · 3,0 Prozentpunkte besser'));
+    expect(within(panel).getByRole('img', { name: /Depot \+5,0 %, MSCI World \+2,0 %$/ })).toBeInTheDocument();
+    expect(panel).toHaveTextContent('Pro Jahr–erst ab einem Jahr');
+    expect(localStorage.getItem('ft-portfolio-hero')).toBe('return');
+  });
+
+  it('zeigt die Rendite auch ohne Vergleichsindex', async () => {
+    data.performance.benchmark = null;
+    data.performance.points = data.performance.points.map((p) => ({ ...p, benchmark: null }));
+    localStorage.setItem('ft-portfolio-hero', 'return');
+    renderApp('/portfolio');
+    const panel = await screen.findByRole('region', { name: 'Rendite ohne Käufe und Verkäufe' });
+    await waitFor(() => expect(panel).toHaveTextContent('+5,0 %in einem Monat'));
+    expect(panel).not.toHaveTextContent('MSCI');
   });
 });

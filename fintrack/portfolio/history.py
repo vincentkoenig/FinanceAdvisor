@@ -106,6 +106,27 @@ def portfolio_value_on(user_id, day):
     return total
 
 
+def price_tables(asset_ids):
+    """
+    Pro Asset die gespeicherten Schlusskurse in Euro (jeder Tag mit eigenem
+    Wechselkurs), als {asset_id: ([Tage], [Kurse])} für schnelle Abfragen
+    mit close_on.
+    """
+    prices = {}
+    for asset_id in asset_ids:
+        asset = db.session.get(Asset, asset_id)
+        history = price_history_in_eur(asset) if asset else []
+        prices[asset_id] = ([day for day, _ in history], [price for _, price in history])
+    return prices
+
+
+def close_on(table, day):
+    """Letzter Schlusskurs bis einschließlich day aus einer price_tables-Zeile, oder None."""
+    days, values = table
+    index = bisect_right(days, day) - 1
+    return values[index] if index >= 0 else None
+
+
 def portfolio_value_series(user_id, today=None):
     """
     Täglicher Portfolio-Wert in Euro vom ersten Kauf bis heute, als Liste
@@ -119,12 +140,7 @@ def portfolio_value_series(user_id, today=None):
     if first is None:
         return []
 
-    # Pro Asset die Schlusskurse in Euro, jeder Tag mit eigenem Wechselkurs
-    prices = {}
-    for asset_id in holdings.asset_ids:
-        asset = db.session.get(Asset, asset_id)
-        history = price_history_in_eur(asset) if asset else []
-        prices[asset_id] = ([day for day, _ in history], [price for _, price in history])
+    prices = price_tables(holdings.asset_ids)
 
     # Ohne irgendeinen Kurs vor dem Kauf beginnt der Verlauf beim ersten Kurs
     first_price = min((days[0] for days, _ in prices.values() if days), default=None)

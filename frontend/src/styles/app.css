@@ -218,6 +218,41 @@ details.fold .fold-peek, details.fold .fold-chev { display: none; }
 .chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .chart-legend i { width: 8px; height: 8px; border-radius: 50%; }
 .chart-legend .trade-buy { background: var(--positive); }
+.value-chart .grid.zero { stroke: var(--rule-strong); }
+.return-chart .bench { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 3; stroke-linejoin: round; }
+.chart-legend .key-depot, .chart-legend .key-bench { width: 14px; height: 0; border-radius: 0; border-top: 2px solid var(--accent); }
+.chart-legend .key-bench { border-top: 2px dashed var(--muted); }
+.hero-controls { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.hero .strip { margin-top: 16px; }
+
+/* Heatmap: Fläche = Anteil, Farbe = Entwicklung. --t (0 bis 1) kommt je Kachel aus dem Code.
+   Hell bleibt die Schrift dunkel (Farbe höchstens 60 %), dunkel bleibt sie hell (höchstens 42 %),
+   so hält jede Kachel mindestens 4,5:1. */
+.heatmap { position: relative; }
+.heat-tile {
+  --heat: var(--positive); --heat-max: 60%;
+  position: absolute; display: flex; flex-direction: column; justify-content: space-between; gap: 4px;
+  padding: 10px 12px; border: 0; border-radius: var(--radius-inner); overflow: hidden; text-align: left;
+  background: color-mix(in srgb, var(--heat) calc(var(--t, 0) * var(--heat-max)), var(--raised)); color: var(--text);
+  transition: filter var(--t-hover);
+}
+.heat-tile.down { --heat: var(--negative); }
+:root[data-theme="dark"] .heat-tile { --heat-max: 42%; }
+.heat-tile:hover { filter: brightness(0.96); }
+:root[data-theme="dark"] .heat-tile:hover { filter: brightness(1.12); }
+.heat-top, .heat-bottom { display: flex; flex-direction: column; min-width: 0; }
+.heat-sym { font-weight: 600; font-size: 15px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.heat-name, .heat-val { font-size: var(--fs-small); line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.heat-chg { font-family: var(--font-figure); font-size: 22px; line-height: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.heat-val { font-variant-numeric: tabular-nums; }
+.heat-tile.tiny { padding: 6px 8px; }
+.heat-tile.tiny .heat-name, .heat-tile.tiny .heat-val { display: none; }
+.heat-tile.tiny .heat-chg { font-size: 15px; line-height: 20px; }
+.heat-tile.dot > * { display: none; }
+.heat-scale { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.heat-scale .ramp { flex: 0 1 200px; height: 8px; border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--negative) 60%, var(--raised)), var(--raised), color-mix(in srgb, var(--positive) 60%, var(--raised))); }
+:root[data-theme="dark"] .heat-scale .ramp { background: linear-gradient(90deg, color-mix(in srgb, var(--negative) 42%, var(--raised)), var(--raised), color-mix(in srgb, var(--positive) 42%, var(--raised))); }
 .daybar { flex: none; position: relative; width: 56px; height: 8px; }
 .daybar::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--rule-strong); }
 .daybar span { position: absolute; top: 0; bottom: 0; border-radius: 2px; }
