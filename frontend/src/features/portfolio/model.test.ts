@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Dividend, Position, Trade } from '../../api/overview';
 import { positionRows } from '../home/model';
-import { allocation, dividendsThisYear, finding, niceTicks, rangeChange, rangeSeries, sortRows, tradeMarks } from './model';
+import { allocation, dividendsThisYear, finding, niceTicks, rangeChange, rangeSeries, returnSeries, returnStats, sortRows, squarify, tradeMarks } from './model';
 
 const OCT_30 = new Date(2026, 9, 30, 10);
 
@@ -107,5 +107,69 @@ describe('tradeMarks', () => {
 
   it('lässt Käufe vor oder am Ausgangstag und nach dem letzten Punkt weg', () => {
     expect(tradeMarks(series, [trade(1, '2026-09-01'), trade(2, '2026-10-02'), trade(3, '2026-11-01')])).toEqual([]);
+  });
+});
+
+describe('returnSeries', () => {
+  const points = [
+    { date: '2026-09-01', portfolio: 1.0, benchmark: null },
+    { date: '2026-09-30', portfolio: 1.1, benchmark: 200 },
+    { date: '2026-10-15', portfolio: 1.21, benchmark: 210 },
+    { date: '2026-10-30', portfolio: 1.1, benchmark: 220 },
+  ];
+
+  it('beginnt am letzten Tag vor dem Zeitraum bei 0 %', () => {
+    const series = returnSeries(points, '1M', new Date(2026, 9, 30));
+    expect(series.map((p) => p.date)).toEqual(['2026-09-30', '2026-10-15', '2026-10-30']);
+    expect(series[1].portfolio).toBeCloseTo(10);
+    expect(series[2].benchmark).toBeCloseTo(10);
+  });
+
+  it('startet den Vergleich erst mit dem ersten Indexkurs', () => {
+    const series = returnSeries(points, 'Max', new Date(2026, 9, 30));
+    expect(series[0]).toEqual({ date: '2026-09-30', portfolio: 0, benchmark: 0 });
+  });
+
+  it('bleibt ohne Index bei der ganzen Strecke', () => {
+    const series = returnSeries(points.map((p) => ({ ...p, benchmark: null })), 'Max', new Date(2026, 9, 30));
+    expect(series).toHaveLength(4);
+    expect(series.every((p) => p.benchmark === null)).toBe(true);
+  });
+});
+
+describe('returnStats', () => {
+  it('rechnet Rendite und größten Rückgang', () => {
+    const stats = returnStats(['2026-10-26', '2026-10-27', '2026-10-28'], [0, 20, 8])!;
+    expect(stats.total).toBeCloseTo(8);
+    expect(stats.drawdown).toBeCloseTo(-10);
+    expect(stats.perYear).toBeNull();
+    expect(stats.volatility).toBeNull(); // zu wenige Werktage
+  });
+
+  it('rechnet ab einem Jahr auf ein Jahr um', () => {
+    const stats = returnStats(['2024-10-30', '2026-10-30'], [0, 21])!;
+    expect(stats.perYear).toBeCloseTo(10, 0);
+  });
+
+  it('lässt Wochenenden bei der Schwankung weg', () => {
+    // Mo–Fr abwechselnd ±1 %, am Wochenende keine Bewegung
+    const dates = ['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-24', '2026-10-25', '2026-10-26'];
+    const factors = [1, 1.01, 1, 1.01, 1, 1, 1, 1.01];
+    const stats = returnStats(dates, factors.map((f) => (f - 1) * 100))!;
+    expect(stats.volatility).toBeGreaterThan(14);
+  });
+});
+
+describe('squarify', () => {
+  it('teilt die Fläche nach Gewicht auf und lässt nichts übrig', () => {
+    const tiles = squarify([{ item: 'a', weight: 3 }, { item: 'b', weight: 1 }, { item: 'c', weight: 0 }], 400, 100);
+    expect(tiles.map((t) => t.item)).toEqual(['a', 'b']);
+    expect(tiles[0].w * tiles[0].h).toBeCloseTo(30000);
+    expect(tiles.reduce((s, t) => s + t.w * t.h, 0)).toBeCloseTo(40000);
+  });
+
+  it('gibt ohne Gewicht oder Fläche nichts zurück', () => {
+    expect(squarify([{ item: 'a', weight: 0 }], 400, 100)).toEqual([]);
+    expect(squarify([{ item: 'a', weight: 1 }], 0, 100)).toEqual([]);
   });
 });

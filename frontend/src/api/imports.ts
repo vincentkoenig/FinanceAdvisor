@@ -171,6 +171,6 @@ export function useCommitDepotImport() {
   return useMutation({
     mutationFn: (trades: DepotCommitTrade[]) =>
       api<{ message: string; booked: number; skipped: number }>('/me/import/depot/commit', { method: 'POST', body: { trades } }),
-    onSuccess: () => Promise.all([keys.positions, keys.trades, keys.history].map((queryKey) => client.invalidateQueries({ queryKey }))),
+    onSuccess: () => Promise.all([keys.positions, keys.trades, keys.history, keys.performance].map((queryKey) => client.invalidateQueries({ queryKey }))),
   });
 }

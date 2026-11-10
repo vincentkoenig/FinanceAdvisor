@@ -6,26 +6,39 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import {
   type Dividend, type SavingsPlan, type Trade,
-  useDividends, useExecutePlan, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
+  useDividends, useExecutePlan, usePerformance, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
 } from '../../api/overview';
 import { type WatchItem, useWatchlist } from '../../api/portfolio';
 import { CountUp } from '../../components/CountUp';
 import { Icon } from '../../components/Icon';
 import { Loaded } from '../../components/Loaded';
 import { useToast } from '../../components/Toast';
+import { ReturnChart } from '../../components/ReturnChart';
 import { ValueChart } from '../../components/ValueChart';
 import { useIsPhone } from '../../components/Fold';
 import { dayShort, parseDay, pct, pctTone, tone } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import { type PositionRow, planDates, portfolioTotals, positionRows, token } from '../home/model';
+import { Heatmap } from './Heatmap';
 import { AddAssetDialog, DeletePlanDialog, type PlanAsset, PlanDialog, PositionDialog, WatchDialog } from './dialogs';
 import {
   type Range, RANGES, type Slice, type Sort, type SortKey,
-  allocation, dividendsThisYear, finding, rangeChange, rangeSeries, sortRows, tradeMarks,
+  allocation, dividendsThisYear, finding, rangeChange, rangeSeries, returnSeries, returnStats, sortRows, tradeMarks,
 } from './model';
 
 type AllocView = 'bar' | 'ring';
 const ALLOC_KEY = 'ft-alloc-view';
+// Leitfläche: Depotwert in Euro oder Rendite ohne Käufe und Verkäufe neben dem Vergleichsindex
+type HeroView = 'value' | 'return';
+const HERO_KEY = 'ft-portfolio-hero';
+
+function storedHeroView(): HeroView {
+  try {
+    return localStorage.getItem(HERO_KEY) === 'return' ? 'return' : 'value';
+  } catch {
+    return 'value';
+  }
+}
 
 function storedAllocView(): AllocView {
   try {
@@ -69,6 +82,8 @@ export function PortfolioPage() {
   const close = () => setOpen(null);
   const [range, setRange] = useState<Range>('1M');
   const [allocView, setAllocViewState] = useState<AllocView>(storedAllocView);
+  const [heroView, setHeroViewState] = useState<HeroView>(storedHeroView);
+  const performance = usePerformance(heroView === 'return');
   const [tab, setTab] = useState<Tab>('positions');
   const phone = useIsPhone();
   const today = new Date();
@@ -78,12 +93,24 @@ export function PortfolioPage() {
     try { localStorage.setItem(ALLOC_KEY, view); } catch { /* nur eine Bequemlichkeit */ }
   };
 
+  const setHeroView = (view: HeroView) => {
+    setHeroViewState(view);
+    try { localStorage.setItem(HERO_KEY, view); } catch { /* nur eine Bequemlichkeit */ }
+  };
+
   const rows = positions.data ? positionRows(positions.data) : null;
   const totals = positions.data ? portfolioTotals(positions.data) : null;
   const series = history.data && totals ? rangeSeries(history.data, range, today, totals.value) : null;
   const change = series && trades.data ? rangeChange(series, trades.data) : null;
   const marks = series && trades.data ? tradeMarks(series, trades.data) : [];
   const found = rows ? finding(rows) : null;
+  const benchmarkName = performance.data?.benchmark?.name ?? null;
+  const returns = performance.data ? returnSeries(performance.data.points, range, today) : null;
+  const depotStats = returns ? returnStats(returns.map((p) => p.date), returns.map((p) => p.portfolio)) : null;
+  const benchReturns = returns && benchmarkName ? returns.filter((p) => p.benchmark !== null) : [];
+  const benchStats = benchReturns.length >= 2 ? returnStats(benchReturns.map((p) => p.date), benchReturns.map((p) => p.benchmark!)) : null;
+  const words = RANGES.find((r) => r.key === range)!.words;
+  const gap = depotStats && benchStats ? depotStats.total - benchStats.total : null;
   const counts: Record<Tab, number | undefined> = {
     positions: positions.data?.length, watchlist: watchlist.data?.length, trades: trades.data?.length,
     plans: plans.data?.length, dividends: dividends.data?.length,
@@ -115,32 +142,74 @@ export function PortfolioPage() {
         <section className="panel hero span-2" aria-labelledby="h-value">
           <div className="hero-head">
             <div className="grow">
-              <h2 className="lead-label" id="h-value">Depotwert</h2>
-              <Loaded queries={[positions]} shape="figure">
-                {() => (
-                  <>
-                    <div className="lead-figure"><CountUp value={totals!.value} format={eur} /></div>
-                    <p className="lead-sub num">
-                      {change
-                        ? <><span className={tone(change.abs)}>{eur(change.abs, { sign: true })}{change.pct !== null && ` (${pct(change.pct)})`}</span> {RANGES.find((r) => r.key === range)!.words}</>
-                        : history.isPending || trades.isPending ? 'Verlauf lädt …' : 'Noch kein Verlauf'}
-                    </p>
-                  </>
-                )}
-              </Loaded>
+              {heroView === 'value' ? (
+                <>
+                  <h2 className="lead-label" id="h-value">Depotwert</h2>
+                  <Loaded queries={[positions]} shape="figure">
+                    {() => (
+                      <>
+                        <div className="lead-figure"><CountUp value={totals!.value} format={eur} /></div>
+                        <p className="lead-sub num">
+                          {change
+                            ? <><span className={tone(change.abs)}>{eur(change.abs, { sign: true })}{change.pct !== null && ` (${pct(change.pct)})`}</span> {words}</>
+                            : history.isPending || trades.isPending ? 'Verlauf lädt …' : 'Noch kein Verlauf'}
+                        </p>
+                      </>
+                    )}
+                  </Loaded>
+                </>
+              ) : (
+                <>
+                  <h2 className="lead-label" id="h-value">Rendite ohne Käufe und Verkäufe</h2>
+                  <Loaded queries={[performance]} shape="figure">
+                    {() => depotStats ? (
+                      <>
+                        <div className={`lead-figure ${pctTone(depotStats.total)}`}>{pct(depotStats.total)}</div>
+                        <p className="lead-sub num">
+                          {benchStats && gap !== null
+                            ? <>{benchmarkName} <span className={pctTone(benchStats.total)}>{pct(benchStats.total)}</span> {words}{' · '}
+                              {Math.abs(gap) < 0.05 ? 'gleichauf' : <><b>{pct(Math.abs(gap), { sign: false }).replace('%', 'Prozentpunkte')}</b> {gap > 0 ? 'besser' : 'schlechter'}</>}</>
+                            : words}
+                        </p>
+                      </>
+                    ) : <p className="lead-sub">Noch kein Verlauf</p>}
+                  </Loaded>
+                </>
+              )}
             </div>
-            <div className="segmented" role="group" aria-label="Zeitraum">
-              {RANGES.map((r) => (
-                <button key={r.key} aria-pressed={range === r.key} onClick={() => setRange(r.key)}>{r.key}</button>
-              ))}
+            <div className="hero-controls">
+              <div className="segmented" role="group" aria-label="Ansicht">
+                <button aria-pressed={heroView === 'value'} onClick={() => setHeroView('value')}>Wert</button>
+                <button aria-pressed={heroView === 'return'} onClick={() => setHeroView('return')}>Rendite</button>
+              </div>
+              <div className="segmented" role="group" aria-label="Zeitraum">
+                {RANGES.map((r) => (
+                  <button key={r.key} aria-pressed={range === r.key} onClick={() => setRange(r.key)}>{r.key}</button>
+                ))}
+              </div>
             </div>
           </div>
           <div className="chart-slot">
-            <Loaded queries={[history, positions]} shape="chart">
-              {() => series!.length >= 2
-                ? <ValueChart points={series!} marks={marks} height={phone ? 200 : 240} />
-                : <p className="empty-line">Der Wertverlauf erscheint, sobald dein Depot einen Tag alt ist.</p>}
-            </Loaded>
+            {heroView === 'value' ? (
+              <Loaded queries={[history, positions]} shape="chart">
+                {() => series!.length >= 2
+                  ? <ValueChart points={series!} marks={marks} height={phone ? 200 : 240} />
+                  : <p className="empty-line">Der Wertverlauf erscheint, sobald dein Depot einen Tag alt ist.</p>}
+              </Loaded>
+            ) : (
+              <Loaded queries={[performance]} shape="chart">
+                {() => returns && returns.length >= 2 && depotStats ? (
+                  <>
+                    <ReturnChart points={returns} benchmarkName={benchmarkName} height={phone ? 180 : 200} />
+                    <div className="strip">
+                      <ReturnKpi label="Pro Jahr" value={depotStats.perYear} bench={benchStats?.perYear} name={benchmarkName} empty="erst ab einem Jahr" toned />
+                      <ReturnKpi label="Schwankung" value={depotStats.volatility} bench={benchStats?.volatility} name={benchmarkName} empty="zu wenige Tage" plain />
+                      <ReturnKpi label="Größter Rückgang" value={depotStats.drawdown} bench={benchStats?.drawdown} name={benchmarkName} toned />
+                    </div>
+                  </>
+                ) : <p className="empty-line">Die Rendite erscheint, sobald dein Depot einen Tag alt ist.</p>}
+              </Loaded>
+            )}
           </div>
         </section>
 
@@ -178,6 +247,8 @@ export function PortfolioPage() {
           </Loaded>
         </section>
       </div>
+
+      {rows && rows.length > 0 && <Heatmap rows={rows} onOpen={(row) => setOpen({ type: 'position', row })} />}
 
       <div className="tabs" role="tablist" aria-label="Bereiche">
         {TABS.map((t) => (
@@ -217,6 +288,19 @@ export function PortfolioPage() {
       {open?.type === 'plan' && <PlanDialog assets={planAssets} onClose={close} />}
       {open?.type === 'delete-plan' && <DeletePlanDialog plan={open.plan} onClose={close} />}
     </>
+  );
+}
+
+// Kennzahl der Rendite-Ansicht, darunter derselbe Wert für den Index
+function ReturnKpi({ label, value, bench, name, empty = '–', toned = false, plain = false }: {
+  label: string; value: number | null; bench?: number | null; name: string | null; empty?: string; toned?: boolean; plain?: boolean;
+}) {
+  return (
+    <div>
+      <div className="kpi-label">{label}</div>
+      <div className={`kpi-value kpi-small ${toned && value !== null ? pctTone(value) : ''}`}>{value === null ? '–' : pct(value, { sign: !plain })}</div>
+      <div className="kpi-sub">{value === null ? empty : name && bench != null ? `${name} ${pct(bench, { sign: !plain })}` : ''}</div>
+    </div>
   );
 }
 

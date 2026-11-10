@@ -31,6 +31,14 @@ const initialData = () => ({
     { date: '2026-10-28', value: 13600 },
     { date: '2026-10-29', value: 13800 },
   ],
+  performance: {
+    benchmark: { name: 'MSCI World', symbol: 'EUNL.DE' } as { name: string; symbol: string } | null,
+    points: [
+      { date: '2026-09-29', portfolio: 1.0, benchmark: 100 },
+      { date: '2026-10-15', portfolio: 1.02, benchmark: 101 },
+      { date: '2026-10-29', portfolio: 1.05, benchmark: 102 },
+    ] as { date: string; portfolio: number; benchmark: number | null }[],
+  },
   savingsPlans: [
     { id: 7, asset_id: 1, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', amount: 200, day_of_month: 1, last_executed: '2026-09-01', is_due: true },
     { id: 8, asset_id: 2, asset_name: 'Bitcoin', asset_symbol: 'BTC-EUR', amount: 50, day_of_month: 15, last_executed: '2026-10-15', is_due: false },
@@ -154,6 +162,7 @@ export const handlers = [
   http.get('/api/v1/me/positions', () => HttpResponse.json(data.positions)),
   http.get('/api/v1/me/budget/summary', () => HttpResponse.json(data.summary)),
   http.get('/api/v1/me/portfolio/history', () => HttpResponse.json(data.history)),
+  http.get('/api/v1/me/portfolio/performance', () => HttpResponse.json(data.performance)),
   http.get('/api/v1/me/wealth/history', () => HttpResponse.json(data.wealth)),
   http.get('/api/v1/me/balances', () => HttpResponse.json(data.balances)),
   http.post('/api/v1/me/balances', async ({ request }) => {

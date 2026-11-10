@@ -23,7 +23,7 @@ function dayLong(iso: string) {
 }
 
 // Breite des Behälters; jsdom kennt keinen ResizeObserver, dann bleibt es bei der Vorgabe
-function useWidth(fallback: number) {
+export function useWidth(fallback: number) {
   const ref = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(fallback);
   useEffect(() => {

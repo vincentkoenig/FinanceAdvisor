@@ -89,6 +89,7 @@ export const keys = {
   balances: ['balances'] as const,
   wealth: ['wealth'] as const,
   history: ['portfolio', 'history'] as const,
+  performance: ['portfolio', 'performance'] as const,
   savingsPlans: ['savings-plans'] as const,
   bookings: ['transactions'] as const,
   insight: ['insight'] as const,
@@ -107,6 +108,13 @@ export const useBudgetSummary = () =>
 
 export const usePortfolioHistory = () =>
   useQuery({ queryKey: keys.history, queryFn: () => api<HistoryPoint[]>('/me/portfolio/history'), staleTime: 10 * minute });
+
+export type PerformancePoint = { date: string; portfolio: number; benchmark: number | null };
+export type Performance = { benchmark: { name: string; symbol: string } | null; points: PerformancePoint[] };
+
+/** Depot-Rendite ohne Käufe und Verkäufe (Faktor ab 1) neben dem Kurs des Vergleichsindex, täglich */
+export const usePerformance = (enabled = true) =>
+  useQuery({ queryKey: keys.performance, queryFn: () => api<Performance>('/me/portfolio/performance'), staleTime: 10 * minute, enabled });
 
 export const useSavingsPlans = () =>
   useQuery({ queryKey: keys.savingsPlans, queryFn: () => api<SavingsPlan[]>('/me/savings-plans'), staleTime: minute });
@@ -129,7 +137,7 @@ export function useExecutePlan() {
   return useMutation({
     mutationFn: (planId: number) =>
       api<{ quantity: number; price: number }>(`/me/savings-plans/${planId}/execute`, { method: 'POST' }),
-    onSuccess: () => Promise.all([keys.positions, keys.history, keys.savingsPlans, keys.trades]
+    onSuccess: () => Promise.all([keys.positions, keys.history, keys.performance, keys.savingsPlans, keys.trades]
       .map((queryKey) => client.invalidateQueries({ queryKey }))),
   });
 }

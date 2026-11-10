@@ -24,6 +24,7 @@ from fintrack.models import (Asset, AssetTransaction, Dividend,
 from fintrack.portfolio.schemas import (AssetCreate, AssetSearchQuery, BuyTrade, PositionCreate,
                                         SavingsPlanCreate, SellTrade, WatchlistAdd)
 from fintrack.portfolio.history import portfolio_value_series
+from fintrack.portfolio.performance import BENCHMARK_NAME, BENCHMARK_SYMBOL, performance_series
 from fintrack.portfolio.service import record_buy, record_sell
 
 bp = Blueprint('portfolio', __name__)
@@ -207,6 +208,24 @@ def get_portfolio_history():
         {"date": day.isoformat(), "value": value}
         for day, value in portfolio_value_series(current_user.id)
     ]), 200
+
+
+@bp.route('/me/portfolio/performance', methods=['GET'])
+def get_portfolio_performance():
+    """
+    Rendite des Depots ohne Käufe und Verkäufe (zeitgewichtet) neben dem
+    Kurs des Vergleichsindex, täglich vom ersten Kauf bis heute. Der
+    Browser rechnet beides auf den gewählten Zeitraum um.
+    """
+    series = performance_series(current_user.id)
+    has_benchmark = any(bench is not None for _, _, bench in series)
+    return jsonify({
+        "benchmark": {"name": BENCHMARK_NAME, "symbol": BENCHMARK_SYMBOL} if has_benchmark else None,
+        "points": [
+            {"date": day.isoformat(), "portfolio": factor, "benchmark": bench}
+            for day, factor, bench in series
+        ],
+    }), 200
 
 
 # ─── WATCHLIST ────────────────────────────────────────────────────────────────

@@ -73,7 +73,7 @@ function useInvalidate() {
     Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })));
 }
 
-const afterTrade = [keys.positions, keys.history, keys.trades];
+const afterTrade = [keys.positions, keys.history, keys.performance, keys.trades];
 
 // Ein Kauf mit Datum; ist das Asset schon im Depot, ergibt das einen neuen Durchschnittspreis
 export function useBuy() {
