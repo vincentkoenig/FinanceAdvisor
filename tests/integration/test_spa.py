@@ -88,10 +88,10 @@ def test_manifest_has_its_media_type(client):
 
 
 def test_share_without_service_worker_leads_to_import(client):
-    # Normalerweise fängt der Service Worker das ab; ohne ihn geht es ohne Datei zur Import-Seite
+    # Normalerweise fängt der Service Worker das ab; ohne ihn geht es ohne Datei zur Auswahl-Seite
     response = client.post('/app/share', data={'file': (io.BytesIO(b'a;b'), 'umsaetze.csv')})
     assert response.status_code == 303
-    assert response.headers['Location'].endswith('/app/budget/import?shared=missing')
+    assert response.headers['Location'].endswith('/app/import/shared')
 
 
 def test_missing_asset_is_404_not_index(client):

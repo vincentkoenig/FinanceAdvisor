@@ -1,20 +1,58 @@
-// Teilen an FinTrack (Android): Der Service Worker legt die geteilte Datei kurz im Cache "fintrack-share" ab
-// (siehe sw.template.js) und öffnet die Import-Seite mit ?shared=1. Diese holt sie hier genau einmal ab;
-// danach ist sie vom Gerät wieder gelöscht.
+// Teilen an FinTrack (Android): Der Service Worker legt die geteilten Dateien kurz im Cache "fintrack-share" ab
+// (/app/share/file/0, /1, …, siehe sw.template.js) und öffnet die Seite "Geteilte Dateien" (/import/shared).
+// Dort wählt man, wohin sie gehen; die Import-Seite holt sie dann genau einmal ab und löscht sie dabei vom Gerät.
 const SHARE_CACHE = 'fintrack-share';
-const SHARE_KEY = '/app/share/file';
+const PREFIX = '/app/share/file/';
 
-export async function takeSharedFile(storage: CacheStorage | undefined = globalThis.caches): Promise<File | null> {
+export type SharedInfo = { name: string; type: string };
+
+type Storage = CacheStorage | undefined;
+
+async function stored(storage: Storage) {
   if (!storage) return null;
+  const cache = await storage.open(SHARE_CACHE);
+  const keys = (await cache.keys())
+    .map((request) => new URL(request.url).pathname)
+    .filter((path) => path.startsWith(PREFIX))
+    .sort((a, b) => Number(a.slice(PREFIX.length)) - Number(b.slice(PREFIX.length)));
+  return { cache, keys };
+}
+
+const nameOf = (response: Response) => decodeURIComponent(response.headers.get('X-File-Name') ?? 'geteilt');
+const typeOf = (response: Response) => response.headers.get('Content-Type') ?? '';
+
+/** Was gerade geteilt wurde, ohne es abzuholen */
+export async function peekSharedFiles(storage: Storage = globalThis.caches): Promise<SharedInfo[]> {
   try {
-    const cache = await storage.open(SHARE_CACHE);
-    const response = await cache.match(SHARE_KEY);
-    if (!response) return null;
-    await cache.delete(SHARE_KEY);
-    const name = decodeURIComponent(response.headers.get('X-File-Name') ?? 'geteilt');
-    const blob = await response.blob();
-    return new File([blob], name, { type: response.headers.get('Content-Type') ?? blob.type });
+    const found = await stored(storage);
+    if (!found) return [];
+    const responses = await Promise.all(found.keys.map((key) => found.cache.match(key)));
+    return responses.filter((r): r is Response => Boolean(r)).map((r) => ({ name: nameOf(r), type: typeOf(r) }));
   } catch {
-    return null;
+    return [];
   }
 }
+
+/** Alle geteilten Dateien abholen; danach sind sie vom Gerät gelöscht */
+export async function takeSharedFiles(storage: Storage = globalThis.caches): Promise<File[]> {
+  try {
+    const found = await stored(storage);
+    if (!found) return [];
+    const files: File[] = [];
+    for (const key of found.keys) {
+      const response = await found.cache.match(key);
+      await found.cache.delete(key);
+      if (response) files.push(new File([await response.blob()], nameOf(response), { type: typeOf(response) }));
+    }
+    return files;
+  } catch {
+    return [];
+  }
+}
+
+/** Für den Import ins Haushaltsbuch, der eine Datei liest */
+export async function takeSharedFile(storage: Storage = globalThis.caches): Promise<File | null> {
+  return (await takeSharedFiles(storage))[0] ?? null;
+}
+
+export const isZipName = (info: SharedInfo) => /\.zip$/i.test(info.name) || /zip/.test(info.type);
