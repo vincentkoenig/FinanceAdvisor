@@ -39,7 +39,7 @@ function RequireAuth() {
   const location = useLocation();
   if (isPending) return <p className="center-note" role="status">Lädt …</p>;
   if (isError) return <p className="center-note" role="alert">Der Server ist gerade nicht erreichbar. Bitte lade die Seite gleich noch einmal.</p>;
-  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   return <Outlet context={context} />;
 }
 

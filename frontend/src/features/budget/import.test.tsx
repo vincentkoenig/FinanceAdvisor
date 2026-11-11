@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderApp } from '../../test/renderApp';
-import { sent, session } from '../../test/server';
+import { sent, session, testUser } from '../../test/server';
 
 beforeEach(() => {
   session.loggedIn = true;
@@ -179,5 +179,52 @@ describe('Umsätze importieren', () => {
     expect(within(file).getByText('Gesendeter Text')).toBeInTheDocument();
     expect(within(file).getByText('Kontoauszug [NUMMER]')).toBeInTheDocument();
     expect(sent.mapping).toBeUndefined();
+  });
+
+  describe('über "Teilen" auf Android', () => {
+    // Was der Service Worker ablegt: eine Antwort mit der Datei unter /app/share/file im Cache "fintrack-share"
+    function fakeShareCache(file: File | null) {
+      const store = new Map<string, Response>();
+      if (file) store.set('/app/share/file', new Response(file, { headers: { 'Content-Type': file.type, 'X-File-Name': encodeURIComponent(file.name) } }));
+      const cache = {
+        match: async (key: string) => store.get(key),
+        delete: async (key: string) => store.delete(key),
+      };
+      vi.stubGlobal('caches', { open: async (name: string) => (name === 'fintrack-share' ? cache : null) });
+      return store;
+    }
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('liest die geteilte Datei gleich ein und löscht sie vom Gerät', async () => {
+      const store = fakeShareCache(new File(['%PDF-1.4'], 'Kontoauszug Oktober.pdf', { type: 'application/pdf' }));
+      const { router } = renderApp('/budget/import?shared=1');
+
+      expect(await preview()).toHaveTextContent('2 neu');
+      expect(screen.getByRole('region', { name: 'Datei' })).toHaveTextContent('Kontoauszug Oktober.pdf');
+      expect(store.size).toBe(0);
+      expect(router.state.location.search).toBe('');
+    });
+
+    it('liest die Datei auch, wenn erst die Anmeldung dazwischen kam', async () => {
+      fakeShareCache(new File(['%PDF-1.4'], 'auszug.pdf', { type: 'application/pdf' }));
+      session.loggedIn = false;
+      renderApp('/budget/import?shared=1');
+      const user = userEvent.setup();
+      await user.type(await screen.findByLabelText('E-Mail'), testUser.email);
+      await user.type(screen.getByLabelText('Passwort'), 'richtig');
+      await user.click(screen.getByRole('button', { name: 'Anmelden' }));
+      expect(await preview()).toHaveTextContent('2 neu');
+    });
+
+    it('sagt Bescheid, wenn keine Datei angekommen ist', async () => {
+      fakeShareCache(null);
+      renderApp('/budget/import?shared=1');
+      expect(await screen.findByRole('alert')).toHaveTextContent('Die geteilte Datei ist nicht angekommen.');
+    });
+
+    it('sagt Bescheid, wenn der Server ohne Service Worker weitergeleitet hat', async () => {
+      renderApp('/budget/import?shared=missing');
+      expect(await screen.findByRole('alert')).toHaveTextContent('Bitte hier von Hand wählen.');
+    });
   });
 });

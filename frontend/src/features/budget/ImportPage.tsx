@@ -3,8 +3,9 @@
 // Vorschau prüfen: neue Umsätze nach Empfänger gruppiert, Kategorie je Gruppe (Vorschläge aus früheren Buchungen,
 // Regeln und bekannten Händlern, fehlende auf Wunsch von der KI, neue Kategorien direkt hier) → übernehmen.
 // Gespeichert wird erst beim Übernehmen; die Datei selbst bleibt nirgends liegen.
-import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+// Auf Android kommt die Datei auch über "Teilen → FinTrack" (?shared=1, siehe lib/sharedFile.ts).
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { type Category, useAddCategory, useCategories } from '../../api/budget';
 import {
   type ColumnMapping, type ImportPreview, type ImportRow, UnknownColumnsError, useCategorizeBankImport, useCommitBankImport, usePreviewBankImport,
@@ -14,11 +15,14 @@ import { Icon } from '../../components/Icon';
 import { useToast } from '../../components/Toast';
 import { dayShort, parseDay } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
+import { takeSharedFile } from '../../lib/sharedFile';
 import {
   MAPPING_FIELDS, type Choice, type Group, type GroupFilter, type Proposal, applySuggestions, assignCategory, assignRest, assignToPayees,
   categoryOptions, groupRows, initialChoices, payeesWithoutCategory, proposalsFrom, setGroupCategory, setGroupSelected, toCommit,
   visibleGroups,
 } from './importModel';
+
+const SHARE_MISSING = 'Die geteilte Datei ist nicht angekommen. Bitte hier von Hand wählen.';
 
 export function ImportPage() {
   const previewImport = usePreviewBankImport();
@@ -28,13 +32,16 @@ export function ImportPage() {
   const categories = useCategories();
   const notify = useToast();
   const navigate = useNavigate();
+  const [search, setSearch] = useSearchParams();
+  const shared = search.get('shared');
   const [file, setFile] = useState<File | null>(null);
   const [inputKey, setInputKey] = useState(0);
   const [columns, setColumns] = useState<string[] | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping>({});
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [choices, setChoices] = useState<Record<string, Choice>>({});
-  const [error, setError] = useState<string | null>(null);
+  // Ohne Service Worker leitet der Server ohne Datei weiter (?shared=missing)
+  const [error, setError] = useState<string | null>(shared && shared !== '1' ? SHARE_MISSING : null);
   // Von der KI vorgeschlagene neue Kategorien und die Zeile, für die gerade eine neue angelegt wird
   const [proposals, setProposals] = useState<Proposal[]>([]);
   // Für wen gerade eine neue Kategorie angelegt wird (eine Zeile oder eine ganze Gruppe)
@@ -66,6 +73,21 @@ export function ImportPage() {
     setColumns(null);
     load(chosen);
   };
+
+  // Über "Teilen" geöffnet: Datei abholen und gleich lesen, danach den Hinweis aus der Adresse nehmen
+  const sharedHandled = useRef(false);
+  useEffect(() => {
+    if (!shared || sharedHandled.current) return;
+    sharedHandled.current = true;
+    setSearch({}, { replace: true });
+    if (shared !== '1') return;
+    takeSharedFile().then((received) => {
+      if (received) pick(received);
+      else setError(SHARE_MISSING);
+    });
+    // pick ändert sich bei jedem Rendern, gebraucht wird nur der erste Aufruf
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shared]);
 
   const reset = () => {
     setFile(null);
@@ -128,7 +150,7 @@ export function ImportPage() {
       <div className="title-row">
         <div className="text">
           <h1>Umsätze importieren</h1>
-          <p className="sub">CSV-Export deiner Bank. Vor dem Speichern siehst du alles in einer Vorschau.</p>
+          <p className="sub">CSV-Export oder Kontoauszug als PDF. Vor dem Speichern siehst du alles in einer Vorschau.</p>
         </div>
         <div className="actions">
           <Link to="/budget" className="btn"><Icon name="left" size={16} />Haushaltsbuch</Link>

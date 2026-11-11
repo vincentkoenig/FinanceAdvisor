@@ -9,6 +9,16 @@
   "display": "standalone",
   "background_color": "#0f3d2b",
   "theme_color": "#08140f",
+  "share_target": {
+    "action": "/app/share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        { "name": "file", "accept": ["application/pdf", ".pdf", "text/csv", "text/comma-separated-values", ".csv", "text/plain"] }
+      ]
+    }
+  },
   "icons": [
     { "src": "/app/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/app/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
