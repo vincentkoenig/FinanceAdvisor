@@ -35,6 +35,8 @@ PUBLIC_ENDPOINTS = {
     # Weiterleitungen von / und den früheren Seiten nach /app
     'spa.legacy_root', 'spa.legacy_home_page', 'spa.legacy_portfolio_page', 'spa.legacy_budget_page',
     'spa.legacy_chat_page', 'spa.legacy_analyse_page', 'spa.legacy_settings_page',
+    # Teilen an FinTrack ohne Service Worker: nur eine Weiterleitung, die Datei wird nicht angenommen
+    'spa.share_without_service_worker',
     # Statuspunkt für Docker und Überwachung, ohne Nutzerdaten
     'health.healthz',
 }
