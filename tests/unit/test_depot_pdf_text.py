@@ -123,7 +123,7 @@ class TestRecipientIsRemoved:
         '430 12345678',
         'Muster Erika,',
         'Muster-Beispiel Max',
-        'BEISPIEL & CO. INC.',
+        'APFEL & CO. INC.',
         'US0378331005',
         'Kurswert EUR 66,20',
     ] + ['Zeile'] * 3)
@@ -135,7 +135,7 @@ class TestRecipientIsRemoved:
 
     def test_trade_details_stay(self):
         masked = mask_personal_data(self.STATEMENT)
-        for detail in ('BEISPIEL & CO. INC.', 'US0378331005', 'Kurswert EUR 66,20'):
+        for detail in ('APFEL & CO. INC.', 'US0378331005', 'Kurswert EUR 66,20'):
             assert detail in masked
 
     def test_address_after_line_15_is_found(self):
@@ -148,3 +148,62 @@ class TestRecipientIsRemoved:
     def test_without_postcode_nothing_is_cut(self):
         masked = mask_personal_data('Frau Muster betreut Sie\nKurswert EUR 66,20\nStück 3')
         assert 'Kurswert EUR 66,20' in masked and 'Stück 3' in masked
+
+
+class TestBankStatementIsMasked:
+    """Kontoauszug: Namen und Adresse stehen nicht nur im Briefkopf, sondern auf jeder Seite und in Buchungen."""
+    STATEMENT = '\n'.join([
+        'K O N T O A U S Z U G',
+        'Herrn und Frau',
+        'Müller Max Paul,',
+        'Müller-Beispiel Erika',
+        'Teststraße 12',
+        '12345 Beispielstadt',
+        'Kontoinhaber',
+        'MAX+ERIKA MÜLLER',
+        'Ihr alter Kontostand per 01.01.2030: EUR 1.000,00-',
+        '02.01. LASTSCHRIFT 100,00-02.01. Auto Leasing GmbH01.01.2030 RATE01/30 V XY-AB1234 UST 15,97',
+        '03.01. SEPA-GUTSCHRIFT 200,00+03.01. ECHTZEITÜBERWEISUNGMAX PAUL MULLERDE00Gesendet mit Testbank',
+        '04.01. KREDITKARTENABRECHNUNG 300,00-04.01. Mastercard Kontakt1111 22XX XXXX 3333 Abrechnung 01/30',
+        '05.01. DAUERAUFTRAG 10,00-05.01. VERWENDUNGSZWECK Max Müller, 10 EUR pro Monat',
+        '06.01. LASTSCHRIFT 50,00-06.01. BundeskasseKfz-Steuer fuer XY AB 1234 fuer die Zeit vom 06.01.2030 bis zum 05.01.2031',
+        '07.01. LASTSCHRIFT 20,00-07.01. Telefon GmbHKd.9876543210 Wir sagen Danke.',
+        '08.01. LASTSCHRIFT 9,99-08.01. Versicherung Hausrat HausratversicherungTeststr. 12 12345 Beispielsta 01.02.30 - 28.02.30',
+        '09.01. LASTSCHRIFT 30,00-09.01. Life Assurance Vielen Dank VV 1111111 FV 2222222',
+        '10.01. LASTSCHRIFT 5,00-10.01. Haftpflicht H 123-456789/0000 Abrechnung: 01.01.30 - 01.02.30',
+        '11.01. ÜBERWEISUNG 400,00-11.01. ECHTZEITÜBERWEISUNGFinanzamt MOBILE 12:00 UHR AUSGEFÜHRT MIT TAN 654321',
+        '12.01. SEPA-GUTSCHRIFT 1.500,00+12.01. Arbeitsamt Service-Haus999X888777/66666/5555 01.01.30-31.01.30',
+        '13.01. DIVIDENDE 1,00+13.01. Kupon WKN 123456 GLOBAL SEMICONDUCTOR',
+        'Ihr neuer Kontostand: EUR 12.345,67-',
+    ])
+
+    def masked(self):
+        return mask_personal_data(self.STATEMENT)
+
+    def test_names_are_gone_everywhere_in_every_spelling(self):
+        masked = self.masked()
+        for private in ('Max', 'MAX', 'Erika', 'ERIKA', 'Paul', 'PAUL', 'Müller', 'MÜLLER', 'MULLER', 'Beispiel-'):
+            assert private not in masked, private
+
+    def test_address_is_gone_also_inside_a_booking(self):
+        masked = self.masked()
+        for private in ('Teststr', '12345 ', 'Beispielsta'):
+            assert private not in masked, private
+        assert 'Hausratversicherung[STRASSE]' in masked
+
+    def test_number_plate_card_tan_and_contract_numbers_are_gone(self):
+        masked = self.masked()
+        for private in ('AB1234', 'AB 1234', '3333', '654321', '9876543210', '1111111', '2222222', '456789', '888777'):
+            assert private not in masked, private
+
+    def test_bookings_stay_readable(self):
+        masked = self.masked()
+        for detail in ('100,00-02.01. Auto Leasing GmbH', '200,00+03.01.', '300,00-04.01. Mastercard', 'Telefon GmbHKd.',
+                       'Arbeitsamt Service-Haus', '01.01.30-31.01.30', 'WKN 123456 GLOBAL SEMICONDUCTOR',
+                       'EUR 1.000,00-', 'EUR 12.345,67-', 'fuer die Zeit vom 06.01.2030 bis zum 05.01.2031', 'UST 15,97'):
+            assert detail in masked, detail
+
+    def test_short_names_only_match_whole_words(self):
+        masked = mask_personal_data('Herrn\nLi Wei\nTeststr. 1\n12345 Ort\nLIDL Filiale 4,99-\nWEI LI Überweisung')
+        assert 'LIDL Filiale 4,99-' in masked
+        assert masked.splitlines()[-1] == '[NAME] [NAME] Überweisung'

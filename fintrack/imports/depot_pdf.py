@@ -91,9 +91,10 @@ def _recipient_lines(lines):
     """
     Zeilennummern mit dem Empfänger, auch an anderer Stelle im Dokument: Abrechnungen nennen
     die Depotinhaber oft ein zweites Mal, und Namen haben kein Muster wie eine IBAN.
+    Dazu die Zeilen des Anschriftenfelds selbst, aus denen _learned_patterns Namen und Adresse lernt.
     """
     key = lambda line: line.strip().rstrip(',').lower()
-    hidden, known = set(), set()
+    hidden, known, block_lines = set(), set(), []
     for start, line in enumerate(lines):
         if not _SALUTATION.match(line):
             continue
@@ -102,15 +103,94 @@ def _recipient_lines(lines):
         if end is not None:
             hidden.update(range(start + 1, start + end + 2))
             known.update(key(entry) for entry in block[:end + 1] if key(entry))
+            block_lines.extend(block[:end + 1])
     hidden.update(index for index, line in enumerate(lines) if key(line) in known)
-    return hidden
+    return hidden, block_lines
+
+
+# Wörter im Anschriftenfeld, die kein Name sind
+_NOT_A_NAME = {'und', 'herrn', 'herr', 'frau', 'familie', 'eheleute', 'firma', 'dr', 'prof'}
+_STREET_WORD = re.compile(r'([A-ZÄÖÜ][\wäöüß-]*?)(?:straße|strasse|str\.?|weg|platz|allee|gasse|ring|damm)\b', re.I)
+_LETTERS = 'A-Za-zÄÖÜäöüß'
+
+
+def _spelled(word):
+    """Muster für ein Wort in allen Schreibweisen von Banken: König, KÖNIG, Konig, Koenig"""
+    variants = {'ä': '(?:ä|a|ae)', 'ö': '(?:ö|o|oe)', 'ü': '(?:ü|u|ue)', 'ß': '(?:ß|ss)'}
+    return ''.join(variants.get(char, re.escape(char)) for char in word.lower())
+
+
+def _learned_patterns(block_lines):
+    """
+    Was im Anschriftenfeld steht, kommt im Rest oft wieder vor, im Kontoauszug sogar mitten in den
+    Buchungen: "VINCENT+ERIKA MUSTER" im Seitenkopf, eigene Überweisungen, die Adresse im
+    Verwendungszweck einer Versicherung. Daraus Muster für Namen, Straße und Ort.
+    Ohne Wortgrenze, weil Bankauszüge Wörter zusammenkleben ("HausratversicherungTeststr. 12");
+    nur sehr kurze Namen brauchen eine, sonst träfen sie zu viel.
+    """
+    patterns = []
+    for line in block_lines:
+        postcode = re.match(r'\s*(\d{5})\s+(\S+)', line)
+        if postcode:
+            patterns.append((re.compile(r'(?<!\d)' + re.escape(postcode.group(1)) + r'(?!\d)\s*[' + _LETTERS + r'.-]*'), '[ORT]'))
+            city = postcode.group(2)
+            if len(city) >= 5:
+                # Abgeschnitten steht der Ort manchmal nur zum Teil da ("Beispielsta")
+                patterns.append((re.compile(_spelled(city[:max(5, len(city) - 3)]) + '[' + _LETTERS + ']*', re.I), '[ORT]'))
+            continue
+        street = _STREET_WORD.search(line)
+        if street and re.search(r'\d', line):
+            stem = street.group(1)
+            if len(stem) >= 3:
+                patterns.append((re.compile(_spelled(stem) + r'[' + _LETTERS + r'.-]*\s*\d*\s?[a-z]?(?![' + _LETTERS + '])', re.I),
+                                 '[STRASSE]'))
+            continue
+        for word in re.split(r'[^' + _LETTERS + ']+', line):
+            if len(word) < 2 or word.lower() in _NOT_A_NAME:
+                continue
+            body = _spelled(word)
+            if len(word) <= 3:
+                # Kurze Namen nur, wo das Wort endet ("…ÜBERWEISUNGMAX PAUL" ja, "LIDL" für "Li" nein)
+                body = f'{body}(?![{_LETTERS}])'
+            patterns.append((re.compile(body, re.I), '[NAME]'))
+    # Längere zuerst, damit "Muster-Beispiel" nicht nur halb ersetzt wird
+    return sorted(patterns, key=lambda item: -len(item[0].pattern))
+
+
+# Gilt im ganzen Dokument: Kfz-Kennzeichen ("AB-CD 1234", "AB CD1234"), Kartennummern auch teils
+# geschwärzt ("1234 56XX XXXX 7890"), TANs und Kunden-/Vertragsnummern mit Trennzeichen ("H 526-731543/0000")
+_EVERYWHERE = [
+    (re.compile(r'(?<![A-Za-zÄÖÜäöüß])[A-ZÄÖÜ]{1,3}[ -][A-Z]{1,2}[ -]?\d{1,4}[EH]?(?!\d)'), '[KENNZEICHEN]'),
+    # Ohne Wortgrenze vorne: Auszüge kleben die Nummer an Wörter ("Kontakt1234 56XX ...")
+    (re.compile(r'(?<![\dX*])[\dX*]{4}(?:\s?[\dX*]{4}){3}(?![\dX*])'), '[KARTE]'),
+    (re.compile(r'\bTAN:?\s*\d{4,8}\b'), 'TAN [NUMMER]'),
+]
+_DATE = re.compile(r'^\d{1,2}\.\d{1,2}\.(?:\d{2}|\d{4})?$')
+_THOUSANDS = re.compile(r'^\d{1,3}(?:\.\d{3})+\.?$')
+
+
+def _hide_numbered_token(match):
+    """Zusammenhängende Zeichen mit mindestens 7 Ziffern ohne Komma: Kunden-, Vertrags-, Rechnungsnummern"""
+    token = match.group(0)
+    # Daten (auch Zeiträume wie "01.10.26-31.10.26") und Beträge mit Tausenderpunkt bleiben
+    if all(_DATE.match(part) for part in token.split('-')) or _THOUSANDS.match(token):
+        return token
+    if sum(char.isdigit() for char in token) < 7:
+        return token
+    # Buchstaben davor gehören oft zu einem angeklebten Wort ("Arbeit-Service-Haus451D…", "Kd.1210…") und bleiben
+    prefix = re.match(r'[A-Za-z./-]*', token).group(0)
+    return prefix + '[NUMMER]'
+
+
+_TOKEN = re.compile(r'[A-Za-z0-9][A-Za-z0-9./-]*\d[A-Za-z0-9./-]*')
 
 
 def mask_personal_data(text):
     """Entfernt persönliche Angaben; ISINs, Beträge, Daten und Stückzahlen bleiben."""
     lines = []
     source = text.splitlines()
-    recipient = _recipient_lines(source)
+    recipient, block_lines = _recipient_lines(source)
+    learned = _learned_patterns(block_lines)
     for number, line in enumerate(source):
         if number in recipient or _PERSONAL_LINE.match(line) or _GLUED_NAME.match(line):
             lines.append('[ENTFERNT]')
@@ -122,11 +202,16 @@ def mask_personal_data(text):
             return f'@@{len(isins) - 1}@@'
 
         line = ISIN.sub(keep_isin, line)
+        for pattern, label in learned:
+            line = pattern.sub(label, line)
         for index, (pattern, label) in enumerate(_PATTERNS):
             if index >= 3 and number >= ADDRESS_LINES:
                 break
             line = pattern.sub(label, line)
         line = _NUMBER.sub('[NUMMER]', line)
+        for pattern, label in _EVERYWHERE:
+            line = pattern.sub(label, line)
+        line = _TOKEN.sub(_hide_numbered_token, line)
         for placeholder, isin in isins.items():
             line = line.replace(placeholder, isin)
         lines.append(line)
