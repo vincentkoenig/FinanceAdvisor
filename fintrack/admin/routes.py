@@ -63,6 +63,13 @@ def manual_generate_insights():
     return _start('insights')
 
 
+@bp.route('/send-notifications', methods=['POST'])
+@require_admin_key
+def manual_send_notifications():
+    """Push-Meldungen (Kündigungsfristen, Tages-Update) im Hintergrund verschicken, sonst morgens um 8:00 Uhr."""
+    return _start('notify')
+
+
 @bp.route('/run-daily-jobs', methods=['POST'])
 @require_admin_key
 def run_daily_jobs():

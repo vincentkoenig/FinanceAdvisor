@@ -74,6 +74,7 @@ Das Projekt ist außerdem ein Lernprojekt: Jeder Baustein, vom Datenbankschema b
 ### 📱 Handy (PWA)
 - Eine Oberfläche für Laptop und Handy: unten eine Navigation, Listen statt breiter Tabellen, Dialoge als Blatt von unten
 - Installierbar als App mit eigenem Symbol. Der Service Worker speichert nur Programmdateien, nie Finanzdaten
+- **Push-Benachrichtigungen** pro Gerät und pro Art einzeln schaltbar: Kündigungsfristen (14 und 3 Tage vorher), fälliger Sparplan, Tages-Update der KI. Nie zwischen 22 und 8 Uhr und nie mit Beträgen, weil Meldungen auf dem Sperrbildschirm stehen. Auf dem iPhone nur in der installierten App
 
 <p align="center"><img src="docs/images/handy.png" alt="FinTrack auf dem Handy" width="300"></p>
 
@@ -266,6 +267,7 @@ Optionale Variablen:
 | `SECRET_KEY` | Signiert die Anmelde-Cookies. **In Produktion Pflicht** (sonst startet die App nicht). Lokal empfohlen, sonst ist man nach jedem Neustart abgemeldet. Erzeugen mit `python -c "import secrets; print(secrets.token_hex(32))"` |
 | `ALLOW_REGISTRATION=1` | Erlaubt neue Konten über die Startseite. Standard: geschlossen — Konten dann per `create-user` anlegen (siehe unten). |
 | `ADMIN_API_KEY` | Schlüssel für die Routen unter `/api/v1/admin/...` (Header `X-Admin-Key`). Ohne ihn sind diese Endpoints gesperrt. |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Schlüsselpaar für Push-Benachrichtigungen, einmalig erzeugen mit `flask --app app make-vapid-keys`. Ohne sie zeigt die App, dass Push nicht eingerichtet ist. Optional `VAPID_SUBJECT` (mailto:- oder https-Adresse als Kontakt für die Push-Dienste). |
 | `FLASK_DEBUG=1` | Debug-Modus beim lokalen Start mit `python app.py`. Wird automatisch abgeschaltet, wenn der Server im Netzwerk erreichbar ist. |
 | `FLASK_HOST=0.0.0.0` | Server im lokalen Netzwerk erreichbar machen, z.B. für Tests vom Handy. Standard ist nur dieser PC (`127.0.0.1`). |
 
