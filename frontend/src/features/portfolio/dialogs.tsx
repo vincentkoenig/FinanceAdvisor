@@ -2,13 +2,13 @@
 // Kauf aus der Watchlist, Sparplan anlegen und löschen.
 import { useState, type FormEvent } from 'react';
 import {
-  type SearchResult, type WatchItem, ensureAsset, useAsset, useAssetSearch, useBuy, useCreatePlan, useDeletePlan, useSell, useUnwatch, useWatch,
+  type SearchResult, type WatchItem, ensureAsset, useAsset, useAssetSearch, useBuy, useCreatePlan, useDeletePlan, useSell, useSetTarget, useUnwatch, useWatch, useWatchlist,
 } from '../../api/portfolio';
 import type { SavingsPlan } from '../../api/overview';
 import { Dialog } from '../../components/Dialog';
 import { Actions, type Errors, Field, apiErrors, describe, positive } from '../../components/form';
 import { useToast } from '../../components/Toast';
-import { isoDay, pct, tone } from '../../lib/format';
+import { dayShort, isoDay, parseAmount, pct, tone } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import { type PositionRow, token } from '../home/model';
 
@@ -236,7 +236,7 @@ export function WatchDialog({ item, onClose }: { item: WatchItem; onClose: () =>
   const lead = <span className="token" aria-hidden="true">{token(item.symbol, item.name)}</span>;
   return (
     <Dialog title={item.name} onClose={onClose} busy={busy} lead={lead}>
-      <form className="dialog-form" onSubmit={submit} noValidate>
+      <div className="dialog-form">
         <div className="strip well">
           <div>
             <div className="kpi-label">Kurs</div>
@@ -248,6 +248,9 @@ export function WatchDialog({ item, onClose }: { item: WatchItem; onClose: () =>
             {item.price_added && <div className="kpi-sub">von {eur(item.price_added)}</div>}
           </div>
         </div>
+        <TargetForm item={item} />
+      </div>
+      <form className="dialog-form" onSubmit={submit} noValidate>
         <div className="form-grid">
           <Field id="watch-quantity" label="Stück" error={errors.quantity}>
             <input className="input num" id="watch-quantity" inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} {...describe('watch-quantity', errors.quantity)} />
@@ -263,6 +266,59 @@ export function WatchDialog({ item, onClose }: { item: WatchItem; onClose: () =>
         </div>
       </form>
     </Dialog>
+  );
+}
+
+// Zielkurs einer Watchlist-Position: Erreicht der Kurs ihn, kommt eine Push-Meldung
+// (Einstellungen → Benachrichtigungen → Watchlist-Zielkurs).
+function TargetForm({ item: opened }: { item: WatchItem }) {
+  const { eur } = useMoney();
+  // Der Dialog bekommt die Zeile vom Öffnen; nach dem Speichern zählt der neu geladene Stand
+  const item = useWatchlist().data?.find((w) => w.asset_id === opened.asset_id) ?? opened;
+  const setTarget = useSetTarget();
+  const notify = useToast();
+  const [value, setValue] = useState(fieldAmount(item.target_price));
+  const [error, setError] = useState('');
+
+  const save = (event: FormEvent) => {
+    event.preventDefault();
+    const amount = parseAmount(value);
+    if (amount === null || Number.isNaN(amount) || amount <= 0) {
+      setError('Bitte einen Zielkurs größer 0 eingeben.');
+      return;
+    }
+    setError('');
+    setTarget.mutate({ asset_id: item.asset_id, target_price: amount }, {
+      onSuccess: (result) => notify(result.target_direction === 'above'
+        ? `Meldung, sobald ${item.name} über ${eur(amount)} steigt`
+        : `Meldung, sobald ${item.name} unter ${eur(amount)} fällt`),
+      onError: (failure) => setError(failure.message),
+    });
+  };
+
+  const clear = () => setTarget.mutate({ asset_id: item.asset_id, target_price: null }, {
+    onSuccess: () => { setValue(''); notify('Zielkurs entfernt'); },
+    onError: (failure) => setError(failure.message),
+  });
+
+  const status = item.target_price === null ? 'Ohne Zielkurs gibt es keine Meldung.'
+    : item.target_hit ? `Erreicht am ${dayShort(item.target_hit)}. Ein neuer Zielkurs gilt wieder als offen.`
+      : item.target_direction === 'above' ? `Meldet, sobald der Kurs über ${eur(item.target_price)} steigt.`
+        : `Meldet, sobald der Kurs unter ${eur(item.target_price)} fällt.`;
+
+  return (
+    <form className="target-form" onSubmit={save} noValidate>
+      <Field id="watch-target" label="Zielkurs" error={error} hint={status}>
+        <div className="input-row">
+          <input className="input num" id="watch-target" inputMode="decimal" placeholder="€" value={value}
+            onChange={(e) => setValue(e.target.value)} {...describe('watch-target', error)} />
+          <button type="submit" className="btn" disabled={setTarget.isPending}>Speichern</button>
+          {item.target_price !== null && (
+            <button type="button" className="btn" onClick={clear} disabled={setTarget.isPending}>Entfernen</button>
+          )}
+        </div>
+      </Field>
+    </form>
   );
 }
 

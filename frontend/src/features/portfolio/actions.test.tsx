@@ -157,6 +157,43 @@ describe('Watchlist', () => {
     await user.click(within(box).getByRole('button', { name: 'Von Watchlist entfernen' }));
     expect(await screen.findByText(/Noch nichts auf der Watchlist/)).toBeInTheDocument();
   });
+
+  it('setzt einen Zielkurs, zeigt ihn in der Liste und entfernt ihn wieder', async () => {
+    renderApp('/portfolio');
+    const user = userEvent.setup();
+    await openTab(/Watchlist/);
+    await user.click(await screen.findByRole('button', { name: /SAP SE/ }));
+    const box = await dialog();
+    expect(within(box).getByText('Ohne Zielkurs gibt es keine Meldung.')).toBeInTheDocument();
+
+    await user.type(within(box).getByLabelText('Zielkurs'), '250,5');
+    await user.click(within(box).getByRole('button', { name: 'Speichern' }));
+    expect(await screen.findByText('Meldung, sobald SAP SE über 250,50 € steigt')).toBeInTheDocument();
+    expect(sent.target).toBe(250.5);
+    expect(await within(box).findByText('Meldet, sobald der Kurs über 250,50 € steigt.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /SAP SE/ })).toHaveTextContent('Ziel 250,50 €');
+
+    await user.click(within(box).getByRole('button', { name: 'Entfernen' }));
+    expect(await screen.findByText('Zielkurs entfernt')).toBeInTheDocument();
+    expect(sent.target).toBeNull();
+    expect(within(box).getByLabelText('Zielkurs')).toHaveValue('');
+  });
+
+  it('lehnt einen leeren Zielkurs ab und zeigt einen erreichten an', async () => {
+    data.watchlist[0] = { ...data.watchlist[0], target_price: 210, target_direction: 'below', target_hit: '2026-10-20' };
+    renderApp('/portfolio');
+    const user = userEvent.setup();
+    await openTab(/Watchlist/);
+    const row = await screen.findByRole('button', { name: /SAP SE/ });
+    expect(row).toHaveTextContent('Ziel erreicht');
+    await user.click(row);
+    const box = await dialog();
+    expect(within(box).getByText(/Erreicht am 20. Okt./)).toBeInTheDocument();
+
+    await user.clear(within(box).getByLabelText('Zielkurs'));
+    await user.click(within(box).getByRole('button', { name: 'Speichern' }));
+    expect(await within(box).findByText('Bitte einen Zielkurs größer 0 eingeben.')).toBeInTheDocument();
+  });
 });
 
 describe('Sparpläne', () => {

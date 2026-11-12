@@ -21,6 +21,11 @@ export type WatchItem = {
   price_added: number | null;
   current_price: number | null;
   added_at: string;
+  /** Zielkurs in Euro; die Richtung ergibt sich beim Setzen aus dem aktuellen Kurs */
+  target_price: number | null;
+  target_direction: 'above' | 'below' | null;
+  /** Tag, an dem der Zielkurs erreicht und gemeldet wurde */
+  target_hit: string | null;
 };
 
 export type Asset = { id: number; name: string; symbol: string; asset_type: string | null; current_price: number | null };
@@ -107,6 +112,15 @@ export function useUnwatch() {
   const invalidate = useInvalidate();
   return useMutation({
     mutationFn: (asset_id: number) => api(`/me/watchlist/${asset_id}`, { method: 'DELETE' }),
+    onSuccess: () => invalidate(portfolioKeys.watchlist),
+  });
+}
+
+export function useSetTarget() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: ({ asset_id, target_price }: { asset_id: number; target_price: number | null }) =>
+      api<{ target_price: number | null; target_direction: 'above' | 'below' | null }>(`/me/watchlist/${asset_id}/target`, { method: 'PUT', body: { target_price } }),
     onSuccess: () => invalidate(portfolioKeys.watchlist),
   });
 }

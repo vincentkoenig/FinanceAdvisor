@@ -36,7 +36,7 @@ function serverWithPush(device: Record<string, boolean> | null = null) {
     http.get('/api/v1/me/push', () => HttpResponse.json({ available: true, public_key: 'BAAA' })),
     http.post('/api/v1/me/push/devices', async ({ request }) => {
       sent.subscribe = await request.json();
-      stored = { deadlines: true, savings_plan: true, daily_update: true };
+      stored = { deadlines: true, savings_plan: true, daily_update: true, price_moves: true, watchlist: true };
       return HttpResponse.json(stored);
     }),
     http.post('/api/v1/me/push/devices/current', async ({ request }) => {
@@ -89,7 +89,7 @@ describe('Benachrichtigungen', () => {
     await user.click(await within(box).findByRole('button', { name: 'Einschalten' }));
     expect(await screen.findByText('Benachrichtigungen auf diesem Gerät eingeschaltet')).toBeInTheDocument();
     expect(pushManager.subscribe).toHaveBeenCalledWith(expect.objectContaining({ userVisibleOnly: true }));
-    expect(sent.subscribe).toEqual({ endpoint: ENDPOINT, keys: { p256dh: 'BPub', auth: 'geheim' }, deadlines: true, savings_plan: true, daily_update: true });
+    expect(sent.subscribe).toEqual({ endpoint: ENDPOINT, keys: { p256dh: 'BPub', auth: 'geheim' }, deadlines: true, savings_plan: true, daily_update: true, price_moves: true, watchlist: true });
 
     const daily = within(box).getByLabelText('Tages-Update');
     expect(daily).toBeChecked();

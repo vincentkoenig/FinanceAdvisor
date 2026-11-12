@@ -23,7 +23,7 @@ from fintrack.market.search import create_asset, search_assets
 from fintrack.models import (Asset, AssetTransaction, Dividend,
                              SavingsPlan, UserAsset, Watchlist)
 from fintrack.portfolio.schemas import (AssetCreate, AssetSearchQuery, BuyTrade, PositionCreate,
-                                        SavingsPlanCreate, SellTrade, WatchlistAdd)
+                                        SavingsPlanCreate, SellTrade, WatchlistAdd, WatchlistTarget)
 from fintrack.portfolio.history import portfolio_value_series
 from fintrack.portfolio.performance import BENCHMARK_NAME, BENCHMARK_SYMBOL, performance_series
 from fintrack.portfolio.service import record_buy, record_sell
@@ -266,10 +266,42 @@ def get_watchlist():
             "symbol": asset.symbol,
             "price_added": item.price_added,
             "current_price": get_current_price(asset),
-            "added_at": item.added_at.strftime('%d.%m.%Y') if item.added_at else '-'
+            "added_at": item.added_at.strftime('%d.%m.%Y') if item.added_at else '-',
+            "target_price": item.target_price,
+            "target_direction": item.target_direction,
+            "target_hit": item.target_hit_at.strftime('%Y-%m-%d') if item.target_hit_at else None,
         })
 
     return jsonify(result), 200
+
+
+@bp.route('/me/watchlist/<int:asset_id>/target', methods=['PUT'])
+def set_watchlist_target(asset_id):
+    """
+    Zielkurs setzen, ändern oder entfernen. Ob er von unten oder oben erreicht werden
+    soll, ergibt sich aus dem aktuellen Kurs: liegt das Ziel darüber, meldet die
+    Kursprüfung (push/alerts.py) das Steigen darüber, sonst das Fallen darunter.
+    Ein neues Ziel gilt wieder als nicht erreicht.
+    """
+    data = parse_body(WatchlistTarget)
+    item = Watchlist.query.filter_by(user_id=current_user.id, asset_id=asset_id).first()
+    if not item:
+        raise ApiError(404, 'Nicht auf der Watchlist')
+
+    if data.target_price is None:
+        item.target_price = item.target_direction = item.target_hit_at = None
+    else:
+        current = get_current_price(db.session.get(Asset, asset_id))
+        if current is None:
+            raise ApiError(409, 'Für dieses Asset gibt es gerade keinen Kurs, ein Zielkurs ist deshalb nicht möglich.')
+        if abs(data.target_price - current) < 0.005:
+            raise ApiError(400, 'Der Zielkurs entspricht dem aktuellen Kurs. Bitte einen anderen wählen.')
+        item.target_price = data.target_price
+        item.target_direction = 'above' if data.target_price > current else 'below'
+        item.target_hit_at = None
+    db.session.commit()
+
+    return jsonify({"target_price": item.target_price, "target_direction": item.target_direction}), 200
 
 
 @bp.route('/me/watchlist/<int:asset_id>', methods=['DELETE'])

@@ -212,6 +212,9 @@ class Watchlist(db.Model):
     """
     Watchlist Tabelle - Assets die der Nutzer beobachtet aber noch nicht besitzt.
     Junction Table zwischen User und Asset, jedes Asset höchstens einmal pro Nutzer.
+    Zielkurs (optional, in Euro): target_direction sagt, ob der Kurs von unten
+    darüber ('above') oder von oben darunter ('below') gehen soll; ergibt sich beim
+    Setzen aus dem aktuellen Kurs. target_hit_at: wann er erreicht und gemeldet wurde.
     """
     __table_args__ = (db.UniqueConstraint('user_id', 'asset_id'),)
 
@@ -220,6 +223,9 @@ class Watchlist(db.Model):
     asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'))
     added_at = db.Column(db.DateTime, default=db.func.now())
     price_added = db.Column(db.Float)
+    target_price = db.Column(db.Float)
+    target_direction = db.Column(db.String(5))
+    target_hit_at = db.Column(db.DateTime)
 
 
 class PortfolioAnalysis(db.Model):
@@ -392,7 +398,7 @@ class PushSubscription(db.Model):
     endpoint, p256dh und auth liefert der Browser beim Anmelden (Web Push): An endpoint
     schickt der Server die verschlüsselte Nachricht, p256dh und auth sind die Schlüssel
     dafür. Pro Gerät lässt sich jede Art von Meldung einzeln ein- und ausschalten
-    (deadlines, savings_plan, daily_update).
+    (deadlines, savings_plan, daily_update, price_moves, watchlist).
     Gerätedaten gehören nicht in den Export: Auf einem neuen Server meldet sich das
     Gerät einfach neu an.
     """
@@ -404,6 +410,8 @@ class PushSubscription(db.Model):
     deadlines = db.Column(db.Boolean, nullable=False, default=True)
     savings_plan = db.Column(db.Boolean, nullable=False, default=True)
     daily_update = db.Column(db.Boolean, nullable=False, default=True)
+    price_moves = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    watchlist = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
     created_at = db.Column(db.DateTime, default=db.func.now())
 
 

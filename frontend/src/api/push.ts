@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from './client';
 
 export type PushConfig = { available: boolean; public_key: string | null };
-export type DeviceSettings = { deadlines: boolean; savings_plan: boolean; daily_update: boolean };
+export type DeviceSettings = { deadlines: boolean; savings_plan: boolean; daily_update: boolean; price_moves: boolean; watchlist: boolean };
 
 export function usePushConfig() {
   return useQuery({ queryKey: ['push-config'], queryFn: () => api<PushConfig>('/me/push') });

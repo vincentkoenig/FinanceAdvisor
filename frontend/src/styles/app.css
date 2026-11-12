@@ -445,6 +445,10 @@ details.older[open] .clamp-2 { display: none; }
 .dialog-head { display: flex; align-items: center; gap: 12px; }
 .dialog-head h2 { flex: 1; min-width: 0; font-size: 18px; }
 .dialog-form { display: flex; flex-direction: column; gap: 16px; }
+.dialog-form + .dialog-form { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--rule); }
+/* Eingabe mit Buttons daneben, z. B. Zielkurs; auf dem Handy rutschen die Buttons darunter */
+.input-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.input-row .input { flex: 1 1 96px; min-width: 0; }
 .dialog-sub { margin-top: -8px; }
 .well { background: var(--raised); border-radius: var(--radius-inner); padding: 12px 14px; }
 .strip.well { margin-top: 0; }
