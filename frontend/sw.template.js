@@ -7,17 +7,17 @@
 // - Seiten (Navigation) zuerst aus dem Netz; ohne Netz die Offline-Seite.
 // - Gehashte Dateien unter /app/assets/ ändern sich nie und kommen aus dem Cache.
 // - Ein neuer Service Worker wartet, bis die App ihn bittet zu übernehmen ("Neu laden").
-// - Teilen an FinTrack (Android, share_target im Manifest): Die geteilte Datei kommt per POST an
-//   /app/share. Sie liegt nur so lange im Cache "fintrack-share", bis die Import-Seite sie abholt,
-//   und wird dabei gelöscht (siehe src/lib/sharedFile.ts). Ein neues Teilen ersetzt sie.
+// - Teilen an FinTrack (Android, share_target im Manifest): Die geteilten Dateien kommen per POST an
+//   /app/share. Sie liegen nur so lange im Cache "fintrack-share", bis eine Import-Seite sie abholt,
+//   und werden dabei gelöscht (siehe src/lib/sharedFile.ts). Ein neues Teilen ersetzt sie.
 
 const VERSION = '__VERSION__';
 const CACHE = `fintrack-${VERSION}`;
 const OFFLINE = '/app/offline.html';
 const PRECACHE = [OFFLINE, '/app/icon-192.png'];
 const SHARE_CACHE = 'fintrack-share';
-const SHARE_KEY = '/app/share/file';
-const SHARE_TARGET = '/app/budget/import?shared=1';
+const SHARE_PREFIX = '/app/share/file/';
+const SHARE_TARGET = '/app/import/shared';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(PRECACHE)));
@@ -36,20 +36,19 @@ self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
 
-// Geteilte Datei zwischenlegen und zur Import-Seite weiterleiten
+// Geteilte Dateien zwischenlegen und zur Auswahl weiterleiten (Haushaltsbuch oder Depot)
 async function receiveShare(request) {
   try {
     const form = await request.formData();
-    const file = form.getAll('file').find((entry) => typeof entry !== 'string');
+    const files = form.getAll('file').filter((entry) => typeof entry !== 'string');
     const cache = await caches.open(SHARE_CACHE);
-    await cache.delete(SHARE_KEY);
-    if (file) {
-      await cache.put(SHARE_KEY, new Response(file, {
-        headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name || 'geteilt') },
-      }));
-    }
+    const old = await cache.keys();
+    await Promise.all(old.map((key) => cache.delete(key)));
+    await Promise.all(files.map((file, index) => cache.put(SHARE_PREFIX + index, new Response(file, {
+      headers: { 'Content-Type': file.type || 'application/octet-stream', 'X-File-Name': encodeURIComponent(file.name || 'geteilt') },
+    }))));
   } catch {
-    // Ohne Datei öffnet sich die Import-Seite trotzdem, dort lässt sich die Datei von Hand wählen
+    // Ohne Dateien zeigt die Auswahl einen Hinweis, dort lassen sie sich von Hand wählen
   }
   return Response.redirect(SHARE_TARGET, 303);
 }

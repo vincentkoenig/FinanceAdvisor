@@ -2,8 +2,9 @@
 // Dateien wählen (auch mehrere oder ein ZIP): PDF-Abrechnungen von Brokern (persönliche Angaben werden entfernt, dann
 // liest die KI die Ausführungen aus), den Trade-Republic-Export und CSV-Exporte von Krypto-Apps wie Bison (ohne KI, Spalten notfalls
 // von Hand zuordnen) → Vorschau prüfen → buchen. Gespeichert wird erst beim Buchen, die Dateien nirgends.
-import { useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+// Auf Android kommen die Dateien auch über "Teilen → FinTrack → Depot" (?shared=1, siehe lib/sharedFile.ts).
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import {
   type CryptoField, type CryptoMapping, type DepotRow, UnknownColumnsError, previewCryptoImport, previewDepotImport, useCommitDepotImport,
 } from '../../api/imports';
@@ -12,6 +13,7 @@ import { Icon } from '../../components/Icon';
 import { useToast } from '../../components/Toast';
 import { dayShort, parseDay, qty } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
+import { takeSharedFiles } from '../../lib/sharedFile';
 import { recheckSales } from './depotModel';
 import { filesFromZip, isZip } from './zip';
 
@@ -81,7 +83,7 @@ export function DepotImportPage() {
   };
 
   // Nacheinander, damit die Reihenfolge stimmt und der Server nicht mit vielen Auswertungen auf einmal belastet wird
-  const pick = async (list: FileList | null) => {
+  const pick = async (list: FileList | File[] | null) => {
     if (!list?.length) return;
     setError(null);
     // Archive zuerst auspacken, damit der Fortschritt alle Dateien zählt
@@ -107,6 +109,22 @@ export function DepotImportPage() {
     setReading(null);
     setInputKey((k) => k + 1);
   };
+
+  // Über "Teilen" geöffnet: Dateien abholen und gleich lesen, danach den Hinweis aus der Adresse nehmen
+  const [search, setSearch] = useSearchParams();
+  const shared = search.get('shared') === '1';
+  const sharedHandled = useRef(false);
+  useEffect(() => {
+    if (!shared || sharedHandled.current) return;
+    sharedHandled.current = true;
+    setSearch({}, { replace: true });
+    takeSharedFiles().then((received) => {
+      if (received.length) pick(received);
+      else setError('Die geteilten Dateien sind nicht angekommen. Bitte hier von Hand wählen.');
+    });
+    // pick ändert sich bei jedem Rendern, gebraucht wird nur der erste Aufruf
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shared]);
 
   const applyMapping = async (index: number, file: File) => {
     setReading(file.name);
@@ -167,6 +185,8 @@ export function DepotImportPage() {
           ISIN, Datum, Stück, Kurs, Gebühren) geht zum Auslesen an OpenAI. CSV-Dateien liest FinTrack selbst, ohne KI.
           Keine Datei wird gespeichert. Die Reihenfolge ist egal, Käufe und Verkäufe werden nach Datum gebucht.
         </p>
+        {/* Mit gelesenen Dateien steht ein Fehler unten bei der Vorschau */}
+        {error && files.length === 0 && <p className="err" role="alert">{error}</p>}
         {files.length > 0 && (
           <ul className="file-results">
             {files.map((f, index) => (

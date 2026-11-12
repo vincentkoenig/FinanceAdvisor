@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderApp } from '../../test/renderApp';
 import { sent, session, testUser } from '../../test/server';
+import { fakeShareCache } from '../../test/shareCache';
 
 beforeEach(() => {
   session.loggedIn = true;
@@ -182,21 +183,10 @@ describe('Umsätze importieren', () => {
   });
 
   describe('über "Teilen" auf Android', () => {
-    // Was der Service Worker ablegt: eine Antwort mit der Datei unter /app/share/file im Cache "fintrack-share"
-    function fakeShareCache(file: File | null) {
-      const store = new Map<string, Response>();
-      if (file) store.set('/app/share/file', new Response(file, { headers: { 'Content-Type': file.type, 'X-File-Name': encodeURIComponent(file.name) } }));
-      const cache = {
-        match: async (key: string) => store.get(key),
-        delete: async (key: string) => store.delete(key),
-      };
-      vi.stubGlobal('caches', { open: async (name: string) => (name === 'fintrack-share' ? cache : null) });
-      return store;
-    }
     afterEach(() => vi.unstubAllGlobals());
 
     it('liest die geteilte Datei gleich ein und löscht sie vom Gerät', async () => {
-      const store = fakeShareCache(new File(['%PDF-1.4'], 'Kontoauszug Oktober.pdf', { type: 'application/pdf' }));
+      const store = fakeShareCache([new File(['%PDF-1.4'], 'Kontoauszug Oktober.pdf', { type: 'application/pdf' })]);
       const { router } = renderApp('/budget/import?shared=1');
 
       expect(await preview()).toHaveTextContent('2 neu');
@@ -206,7 +196,7 @@ describe('Umsätze importieren', () => {
     });
 
     it('liest die Datei auch, wenn erst die Anmeldung dazwischen kam', async () => {
-      fakeShareCache(new File(['%PDF-1.4'], 'auszug.pdf', { type: 'application/pdf' }));
+      fakeShareCache([new File(['%PDF-1.4'], 'auszug.pdf', { type: 'application/pdf' })]);
       session.loggedIn = false;
       renderApp('/budget/import?shared=1');
       const user = userEvent.setup();
@@ -217,14 +207,9 @@ describe('Umsätze importieren', () => {
     });
 
     it('sagt Bescheid, wenn keine Datei angekommen ist', async () => {
-      fakeShareCache(null);
+      fakeShareCache([]);
       renderApp('/budget/import?shared=1');
       expect(await screen.findByRole('alert')).toHaveTextContent('Die geteilte Datei ist nicht angekommen.');
-    });
-
-    it('sagt Bescheid, wenn der Server ohne Service Worker weitergeleitet hat', async () => {
-      renderApp('/budget/import?shared=missing');
-      expect(await screen.findByRole('alert')).toHaveTextContent('Bitte hier von Hand wählen.');
     });
   });
 });

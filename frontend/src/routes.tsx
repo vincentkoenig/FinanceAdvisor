@@ -14,6 +14,7 @@ import { useTheme } from './lib/theme';
 const PortfolioPage = lazyPage(() => import('./features/portfolio/PortfolioPage').then((m) => ({ default: m.PortfolioPage })));
 const BudgetPage = lazyPage(() => import('./features/budget/BudgetPage').then((m) => ({ default: m.BudgetPage })));
 const DepotImportPage = lazyPage(() => import('./features/portfolio/DepotImportPage').then((m) => ({ default: m.DepotImportPage })));
+const SharedPage = lazyPage(() => import('./features/share/SharedPage').then((m) => ({ default: m.SharedPage })));
 const ImportPage = lazyPage(() => import('./features/budget/ImportPage').then((m) => ({ default: m.ImportPage })));
 const ContractsPage = lazyPage(() => import('./features/contracts/ContractsPage').then((m) => ({ default: m.ContractsPage })));
 const ChatPage = lazyPage(() => import('./features/chat/ChatPage').then((m) => ({ default: m.ChatPage })));
@@ -59,6 +60,7 @@ export const routes: RouteObject[] = [
               { path: 'portfolio/import', element: <DepotImportPage /> },
               { path: 'budget', element: <BudgetPage /> },
               { path: 'budget/import', element: <ImportPage /> },
+              { path: 'import/shared', element: <SharedPage /> },
               { path: 'contracts', element: <ContractsPage /> },
               { path: 'chat', element: <ChatPage /> },
               { path: 'analyse', element: <AnalysePage /> },

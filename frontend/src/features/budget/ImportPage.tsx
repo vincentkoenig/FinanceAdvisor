@@ -3,7 +3,7 @@
 // Vorschau prüfen: neue Umsätze nach Empfänger gruppiert, Kategorie je Gruppe (Vorschläge aus früheren Buchungen,
 // Regeln und bekannten Händlern, fehlende auf Wunsch von der KI, neue Kategorien direkt hier) → übernehmen.
 // Gespeichert wird erst beim Übernehmen; die Datei selbst bleibt nirgends liegen.
-// Auf Android kommt die Datei auch über "Teilen → FinTrack" (?shared=1, siehe lib/sharedFile.ts).
+// Auf Android kommt die Datei auch über "Teilen → FinTrack → Haushaltsbuch" (?shared=1, siehe lib/sharedFile.ts).
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { type Category, useAddCategory, useCategories } from '../../api/budget';
@@ -40,8 +40,7 @@ export function ImportPage() {
   const [mapping, setMapping] = useState<ColumnMapping>({});
   const [preview, setPreview] = useState<ImportPreview | null>(null);
   const [choices, setChoices] = useState<Record<string, Choice>>({});
-  // Ohne Service Worker leitet der Server ohne Datei weiter (?shared=missing)
-  const [error, setError] = useState<string | null>(shared && shared !== '1' ? SHARE_MISSING : null);
+  const [error, setError] = useState<string | null>(null);
   // Von der KI vorgeschlagene neue Kategorien und die Zeile, für die gerade eine neue angelegt wird
   const [proposals, setProposals] = useState<Proposal[]>([]);
   // Für wen gerade eine neue Kategorie angelegt wird (eine Zeile oder eine ganze Gruppe)
@@ -77,10 +76,9 @@ export function ImportPage() {
   // Über "Teilen" geöffnet: Datei abholen und gleich lesen, danach den Hinweis aus der Adresse nehmen
   const sharedHandled = useRef(false);
   useEffect(() => {
-    if (!shared || sharedHandled.current) return;
+    if (shared !== '1' || sharedHandled.current) return;
     sharedHandled.current = true;
     setSearch({}, { replace: true });
-    if (shared !== '1') return;
     takeSharedFile().then((received) => {
       if (received) pick(received);
       else setError(SHARE_MISSING);
