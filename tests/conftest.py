@@ -170,3 +170,27 @@ def fake_yahoo(monkeypatch):
     prices.clear_cache()
     yield fake
     prices.clear_cache()
+
+
+class _NoNetwork:
+    """Ersetzt requests in market/fallback.py: jede Abfrage scheitert wie bei einem Netzausfall."""
+
+    @staticmethod
+    def get(*args, **kwargs):
+        raise ConnectionError('Kein Netz in Tests (market/fallback.py)')
+
+
+@pytest.fixture(autouse=True)
+def no_fallback_network(monkeypatch):
+    """
+    Die Ersatzquellen (EZB, CoinGecko, Alpha Vantage) fragen in Tests nie das Netz;
+    ohne Schlüssel wartet Alpha Vantage auch nicht auf seine Sekunden-Pause.
+    Tests, die eine Quelle prüfen, ersetzen fallback.requests selbst.
+    """
+    from fintrack.market import fallback
+
+    monkeypatch.setattr(fallback, 'requests', _NoNetwork)
+    monkeypatch.delenv('ALPHAVANTAGE_API_KEY', raising=False)
+    monkeypatch.delenv('COINGECKO_API_KEY', raising=False)
+    monkeypatch.setattr(fallback, '_found_ids', {})
+    monkeypatch.setitem(fallback._alphavantage_state, 'calls', 0)

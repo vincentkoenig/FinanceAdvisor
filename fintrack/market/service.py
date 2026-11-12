@@ -18,7 +18,7 @@ from bisect import bisect_right
 from datetime import date, datetime, timedelta
 
 from fintrack.extensions import db
-from fintrack.market import yahoo
+from fintrack.market import quotes, yahoo
 from fintrack.models import Asset, FxRate, PriceHistory
 
 logger = logging.getLogger(__name__)
@@ -41,7 +41,9 @@ def refresh_asset_metadata(asset, force=False):
     """
     Holt Handelswährung, Typ und Börse bei yfinance, falls noch nie oder vor
     längerer Zeit geschehen. Gibt False zurück, wenn yfinance das Symbol
-    nicht kennt.
+    nicht kennt und auch früher nie kannte. Waren die Metadaten schon einmal
+    geladen, geht es mit ihnen weiter: Fällt yfinance gerade aus, können die
+    Ersatzquellen die Kurse trotzdem liefern.
     """
     fresh = asset.metadata_updated_at and datetime.now() - asset.metadata_updated_at < METADATA_MAX_AGE
     if fresh and not force:
@@ -49,7 +51,7 @@ def refresh_asset_metadata(asset, force=False):
 
     metadata = yahoo.fetch_metadata(asset.symbol)
     if not metadata:
-        return False
+        return bool(asset.metadata_updated_at and asset.currency)
 
     asset.currency = metadata['currency']
     asset.asset_type = metadata['asset_type']
@@ -84,6 +86,11 @@ def update_asset_prices(asset, today=None):
     sonst ab dem letzten gespeicherten Tag, mindestens aber die letzten
     ROLLING_DAYS Tage. Gibt die Anzahl gespeicherter Tage zurück.
     """
+    return _load_asset_prices(asset, today)[0]
+
+
+def _load_asset_prices(asset, today=None):
+    """Wie update_asset_prices, gibt aber (Anzahl, Quelle) zurück."""
     today = today or date.today()
     last = PriceHistory.query.filter_by(asset_id=asset.id).order_by(PriceHistory.date.desc()).first()
 
@@ -92,13 +99,19 @@ def update_asset_prices(asset, today=None):
     else:
         start = min(last.date.date() + timedelta(days=1), today - timedelta(days=ROLLING_DAYS))
 
-    return _upsert_prices(asset, yahoo.fetch_daily_closes(asset.symbol, start, today))
+    closes, source = quotes.fetch_daily_closes_with_source(asset.symbol, start, today)
+    return _upsert_prices(asset, closes), source
 
 
 def update_fx_rates(currency, today=None):
     """Wie update_asset_prices, nur für den Wechselkurs einer Währung nach Euro."""
+    return _load_fx_rates(currency, today)[0]
+
+
+def _load_fx_rates(currency, today=None):
+    """Wie update_fx_rates, gibt aber (Anzahl, Quelle) zurück."""
     if currency == 'EUR':
-        return 0
+        return 0, None
     today = today or date.today()
     last = FxRate.query.filter_by(currency=currency).order_by(FxRate.date.desc()).first()
     if last is None:
@@ -106,7 +119,7 @@ def update_fx_rates(currency, today=None):
     else:
         start = min(last.date + timedelta(days=1), today - timedelta(days=ROLLING_DAYS))
 
-    closes = yahoo.fetch_fx_closes(currency, start, today)
+    closes, source = quotes.fetch_fx_closes_with_source(currency, start, today)
     existing = {row.date: row for row in FxRate.query.filter(
         FxRate.currency == currency, FxRate.date >= start).all()}
     for day, rate in closes:
@@ -114,16 +127,17 @@ def update_fx_rates(currency, today=None):
             existing[day].rate_to_eur = rate
         else:
             db.session.add(FxRate(currency=currency, date=day, rate_to_eur=rate))
-    return len(closes)
+    return len(closes), source
 
 
 def update_all_prices(today=None):
     """
     Täglicher Lauf: Metadaten, Kurse und Wechselkurse aller Assets
     aktualisieren. Ein Fehler bei einem Asset bricht den Lauf nicht ab.
-    Gibt eine Zusammenfassung zurück.
+    Gibt eine Zusammenfassung zurück; unter 'fallbacks' steht, wo yfinance
+    nichts geliefert hat und eine Ersatzquelle eingesprungen ist.
     """
-    summary = {'assets': 0, 'prices': 0, 'fx_rates': 0, 'errors': []}
+    summary = {'assets': 0, 'prices': 0, 'fx_rates': 0, 'fallbacks': [], 'errors': []}
     currencies = set()
 
     for asset in Asset.query.order_by(Asset.id).all():
@@ -132,7 +146,10 @@ def update_all_prices(today=None):
                 summary['errors'].append(f'{asset.symbol}: bei yfinance unbekannt')
                 db.session.commit()
                 continue
-            summary['prices'] += update_asset_prices(asset, today)
+            stored, source = _load_asset_prices(asset, today)
+            summary['prices'] += stored
+            if source not in (None, 'yfinance'):
+                summary['fallbacks'].append(f'{asset.symbol}: {source}')
             currencies.add(asset.currency)
             summary['assets'] += 1
             db.session.commit()
@@ -143,7 +160,10 @@ def update_all_prices(today=None):
 
     for currency in sorted(c for c in currencies if c):
         try:
-            summary['fx_rates'] += update_fx_rates(currency, today)
+            stored, source = _load_fx_rates(currency, today)
+            summary['fx_rates'] += stored
+            if source not in (None, 'yfinance'):
+                summary['fallbacks'].append(f'Wechselkurs {currency}: {source}')
             db.session.commit()
         except Exception as error:
             db.session.rollback()
@@ -200,7 +220,7 @@ def fx_rate_on(currency, day):
 
 def latest_fx_rate(currency):
     """
-    Aktuellster Wechselkurs: aus der Datenbank, sonst live bei yfinance.
+    Aktuellster Wechselkurs: aus der Datenbank, sonst live (yfinance, ersatzweise EZB).
     Gibt None zurück, wenn keiner zu bekommen ist.
     """
     if currency in (None, 'EUR'):
@@ -208,7 +228,7 @@ def latest_fx_rate(currency):
     row = FxRate.query.filter_by(currency=currency).order_by(FxRate.date.desc()).first()
     if row and (date.today() - row.date).days <= ROLLING_DAYS:
         return row.rate_to_eur
-    live = yahoo.fetch_last_price(f'{currency}EUR=X')
+    live = quotes.fetch_last_price(f'{currency}EUR=X')
     if live:
         return live[0]
     return row.rate_to_eur if row else None
@@ -250,7 +270,7 @@ def quote_in_eur(symbol):
     Aktueller Kurs eines beliebigen Symbols in Euro (z.B. für den Chat),
     unabhängig davon, ob es als Asset gespeichert ist.
     """
-    quote = yahoo.fetch_last_price(symbol)
+    quote = quotes.fetch_last_price(symbol)
     if not quote:
         return None
     price, currency = quote

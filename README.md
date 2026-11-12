@@ -33,6 +33,7 @@ Das Projekt ist außerdem ein Lernprojekt: Jeder Baustein, vom Datenbankschema b
 ### 📊 Portfolio
 - Aktien, ETFs, Kryptowährungen und Edelmetalle kaufen und verkaufen, suchen per Name, Symbol oder ISIN (Euro-Börsen zuerst, Krypto als Euro-Paar wie BTC-EUR)
 - Live-Kurse über **yfinance** in der Handelswährung, umgerechnet mit dem Wechselkurs des jeweiligen Tages
+- **Ersatzquellen**, wenn yfinance ausfällt: Wechselkurse von der EZB, Krypto von CoinGecko, Tageskurse für Aktien und ETFs (XETRA, Paris, Amsterdam, USA) von Alpha Vantage. Ohne Live-Kurs gilt der letzte gespeicherte Schlusskurs
 - **Wertverlauf aus den echten Käufen und Verkäufen** rekonstruiert, mit Zeiträumen (1W bis Max). Die Entwicklung rechnet Käufe heraus, damit ein Kauf nicht als Gewinn erscheint
 - Aufteilung nach Anlageart, Watchlist, Transaktionen, Sparpläne und automatisch verbuchte Dividenden
 - Ein täglicher Lauf nach US-Börsenschluss lädt Schlusskurse nach, holt ausgefallene Tage nach und verbucht Dividenden
