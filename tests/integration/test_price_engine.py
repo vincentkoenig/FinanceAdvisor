@@ -176,6 +176,59 @@ class TestEuroConversion:
         assert service.latest_fx_rate('USD') == 0.80
 
 
+class TestFallbackSources:
+    """Fällt yfinance aus, springen die Ersatzquellen aus market/fallback.py ein"""
+
+    def test_daily_run_uses_fallback_and_reports_it(self, app, fake_yahoo, monkeypatch):
+        from fintrack.market import fallback
+        asset = make_asset('AAPL', currency='USD')
+        monkeypatch.setattr(fallback, 'fetch_daily_closes',
+                            lambda symbol, start, end=None: ([(end, 200.0, 'USD')], 'alphavantage'))
+        monkeypatch.setattr(fallback, 'fetch_fx_closes',
+                            lambda currency, start, end=None: [(end, 0.9)])
+
+        summary = service.update_all_prices(TODAY)
+
+        assert stored_prices(asset) == [(TODAY, 200.0, 'USD')]
+        assert FxRate.query.filter_by(currency='USD').one().rate_to_eur == 0.9
+        assert summary['fallbacks'] == ['AAPL: alphavantage', 'Wechselkurs USD: ezb']
+        assert summary['errors'] == []
+
+    def test_yahoo_prices_are_not_reported_as_fallback(self, app, fake_yahoo):
+        make_asset('SAP.DE')
+        fake_yahoo.closes['SAP.DE'] = [(TODAY, 100.0, 'EUR')]
+
+        assert service.update_all_prices(TODAY)['fallbacks'] == []
+
+    def test_known_asset_continues_when_metadata_fails(self, app, fake_yahoo, monkeypatch):
+        """Veraltete Metadaten und yfinance down: Kurse trotzdem aus der Ersatzquelle"""
+        from fintrack.market import fallback
+        asset = make_asset('SAP.DE', metadata_updated_at=datetime.now() - timedelta(days=90))
+        monkeypatch.setattr(fallback, 'fetch_daily_closes',
+                            lambda symbol, start, end=None: ([(end, 210.0, 'EUR')], 'alphavantage'))
+
+        summary = service.update_all_prices(TODAY)
+
+        assert summary['assets'] == 1
+        assert stored_prices(asset) == [(TODAY, 210.0, 'EUR')]
+
+    def test_current_price_uses_last_stored_close(self, app):
+        """Ohne Live-Kurs gilt der letzte Schlusskurs, nicht der Kaufpreis"""
+        asset = make_asset('SAP.DE')
+        db.session.add(PriceHistory(asset_id=asset.id, date=datetime.combine(
+            date.today() - timedelta(days=1), datetime.min.time()), price=205.0, currency='EUR'))
+        db.session.commit()
+
+        assert get_current_price(asset, unknown_type_default=12.0) == 205.0
+
+    def test_crypto_live_price_from_fallback(self, app, monkeypatch):
+        from fintrack.market import fallback
+        asset = make_asset('BTC-EUR')
+        monkeypatch.setattr(fallback, 'fetch_last_price', lambda symbol: (64000.0, 'EUR'))
+
+        assert get_current_price(asset) == 64000.0
+
+
 class TestDividends:
 
     def test_dividend_converted_with_rate_of_ex_day(self, app, make_user, fake_yahoo):
