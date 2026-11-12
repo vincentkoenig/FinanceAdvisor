@@ -10,6 +10,8 @@
 // - Teilen an FinTrack (Android, share_target im Manifest): Die geteilten Dateien kommen per POST an
 //   /app/share. Sie liegen nur so lange im Cache "fintrack-share", bis eine Import-Seite sie abholt,
 //   und werden dabei gelöscht (siehe src/lib/sharedFile.ts). Ein neues Teilen ersetzt sie.
+// - Push-Meldungen (push/service.py) zeigt er als Benachrichtigung; ein Tippen darauf öffnet FinTrack
+//   an der mitgeschickten Stelle, in einem schon offenen Fenster, wenn es eins gibt.
 
 const VERSION = '__VERSION__';
 const CACHE = `fintrack-${VERSION}`;
@@ -82,4 +84,33 @@ self.addEventListener('fetch', (event) => {
       }))),
     );
   }
+});
+
+self.addEventListener('push', (event) => {
+  let message = {};
+  try {
+    message = event.data ? event.data.json() : {};
+  } catch {
+    // Unlesbare Meldung: trotzdem etwas zeigen, Browser verlangen bei Push eine sichtbare Benachrichtigung
+  }
+  event.waitUntil(self.registration.showNotification(message.title || 'FinTrack', {
+    body: message.body || '',
+    icon: '/app/icon-192.png',
+    badge: '/app/icon-192.png',
+    tag: message.tag || undefined,
+    data: { url: message.url || '/app/' },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || '/app/', self.location.origin);
+  // Nur Ziele in FinTrack öffnen
+  const url = target.origin === self.location.origin && target.pathname.startsWith('/app') ? target.href : '/app/';
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+    const open = windows.find((client) => new URL(client.url).pathname.startsWith('/app'));
+    // navigate() klappt nur in Fenstern, die dieser Service Worker steuert; sonst ein neues öffnen
+    if (open) return open.focus().then((client) => client.navigate(url)).catch(() => self.clients.openWindow(url));
+    return self.clients.openWindow(url);
+  }));
 });

@@ -17,6 +17,7 @@ from fintrack.api import ApiError, parse_body, parse_query
 from fintrack.auth.session import current_user_key, get_own, protect_blueprint
 from fintrack.extensions import db, limiter
 from fintrack.market.prices import get_current_price
+from fintrack.portfolio.savings_plans import is_due as plan_is_due
 from fintrack.market.service import price_in_eur_on
 from fintrack.market.search import create_asset, search_assets
 from fintrack.models import (Asset, AssetTransaction, Dividend,
@@ -315,13 +316,6 @@ def get_savings_plans():
     for plan in plans:
         asset = db.session.get(Asset, plan.asset_id)
 
-        # Fällig wenn: heutiger Tag >= geplanter Tag im Monat,
-        # UND (noch nie ausgeführt ODER letzte Ausführung liegt vor
-        # dem aktuellen Fälligkeitstermin dieses Monats)
-        due_date_this_month = datetime(today.year, today.month, min(plan.day_of_month, 28))
-        is_due = today >= due_date_this_month and (
-            plan.last_executed is None or plan.last_executed < due_date_this_month
-        )
 
         result.append({
             "id": plan.id,
@@ -331,7 +325,7 @@ def get_savings_plans():
             "amount": plan.amount,
             "day_of_month": plan.day_of_month,
             "last_executed": plan.last_executed.strftime('%Y-%m-%d') if plan.last_executed else None,
-            "is_due": is_due
+            "is_due": plan_is_due(plan, today)
         })
 
     return jsonify(result), 200

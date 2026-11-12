@@ -384,6 +384,43 @@ class AccountBalance(db.Model):
     __table_args__ = (db.UniqueConstraint('user_id', 'date'),)
 
 
+# ─── PUSH-BENACHRICHTIGUNGEN ──────────────────────────────────────────────────
+
+class PushSubscription(db.Model):
+    """
+    PushSubscription Tabelle - ein Gerät (Browser), das Push-Benachrichtigungen bekommt.
+    endpoint, p256dh und auth liefert der Browser beim Anmelden (Web Push): An endpoint
+    schickt der Server die verschlüsselte Nachricht, p256dh und auth sind die Schlüssel
+    dafür. Pro Gerät lässt sich jede Art von Meldung einzeln ein- und ausschalten
+    (deadlines, savings_plan, daily_update).
+    Gerätedaten gehören nicht in den Export: Auf einem neuen Server meldet sich das
+    Gerät einfach neu an.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    endpoint = db.Column(db.String(1000), nullable=False, unique=True)
+    p256dh = db.Column(db.String(200), nullable=False)
+    auth = db.Column(db.String(100), nullable=False)
+    deadlines = db.Column(db.Boolean, nullable=False, default=True)
+    savings_plan = db.Column(db.Boolean, nullable=False, default=True)
+    daily_update = db.Column(db.Boolean, nullable=False, default=True)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+
+class PushLog(db.Model):
+    """
+    PushLog Tabelle - welche Meldung ein Nutzer schon bekommen hat, damit der tägliche
+    Lauf nichts doppelt schickt, z.B. 'contract:12:2026-12-31:14' für die Erinnerung
+    14 Tage vor der Kündigungsfrist. Siehe push/notify.py.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    key = db.Column(db.String(200), nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'key'),)
+
+
 # ─── PYDANTIC SCHEMAS ─────────────────────────────────────────────────────────
 
 class AllocationItem(PydanticBaseModel):

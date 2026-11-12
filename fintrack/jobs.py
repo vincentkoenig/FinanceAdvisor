@@ -10,6 +10,10 @@ Gestartet wird der Lauf auf zwei Wegen, die sich nicht in die Quere kommen:
 - vom Scheduler im Server, abends um 22:30 Uhr deutscher Zeit
 - von GitHub Actions über /api/v1/admin/run-daily-jobs, das den Server
   vorher aufweckt - auf dem kostenlosen Render-Tarif schläft er sonst
+
+Getrennt davon verschickt der Scheduler morgens um 8:00 Uhr die
+Push-Meldungen (push/notify.py), Job 'notify'. Von 22 bis 8 Uhr ist Ruhezeit:
+In dieser Zeit startet kein Lauf, der Meldungen verschickt.
 Eine Sperre sorgt dafür, dass immer nur ein Lauf gleichzeitig arbeitet.
 """
 
@@ -23,6 +27,7 @@ from fintrack.extensions import get_openai_client
 from fintrack.insights.service import generate_insights_for_all_users
 from fintrack.market.service import update_all_prices
 from fintrack.portfolio.dividends import process_dividends_for_all_users
+from fintrack.push.notify import notify_all_users
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +60,12 @@ def generate_daily_insights(flask_app):
         return {'insights': created}
 
 
+def send_notifications(flask_app):
+    """Push-Meldungen am Morgen: Kündigungsfristen und Hinweis auf das Tages-Update."""
+    with flask_app.app_context():
+        return notify_all_users()
+
+
 def run_daily_jobs(flask_app):
     """Alle drei Schritte nacheinander. Ein Fehler in einem Schritt stoppt die folgenden nicht."""
     result = {}
@@ -73,6 +84,7 @@ JOBS = {
     'prices': update_prices,
     'dividends': check_dividends,
     'insights': generate_daily_insights,
+    'notify': send_notifications,
 }
 
 
@@ -116,9 +128,11 @@ def job_status():
 def start_scheduler(flask_app):
     """
     Startet den Scheduler: jeden Abend um 22:30 Uhr deutscher Zeit (nach
-    US-Börsenschluss) den kompletten täglichen Lauf.
+    US-Börsenschluss) den kompletten täglichen Lauf, und morgens um 8:00 Uhr
+    die Push-Meldungen - nicht abends, damit niemand nachts geweckt wird.
     """
     scheduler = BackgroundScheduler(timezone=TIMEZONE)
     scheduler.add_job(start_job, 'cron', hour=22, minute=30, args=[flask_app, 'daily'])
+    scheduler.add_job(start_job, 'cron', hour=8, minute=0, args=[flask_app, 'notify'])
     scheduler.start()
-    print(f'Scheduler started - daily jobs 22:30 {TIMEZONE}')
+    print(f'Scheduler started - daily jobs 22:30, push 08:00 {TIMEZONE}')

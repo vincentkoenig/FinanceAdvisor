@@ -73,6 +73,14 @@ def create_app(config_name=None, config_overrides=None):
     from fintrack.auth.cli import register_commands
     register_commands(app)
 
+    @app.cli.command('make-vapid-keys')
+    def make_vapid_keys_command():
+        """Schlüsselpaar für Push-Benachrichtigungen erzeugen (einmalig, für die .env)."""
+        from fintrack.push.service import generate_vapid_keys
+        public, private = generate_vapid_keys()
+        click.echo(f'VAPID_PUBLIC_KEY={public}')
+        click.echo(f'VAPID_PRIVATE_KEY={private}')
+
     @app.cli.command('upgrade-db')
     def upgrade_db_command():
         """Datenbank per Migration auf den neuesten Stand bringen."""
@@ -95,6 +103,7 @@ def create_app(config_name=None, config_overrides=None):
     from fintrack.imports import routes as import_routes
     from fintrack.insights import routes as insights_routes
     from fintrack.portfolio import analysis, routes as portfolio_routes
+    from fintrack.push import routes as push_routes
 
     # Das React-Frontend liegt unter /app (/ leitet dorthin), die JSON-API unter /api/v1.
     # Jeder Blueprint schützt sich selbst: Bereiche mit Nutzerdaten über
@@ -105,7 +114,7 @@ def create_app(config_name=None, config_overrides=None):
     app.register_blueprint(spa.bp)
     for blueprint in (auth_routes.bp, portfolio_routes.bp, analysis.bp, budget_routes.bp,
                       chat_routes.bp, contract_routes.bp, import_routes.bp, insights_routes.bp,
-                      account_routes.bp):
+                      account_routes.bp, push_routes.bp):
         app.register_blueprint(blueprint, url_prefix=API_PREFIX)
     app.register_blueprint(admin_routes.bp, url_prefix=f'{API_PREFIX}/admin')
 
