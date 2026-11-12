@@ -64,12 +64,12 @@ class TestDevices:
         assert client.post('/api/v1/me/push/devices', json=DEVICE).status_code == 503
 
     def test_subscribe_read_and_change(self, client):
-        assert subscribe(client) == {'deadlines': True, 'savings_plan': True, 'daily_update': True}
+        assert subscribe(client) == {'deadlines': True, 'savings_plan': True, 'daily_update': True, 'price_moves': True, 'watchlist': True}
 
         response = client.post('/api/v1/me/push/devices/current', json={'endpoint': ENDPOINT, 'daily_update': False})
-        assert response.get_json() == {'deadlines': True, 'savings_plan': True, 'daily_update': False}
+        assert response.get_json() == {'deadlines': True, 'savings_plan': True, 'daily_update': False, 'price_moves': True, 'watchlist': True}
         assert client.post('/api/v1/me/push/devices/current', json={'endpoint': ENDPOINT}).get_json() == \
-            {'deadlines': True, 'savings_plan': True, 'daily_update': False}
+            {'deadlines': True, 'savings_plan': True, 'daily_update': False, 'price_moves': True, 'watchlist': True}
 
     def test_subscribing_again_updates_the_same_device(self, client):
         subscribe(client)

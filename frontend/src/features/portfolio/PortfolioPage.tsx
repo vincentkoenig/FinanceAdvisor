@@ -550,7 +550,7 @@ function Watchlist({ query, onAdd, onOpen }: { query: ReturnType<typeof useWatch
                 return (
                   <button className="row row-btn" key={w.asset_id} onClick={() => onOpen(w)}>
                     <span className="token" aria-hidden="true">{token(w.symbol, w.name)}</span>
-                    <span className="grow"><span className="trunc">{w.name}</span><span className="sub-line">{w.symbol} · beobachtet seit {w.added_at}</span></span>
+                    <span className="grow"><span className="trunc">{w.name}</span><span className="sub-line">{w.symbol} · beobachtet seit {w.added_at}{w.target_price !== null && (w.target_hit ? ' · Ziel erreicht' : ` · Ziel ${eur(w.target_price)}`)}</span></span>
                     <span className="end">
                       <span className="strong block">{w.current_price ? eur(w.current_price) : '–'}</span>
                       {change !== null && <span className={`sub-line ${tone(change)}`}>{pct(change)} seit {eur(w.price_added!)}</span>}

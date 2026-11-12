@@ -74,7 +74,7 @@ Das Projekt ist außerdem ein Lernprojekt: Jeder Baustein, vom Datenbankschema b
 ### 📱 Handy (PWA)
 - Eine Oberfläche für Laptop und Handy: unten eine Navigation, Listen statt breiter Tabellen, Dialoge als Blatt von unten
 - Installierbar als App mit eigenem Symbol. Der Service Worker speichert nur Programmdateien, nie Finanzdaten
-- **Push-Benachrichtigungen** pro Gerät und pro Art einzeln schaltbar: Kündigungsfristen (14 und 3 Tage vorher), fälliger Sparplan, Tages-Update der KI. Nie zwischen 22 und 8 Uhr und nie mit Beträgen, weil Meldungen auf dem Sperrbildschirm stehen. Auf dem iPhone nur in der installierten App
+- **Push-Benachrichtigungen** pro Gerät und pro Art einzeln schaltbar: Kündigungsfristen (14 und 3 Tage vorher), fälliger Sparplan, Tages-Update der KI, starke Kursbewegungen (Position ±5 %, Depot ±3 %) und erreichte Watchlist-Zielkurse. Die Kursprüfung läuft tagsüber alle 30 Minuten und hält ihre Daten im Arbeitsspeicher, damit sie die Datenbank nicht weckt. Nie zwischen 22 und 8 Uhr und nie mit Beträgen, weil Meldungen auf dem Sperrbildschirm stehen. Auf dem iPhone nur in der installierten App
 
 <p align="center"><img src="docs/images/handy.png" alt="FinTrack auf dem Handy" width="300"></p>
 

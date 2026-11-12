@@ -13,12 +13,14 @@ type DeviceState =
   | { kind: 'off' }
   | { kind: 'on'; endpoint: string; settings: DeviceSettings };
 
-const DEFAULTS: DeviceSettings = { deadlines: true, savings_plan: true, daily_update: true };
+const DEFAULTS: DeviceSettings = { deadlines: true, savings_plan: true, daily_update: true, price_moves: true, watchlist: true };
 
 const TOPICS: [keyof DeviceSettings, string, string][] = [
   ['deadlines', 'Kündigungsfristen', '14 und 3 Tage vor dem letzten Kündigungstag eines Vertrags.'],
   ['savings_plan', 'Sparplan fällig', 'Am Ausführungstag, bis du die Ausführung bestätigt hast.'],
   ['daily_update', 'Tages-Update', 'Morgens ein Hinweis, wenn der KI-Text vom Vorabend bereitliegt.'],
+  ['price_moves', 'Starke Kursbewegung', 'Wenn eine Position mehr als 5 % oder das Depot mehr als 3 % vom letzten Schlusskurs abweicht. Höchstens einmal am Tag je Richtung.'],
+  ['watchlist', 'Watchlist-Zielkurs', 'Wenn ein Wert auf der Watchlist deinen Zielkurs erreicht. Den Zielkurs setzt du im Portfolio unter Watchlist.'],
 ];
 
 function Notice({ children }: { children: React.ReactNode }) {

@@ -69,8 +69,9 @@ const initialData = () => ({
     { id: 32, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', ex_dividend_date: '2025-12-10', amount_per_share: 0.4, shares_held: 100, total_amount: 40 },
   ],
   watchlist: [
-    { asset_id: 3, name: 'SAP SE', symbol: 'SAP.DE', price_added: 200, current_price: 220, added_at: '01.10.2026' },
-  ] as { asset_id: number; name: string; symbol: string; price_added: number | null; current_price: number | null; added_at: string }[],
+    { asset_id: 3, name: 'SAP SE', symbol: 'SAP.DE', price_added: 200, current_price: 220, added_at: '01.10.2026', target_price: null, target_direction: null, target_hit: null },
+  ] as { asset_id: number; name: string; symbol: string; price_added: number | null; current_price: number | null; added_at: string;
+    target_price: number | null; target_direction: 'above' | 'below' | null; target_hit: string | null }[],
   chat: [
     { role: 'user', message: 'Wie viel habe ich übrig?' },
     { role: 'assistant', message: 'Im Oktober bleiben dir **1.000 €**.\n\n- Einnahmen: 3.000 €\n- Ausgaben: 2.000 €' },
@@ -133,7 +134,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown; balance?: unknown; dismissed?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown; balance?: unknown; dismissed?: unknown; target?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -262,8 +263,17 @@ export const handlers = [
   http.post('/api/v1/me/watchlist', async ({ request }) => {
     const { asset_id } = (await request.json()) as { asset_id: number };
     const hit = searchResults.find((r) => (r.asset_id ?? 99) === asset_id)!;
-    data.watchlist.push({ asset_id, name: hit.name, symbol: hit.symbol, price_added: 100, current_price: 100, added_at: '30.10.2026' });
+    data.watchlist.push({ asset_id, name: hit.name, symbol: hit.symbol, price_added: 100, current_price: 100, added_at: '30.10.2026', target_price: null, target_direction: null, target_hit: null });
     return HttpResponse.json({ message: 'Zur Watchlist hinzugefügt' }, { status: 201 });
+  }),
+  http.put('/api/v1/me/watchlist/:id/target', async ({ params, request }) => {
+    const { target_price } = (await request.json()) as { target_price: number | null };
+    sent.target = target_price;
+    const item = data.watchlist.find((w) => w.asset_id === Number(params.id))!;
+    item.target_price = target_price;
+    item.target_direction = target_price === null ? null : target_price > (item.current_price ?? 0) ? 'above' : 'below';
+    item.target_hit = null;
+    return HttpResponse.json({ target_price, target_direction: item.target_direction });
   }),
   http.delete('/api/v1/me/watchlist/:id', ({ params }) => {
     data.watchlist = data.watchlist.filter((w) => w.asset_id !== Number(params.id));

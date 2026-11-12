@@ -191,7 +191,8 @@ class TestPortfolioRules:
         items = client.get('/api/v1/me/watchlist').get_json()
 
         assert items == [{'asset_id': asset.id, 'name': 'Testaktie', 'symbol': 'TST', 'price_added': 12.5,
-                          'current_price': 12.5, 'added_at': items[0]['added_at']}]
+                          'current_price': 12.5, 'added_at': items[0]['added_at'],
+                          'target_price': None, 'target_direction': None, 'target_hit': None}]
 
     def test_sell_more_than_owned(self, client, asset):
         client.post('/api/v1/me/positions', json={'asset_id': asset.id, 'quantity': 2, 'avg_buy_price': 10, 'bought_at': '2026-10-01'})

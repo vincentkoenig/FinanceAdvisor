@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 # Wie lange der Push-Dienst eine Meldung aufhebt, wenn das Gerät gerade offline ist
 TTL_SECONDS = 24 * 60 * 60
 # Arten von Meldungen; jede ist eine Spalte in PushSubscription, pro Gerät ein- und ausschaltbar
-TOPICS = ('deadlines', 'savings_plan', 'daily_update')
+TOPICS = ('deadlines', 'savings_plan', 'daily_update', 'price_moves', 'watchlist')
 # Antworten des Push-Dienstes, nach denen das Abo nicht mehr gilt (abgemeldet, App gelöscht)
 GONE = {404, 410}
 

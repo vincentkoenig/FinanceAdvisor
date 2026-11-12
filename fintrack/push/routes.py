@@ -34,6 +34,8 @@ class SubscriptionInput(RequestModel):
     deadlines: bool = True
     savings_plan: bool = True
     daily_update: bool = True
+    price_moves: bool = True
+    watchlist: bool = True
 
 
 class DeviceInput(RequestModel):
@@ -41,6 +43,8 @@ class DeviceInput(RequestModel):
     deadlines: Optional[bool] = None
     savings_plan: Optional[bool] = None
     daily_update: Optional[bool] = None
+    price_moves: Optional[bool] = None
+    watchlist: Optional[bool] = None
 
 
 def _serialize(subscription):

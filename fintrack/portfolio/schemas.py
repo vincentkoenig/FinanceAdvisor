@@ -51,6 +51,11 @@ class WatchlistAdd(RequestModel):
     asset_id: PositiveInt
 
 
+class WatchlistTarget(RequestModel):
+    """Zielkurs in Euro; null entfernt ihn."""
+    target_price: Optional[PositiveFloat] = None
+
+
 class SavingsPlanCreate(RequestModel):
     asset_id: PositiveInt
     amount: PositiveFloat
