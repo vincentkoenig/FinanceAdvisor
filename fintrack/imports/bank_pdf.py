@@ -7,7 +7,8 @@ lassen. Heraus kommen dieselben Umsätze (BankRow) wie aus einem CSV-Export, dan
 laufen Vorschau, Abgleich und Dubletten-Schutz wie beim CSV-Import.
 
 Gegenüber und Verwendungszweck bleiben im Text stehen (sonst ließe sich nichts zuordnen);
-entfernt werden Name und Adresse des Kontoinhabers, IBANs, Kunden- und Kontonummern.
+entfernt werden Name und Adresse des Kontoinhabers (auch im Seitenkopf und mitten in Buchungen),
+IBANs, Kunden-, Konto- und Vertragsnummern, Kfz-Kennzeichen, Kartennummern und TANs.
 """
 
 from datetime import date
