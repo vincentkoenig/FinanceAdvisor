@@ -4,6 +4,8 @@ jede Frontend-Adresse, langer Cache nur für gehashte Dateien, kein Zugriff
 außerhalb des Build-Ordners und ein klarer Hinweis, wenn nicht gebaut wurde.
 """
 
+import io
+
 import pytest
 
 from fintrack import create_app
@@ -83,6 +85,13 @@ def test_service_worker_and_manifest_are_never_cached(client, path):
 
 def test_manifest_has_its_media_type(client):
     assert client.get('/app/manifest.webmanifest').mimetype == 'application/manifest+json'
+
+
+def test_share_without_service_worker_leads_to_import(client):
+    # Normalerweise fängt der Service Worker das ab; ohne ihn geht es ohne Datei zur Import-Seite
+    response = client.post('/app/share', data={'file': (io.BytesIO(b'a;b'), 'umsaetze.csv')})
+    assert response.status_code == 303
+    assert response.headers['Location'].endswith('/app/budget/import?shared=missing')
 
 
 def test_missing_asset_is_404_not_index(client):

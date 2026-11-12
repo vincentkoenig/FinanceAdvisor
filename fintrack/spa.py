@@ -12,6 +12,10 @@ spa.py - Liefert das React-Frontend (frontend/dist) unter /app aus.
 - Jede andere Adresse unter /app bekommt index.html (das Frontend entscheidet
   selbst, welche Seite es zeigt) und wird nie gecacht, damit nach einem
   Deploy sofort die neue Version lädt.
+- Teilen an FinTrack (Android) schickt die Datei per POST an /app/share. Das
+  fängt normalerweise der Service Worker ab. Kommt die Anfrage doch hier an
+  (Service Worker noch nicht aktiv), führt sie ohne Datei zur Import-Seite;
+  die Datei wird nicht angenommen und nicht gespeichert.
 - Die Anmeldung prüft das Frontend über /api/v1/me; die Dateien selbst
   enthalten keine Nutzerdaten und sind deshalb ohne Login abrufbar.
 """
@@ -58,6 +62,11 @@ for _path, _target in LEGACY_PAGES.items():
 @bp.route('/app')
 def app_root():
     return redirect('/app/', code=308)
+
+
+@bp.route('/app/share', methods=['POST'])
+def share_without_service_worker():
+    return redirect('/app/budget/import?shared=missing', code=303)
 
 
 @bp.route('/app/', defaults={'path': ''})
