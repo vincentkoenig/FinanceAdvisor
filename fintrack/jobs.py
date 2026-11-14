@@ -14,7 +14,8 @@ Gestartet wird der Lauf auf zwei Wegen, die sich nicht in die Quere kommen:
 Getrennt davon verschickt der Scheduler morgens um 8:00 Uhr die
 Push-Meldungen (push/notify.py), Job 'notify', und prüft von 9:00 bis 21:30 Uhr
 alle 30 Minuten die Kurse auf starke Bewegungen und Zielkurse (push/alerts.py).
-Von 22 bis 8 Uhr ist Ruhezeit: In dieser Zeit startet kein Lauf, der Meldungen verschickt.
+Sonntags um 18 Uhr schätzt der Analyst Depot und Watchlist ein (analyst/service.py),
+Job 'analyst'. Von 22 bis 8 Uhr ist Ruhezeit: In dieser Zeit startet kein Lauf, der Meldungen verschickt.
 Eine Sperre sorgt dafür, dass immer nur ein Lauf gleichzeitig arbeitet.
 """
 
@@ -23,6 +24,8 @@ import threading
 from datetime import datetime
 
 from apscheduler.schedulers.background import BackgroundScheduler
+
+from fintrack.analyst.service import analyse_all_users
 
 from fintrack.extensions import get_openai_client
 from fintrack.insights.service import generate_insights_for_all_users
@@ -70,6 +73,12 @@ def send_notifications(flask_app):
         return notify_all_users()
 
 
+def run_analyst(flask_app):
+    """Wöchentliche Einschätzungen des Analysten für Depot und Watchlist (analyst/service.py)."""
+    with flask_app.app_context():
+        return analyse_all_users(get_openai_client())
+
+
 def run_daily_jobs(flask_app):
     """Alle drei Schritte nacheinander. Ein Fehler in einem Schritt stoppt die folgenden nicht."""
     result = {}
@@ -89,6 +98,7 @@ JOBS = {
     'dividends': check_dividends,
     'insights': generate_daily_insights,
     'notify': send_notifications,
+    'analyst': run_analyst,
 }
 
 
@@ -140,5 +150,7 @@ def start_scheduler(flask_app):
     scheduler.add_job(start_job, 'cron', hour=8, minute=0, args=[flask_app, 'notify'])
     # Eigene Sperre statt start_job: der Status des täglichen Laufs bleibt so lesbar
     scheduler.add_job(run_price_alerts, 'cron', hour='9-21', minute='0,30', args=[flask_app])
+    # Wochenende: die Börsen sind zu, Grundlage sind die Schlusskurse vom Freitag
+    scheduler.add_job(start_job, 'cron', day_of_week='sun', hour=18, minute=0, args=[flask_app, 'analyst'])
     scheduler.start()
-    print(f'Scheduler started - daily jobs 22:30, push 08:00, price alerts 9:00-21:30 {TIMEZONE}')
+    print(f'Scheduler started - daily jobs 22:30, push 08:00, price alerts 9:00-21:30, analyst Sun 18:00 {TIMEZONE}')

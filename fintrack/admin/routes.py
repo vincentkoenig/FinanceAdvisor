@@ -70,6 +70,13 @@ def manual_send_notifications():
     return _start('notify')
 
 
+@bp.route('/run-analyst', methods=['POST'])
+@require_admin_key
+def manual_run_analyst():
+    """Wöchentliche Einschätzungen des Analysten im Hintergrund erzeugen, sonst sonntags um 18 Uhr."""
+    return _start('analyst')
+
+
 @bp.route('/run-daily-jobs', methods=['POST'])
 @require_admin_key
 def run_daily_jobs():

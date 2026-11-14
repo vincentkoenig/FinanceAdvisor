@@ -64,3 +64,45 @@ describe('Analyse', () => {
     expect(screen.getByRole('button', { name: 'Neue Analyse' })).toBeDisabled();
   });
 });
+
+describe('Wöchentliche Einschätzungen', () => {
+  const item = (overrides: Record<string, unknown>) => ({
+    asset_id: 1, name: 'SAP SE', symbol: 'SAP.DE', kind: 'position', stance: 'hold', stance_label: 'Halten',
+    confidence: 'mittel', reasoning: 'Der Aufwärtstrend ist intakt.', invalidation: 'Schluss unter 180 €.', price: 212.5,
+    indicators: { trend: 'up', pullback: false, overheated: false, trend_break: false, rsi14: 41.6, above_sma200_pct: 8.2, from_high_pct: -12.4, sma200: 196 },
+    previous_label: null, changed: false, ...overrides,
+  });
+
+  it('erklärt den Ablauf, solange es keine Einschätzung gibt', async () => {
+    renderApp('/analyse');
+    const section = await screen.findByRole('region', { name: 'Wöchentliche Einschätzungen' });
+    expect(await within(section).findByText(/jeden Sonntag um 18 Uhr/)).toBeInTheDocument();
+  });
+
+  it('zeigt Depot und Watchlist getrennt, mit Änderung und Begründung', async () => {
+    server.use(http.get('/api/v1/me/analyst', () => HttpResponse.json({
+      run_date: '2026-11-15', model: 'starkes-modell',
+      items: [
+        item({ stance: 'add', stance_label: 'Nachkaufen', changed: true, previous_label: 'Halten' }),
+        item({ asset_id: 2, name: 'NVIDIA', symbol: 'NVD.DE', kind: 'watchlist', stance: 'wait', stance_label: 'Abwarten', reasoning: 'Zu wenig Historie.',
+          indicators: { trend: null, pullback: false, overheated: false, trend_break: false, rsi14: null, above_sma200_pct: null, from_high_pct: 0, sma200: null } }),
+      ],
+    })));
+    renderApp('/analyse');
+    const user = userEvent.setup();
+    const section = await screen.findByRole('region', { name: 'Wöchentliche Einschätzungen' });
+    expect(await within(section).findByText('Stand 15. Nov.')).toBeInTheDocument();
+    expect(within(section).getByRole('heading', { name: 'Im Depot' })).toBeInTheDocument();
+    expect(within(section).getByRole('heading', { name: 'Watchlist' })).toBeInTheDocument();
+    expect(within(section).getByText('geändert, vorher Halten')).toBeInTheDocument();
+    expect(within(section).getByText('Nachkaufen')).toHaveClass('pill-signal');
+    expect(within(section).getByText('Abwarten')).not.toHaveClass('pill-signal');
+
+    await user.click(within(section).getByText('SAP SE'));
+    expect(within(section).getByText('Der Aufwärtstrend ist intakt.')).toBeVisible();
+    expect(within(section).getByText('Aufwärtstrend · 8 % über der 200-Tage-Linie · 12 % unter dem Jahreshoch · RSI 42')).toBeInTheDocument();
+    expect(within(section).getByText('Zu wenig Historie für einen Trend')).toBeInTheDocument();
+    expect(section).toHaveTextContent('Keine Anlageberatung');
+    expect(section).toHaveTextContent('(starkes-modell)');
+  });
+});

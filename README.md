@@ -67,6 +67,7 @@ Das Projekt ist außerdem ein Lernprojekt: Jeder Baustein, vom Datenbankschema b
 ### 🤖 KI-Finanzberater und Analyse
 - **Chat** mit einem Berater, der Depot, Haushaltsbuch, Verträge und Anlageprofil kennt. Über **Function Calling** ruft er Live-Kurse und die eigenen Zahlen ab und sucht bei Bedarf aktuelle Nachrichten (**Tavily**)
 - **News zu deinem Depot** im Tages-Update: Jeden Abend sucht FinTrack per Tavily nach News der letzten 24 Stunden zu den (höchstens 20 größten) Positionen, die KI behält nur Kursrelevantes als einen Satz pro Wert mit den Artikeln als Quellen. An Tavily geht nur der Name des Werts
+- **Wöchentlicher Analyst** (sonntags 18 Uhr) auf der Analyse-Seite: pro Depotposition und Watchlist-Wert eine Einschätzung nach „Trend + Rücksetzer“ (Nachkaufen, Halten, Teilgewinn mitnehmen, Verkauf prüfen bzw. Einstieg interessant, Abwarten, Meiden) mit Zuversicht, Begründung und der Kursmarke, ab der sie nicht mehr gilt. Die Kennzahlen (200-Tage-Linie, RSI, Abstand zum Jahreshoch) rechnet Python, das Modell (`ANALYST_MODEL`) wägt ab. Jede Einschätzung wird mit Kurs gespeichert, damit sich ihre Trefferquote messen lässt. Keine Anlageberatung
 - Antworten mit Tabellen und Listen, formatiert ohne fremdes HTML in der Seite. Der Verlauf bleibt gespeichert, an die KI geht ein gleitendes Fenster der letzten Nachrichten
 - **Portfolio-Analyse** per Structured Output: Risiko, Streuung, Zusammenfassung und Empfehlungen. Rechenwerte wie der Gesamtwert kommen vom Server, nicht aus der KI
 
@@ -269,6 +270,7 @@ Optionale Variablen:
 | `ALLOW_REGISTRATION=1` | Erlaubt neue Konten über die Startseite. Standard: geschlossen — Konten dann per `create-user` anlegen (siehe unten). |
 | `ADMIN_API_KEY` | Schlüssel für die Routen unter `/api/v1/admin/...` (Header `X-Admin-Key`). Ohne ihn sind diese Endpoints gesperrt. |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Schlüsselpaar für Push-Benachrichtigungen, einmalig erzeugen mit `flask --app app make-vapid-keys`. Ohne sie zeigt die App, dass Push nicht eingerichtet ist. Optional `VAPID_SUBJECT` (mailto:- oder https-Adresse als Kontakt für die Push-Dienste). |
+| `ANALYST_MODEL` | OpenAI-Modell des wöchentlichen Analysten. Ohne Angabe `gpt-4o-mini`. |
 | `FLASK_DEBUG=1` | Debug-Modus beim lokalen Start mit `python app.py`. Wird automatisch abgeschaltet, wenn der Server im Netzwerk erreichbar ist. |
 | `FLASK_HOST=0.0.0.0` | Server im lokalen Netzwerk erreichbar machen, z.B. für Tests vom Handy. Standard ist nur dieser PC (`127.0.0.1`). |
 

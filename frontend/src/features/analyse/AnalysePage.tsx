@@ -1,11 +1,13 @@
 // Portfolio-Analyse durch den KI-Berater. Frage der Seite: Wie steht mein Depot da?
 // Oben die neueste Analyse mit Einschätzung, Risiko und Empfehlungen, daneben die Streuung
 // (im Backend aus der Verteilung berechnet, nicht vom Modell geschätzt), darunter frühere Analysen.
+// Ganz oben die wöchentlichen Einschätzungen des Analysten pro Wert (AnalystSection).
 import { useAnalyses, useRunAnalysis } from '../../api/advisor';
 import { usePositions } from '../../api/overview';
 import { Loaded } from '../../components/Loaded';
 import { useToast } from '../../components/Toast';
 import { useMoney } from '../../lib/privacy';
+import { AnalystSection } from './AnalystSection';
 
 const scoreText = (score: number | null) => (score === null ? '–' : `${score} von 10`);
 
@@ -40,6 +42,8 @@ export function AnalysePage() {
           </button>
         </div>
       </div>
+
+      <AnalystSection />
 
       {run.isPending && <p className="muted" role="status">Die Analyse dauert meist 10 bis 20 Sekunden.</p>}
 

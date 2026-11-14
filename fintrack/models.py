@@ -392,6 +392,34 @@ class AccountBalance(db.Model):
     __table_args__ = (db.UniqueConstraint('user_id', 'date'),)
 
 
+# ─── ANALYST ──────────────────────────────────────────────────────────────────
+
+class AnalystSignal(db.Model):
+    """
+    AnalystSignal Tabelle - wöchentliche Einschätzung eines Werts durch den Analysten
+    (analyst/service.py), eine pro Nutzer, Asset und Lauf.
+    kind: 'position' (im Depot) oder 'watchlist'. stance: eine der Stufen aus
+    analyst/service.py (z.B. 'hold', 'entry'). price: Kurs in Euro bei der Einschätzung,
+    damit sich später messen lässt, wie sie sich bewährt hat. indicators: die gerechneten
+    Kennzahlen als JSON-Text (analyst/indicators.py).
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    asset_id = db.Column(db.Integer, db.ForeignKey('asset.id'), nullable=False)
+    run_date = db.Column(db.Date, nullable=False)
+    kind = db.Column(db.String(10), nullable=False)
+    stance = db.Column(db.String(20), nullable=False)
+    confidence = db.Column(db.String(10), nullable=False)
+    reasoning = db.Column(db.Text, nullable=False)
+    invalidation = db.Column(db.Text, nullable=False)
+    price = db.Column(db.Float, nullable=False)
+    indicators = db.Column(db.Text)
+    model = db.Column(db.String(60))
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'asset_id', 'run_date'),)
+
+
 # ─── PUSH-BENACHRICHTIGUNGEN ──────────────────────────────────────────────────
 
 class PushSubscription(db.Model):

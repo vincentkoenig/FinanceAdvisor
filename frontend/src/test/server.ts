@@ -465,6 +465,7 @@ export const handlers = [
     return HttpResponse.json({ message: `${trades.length} Ausführungen gebucht`, booked: trades.length, skipped: 0 }, { status: 201 });
   }),
 
+  http.get('/api/v1/me/analyst', () => HttpResponse.json({ run_date: null, model: 'gpt-4o-mini', items: [] })),
   // Push ist im Test-Server nicht eingerichtet; die Push-Tests schalten es selbst ein
   http.get('/api/v1/me/push', () => HttpResponse.json({ available: false, public_key: null })),
 
