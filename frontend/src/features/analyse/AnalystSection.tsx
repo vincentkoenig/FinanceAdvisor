@@ -1,7 +1,7 @@
 // Wöchentliche Einschätzungen des Analysten auf der Analyse-Seite: pro Depotposition und
 // Watchlist-Wert eine Stufe mit Begründung, Zuversicht und der Marke, ab der sie nicht mehr gilt.
 // Geändert gegenüber der Vorwoche wird markiert. Automatisch erzeugt, keine Anlageberatung.
-import { type AnalystItem, useAnalyst } from '../../api/analyst';
+import { type AnalystItem, type TrackSummary, useAnalyst, useTrackRecord } from '../../api/analyst';
 import { Loaded } from '../../components/Loaded';
 import { dayShort } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
@@ -54,6 +54,68 @@ function Group({ title, items }: { title: string; items: AnalystItem[] }) {
   );
 }
 
+const signed = (value: number) => `${value > 0 ? '+' : value < 0 ? '−' : ''}${Math.abs(value).toLocaleString('de-DE', { maximumFractionDigits: 1 })} %`;
+
+function rate(summary: TrackSummary) {
+  return summary.hit_rate === null ? '–' : `${summary.hit_rate} %`;
+}
+
+// Wie gut lag der Analyst? Treffer: Kaufen-Stufen gestiegen, Verkaufen-Stufen gefallen;
+// Halten/Abwarten zählen nicht, für sie steht nur die Entwicklung da.
+function TrackRecordPanel() {
+  const record = useTrackRecord();
+  return (
+    <section className="track" aria-labelledby="h-track">
+      <h3 id="h-track" className="sub-head">Trefferquote</h3>
+      <Loaded queries={[record]}>
+        {() => {
+          const data = record.data!;
+          if (!data.signals) return null;
+          if (!data.horizons['30'].evaluated) {
+            return <p className="hint">Die erste Auswertung gibt es ab {dayShort(data.first_result_on!)}, 30 Tage nach der ersten Einschätzung. Bis dahin sammelt FinTrack die Kurse.</p>;
+          }
+          return (
+            <>
+              <div className="strip well">
+                {(['30', '90'] as const).map((h) => {
+                  const s = data.horizons[h];
+                  return (
+                    <div key={h}>
+                      <div className="kpi-label">Nach {h} Tagen</div>
+                      <div className="kpi-value kpi-small">{s.evaluated ? rate(s) : '–'}</div>
+                      <div className="kpi-sub">
+                        {s.evaluated
+                          ? <>{s.hits} von {s.scored} Treffern · Ø {signed(s.avg_change!)}{s.avg_benchmark !== null && <>, {data.benchmark} {signed(s.avg_benchmark)}</>}</>
+                          : 'noch keine Auswertung'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="rows">
+                {data.by_stance.filter((s) => s.horizons['30'].evaluated).map((s) => (
+                  <div className="row" key={s.stance}>
+                    <span className="grow"><span className="strong">{s.stance_label}</span>
+                      <span className="sub-line">{s.direction ? `${s.horizons['30'].hits} von ${s.horizons['30'].scored} nach 30 Tagen` : 'ohne Richtung, zählt nicht zur Quote'}</span></span>
+                    <span className="end">
+                      <span className="strong block">{s.direction ? rate(s.horizons['30']) : signed(s.horizons['30'].avg_change!)}</span>
+                      <span className="sub-line">{s.direction ? `Ø ${signed(s.horizons['30'].avg_change!)}` : 'Ø Entwicklung'}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <p className="hint">
+                Treffer: Bei „Nachkaufen“ und „Einstieg interessant“ ist der Kurs gestiegen, bei „Teilgewinn“, „Verkauf prüfen“ und „Meiden“ gefallen.
+                Daneben die Entwicklung des {data.benchmark} im selben Zeitraum. Aussagekräftig erst nach einigen Monaten.
+              </p>
+            </>
+          );
+        }}
+      </Loaded>
+    </section>
+  );
+}
+
 export function AnalystSection() {
   const analyst = useAnalyst();
   return (
@@ -72,6 +134,7 @@ export function AnalystSection() {
             <>
               <Group title="Im Depot" items={items.filter((i) => i.kind === 'position')} />
               <Group title="Watchlist" items={items.filter((i) => i.kind === 'watchlist')} />
+              <TrackRecordPanel />
               <p className="hint disclaimer">
                 Automatisch erzeugt nach dem Ansatz „Trend + Rücksetzer“ aus Kursdaten und Nachrichten der Woche ({analyst.data!.model}).
                 Keine Anlageberatung und keine Vorhersage: Prüfe jede Entscheidung selbst.

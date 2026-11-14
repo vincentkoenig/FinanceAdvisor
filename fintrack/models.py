@@ -428,7 +428,7 @@ class PushSubscription(db.Model):
     endpoint, p256dh und auth liefert der Browser beim Anmelden (Web Push): An endpoint
     schickt der Server die verschlüsselte Nachricht, p256dh und auth sind die Schlüssel
     dafür. Pro Gerät lässt sich jede Art von Meldung einzeln ein- und ausschalten
-    (deadlines, savings_plan, daily_update, price_moves, watchlist).
+    (deadlines, savings_plan, daily_update, price_moves, watchlist, analyst).
     Gerätedaten gehören nicht in den Export: Auf einem neuen Server meldet sich das
     Gerät einfach neu an.
     """
@@ -442,6 +442,7 @@ class PushSubscription(db.Model):
     daily_update = db.Column(db.Boolean, nullable=False, default=True)
     price_moves = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
     watchlist = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    analyst = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
     created_at = db.Column(db.DateTime, default=db.func.now())
 
 

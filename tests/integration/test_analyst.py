@@ -219,3 +219,124 @@ class TestExport:
         assert (copied.stance, copied.price, json.loads(copied.indicators)) == ('hold', 229.5, {'trend': 'up'})
         target = Watchlist.query.filter_by(user_id=other.id).filter(Watchlist.target_price.isnot(None)).one()
         assert (target.target_price, target.target_direction) == (250, 'above')
+
+
+class TestTrackRecord:
+    """Trefferquote aus gespeicherten Schlusskursen 30 und 90 Tage nach der Einschätzung"""
+
+    def setup_prices(self, symbol, prices):
+        """prices: {Tag: Kurs}"""
+        asset = Asset.query.filter_by(symbol=symbol).first()
+        if not asset:
+            asset = Asset(name=symbol, symbol=symbol, currency='EUR', asset_type='etf')
+            db.session.add(asset)
+            db.session.commit()
+        db.session.add_all([PriceHistory(asset_id=asset.id, date=datetime.combine(day, datetime.min.time()),
+                                         price=price, currency='EUR') for day, price in prices.items()])
+        db.session.commit()
+        return asset
+
+    def signal(self, user, asset, stance, price=100.0, day=date(2026, 6, 1)):
+        db.session.add(AnalystSignal(user_id=user.id, asset_id=asset.id, run_date=day, kind='position', stance=stance,
+                                     confidence='mittel', reasoning='r', invalidation='i', price=price))
+        db.session.commit()
+
+    def test_hits_by_direction_with_benchmark(self, user):
+        from fintrack.analyst.track_record import track_record
+        start = date(2026, 6, 1)
+        up = self.setup_prices('UP.DE', {start + timedelta(days=30): 110.0, start + timedelta(days=90): 120.0})
+        down = self.setup_prices('DOWN.DE', {start + timedelta(days=30): 90.0, start + timedelta(days=90): 80.0})
+        flat = self.setup_prices('FLAT.DE', {start + timedelta(days=30): 101.0, start + timedelta(days=90): 99.0})
+        self.setup_prices('EUNL.DE', {start: 50.0, start + timedelta(days=30): 51.0, start + timedelta(days=90): 52.0})
+        self.signal(user, up, 'add')            # Kaufen, gestiegen: Treffer
+        self.signal(user, down, 'review_sale')  # Verkaufen, gefallen: Treffer
+        self.signal(user, flat, 'entry')        # Kaufen, nach 90 Tagen gefallen: nach 30 Treffer, nach 90 nicht
+        held = self.setup_prices('HOLD.DE', {start + timedelta(days=30): 105.0, start + timedelta(days=90): 95.0})
+        self.signal(user, held, 'hold')         # Halten: keine Richtung, zählt nicht zur Trefferquote
+
+        record = track_record(user.id, today=date(2026, 9, 15))
+
+        thirty, ninety = record['horizons']['30'], record['horizons']['90']
+        assert (thirty['evaluated'], thirty['scored'], thirty['hits'], thirty['hit_rate']) == (4, 3, 3, 100)
+        assert (ninety['scored'], ninety['hits'], ninety['hit_rate']) == (3, 2, 67)
+        assert thirty['avg_benchmark'] == 2.0  # 50 -> 51
+        stances = {s['stance']: s for s in record['by_stance']}
+        assert stances['hold']['direction'] is None and stances['hold']['horizons']['30']['hit_rate'] is None
+        assert stances['entry']['horizons']['90']['hit_rate'] == 0
+        assert [s['stance_label'] for s in record['by_stance']] == ['Nachkaufen', 'Halten', 'Verkauf prüfen', 'Einstieg interessant']
+
+    def test_too_young_signals_wait(self, user, login_client):
+        asset = self.setup_prices('NEW.DE', {})
+        self.signal(user, asset, 'add', day=date(2026, 11, 15))
+
+        record = login_client('a@test.com').get('/api/v1/me/analyst/track-record').get_json()
+
+        assert record['signals'] == 1
+        assert record['first_result_on'] == '2026-12-15'
+        assert record['horizons']['30']['evaluated'] == 0 and record['horizons']['30']['hit_rate'] is None
+
+
+class TestChangePush:
+
+    @pytest.fixture
+    def push(self, user, monkeypatch):
+        from fintrack.models import PushSubscription
+        from fintrack.push import service as push_service
+        public, private = push_service.generate_vapid_keys()
+        monkeypatch.setenv('VAPID_PUBLIC_KEY', public)
+        monkeypatch.setenv('VAPID_PRIVATE_KEY', private)
+        delivered = []
+        monkeypatch.setattr(push_service, '_deliver', lambda sub, payload, key: delivered.append(payload) or 201)
+        db.session.add(PushSubscription(user_id=user.id, endpoint='https://push.example.com/1', p256dh='B', auth='a'))
+        db.session.commit()
+        return delivered
+
+    def at_hour(self, monkeypatch, hour):
+        class Clock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return datetime(2026, 11, 15, hour, 0, tzinfo=tz)
+        monkeypatch.setattr(service, 'datetime', Clock)
+
+    def test_change_to_last_week_is_pushed_once_without_names(self, user, depot, push, monkeypatch):
+        big, small, watched = depot
+        self.at_hour(monkeypatch, 18)
+        db.session.add(AnalystSignal(user_id=user.id, asset_id=big.id, run_date=SUNDAY - timedelta(days=7), kind='position',
+                                     stance='add', confidence='mittel', reasoning='r', invalidation='i', price=200))
+        db.session.commit()
+
+        summary = service.analyse_user(user, model(('position', 'hold', 'mittel'), ('position', 'add', 'mittel'),
+                                                   ('watchlist', 'wait', 'mittel')), today=SUNDAY)
+
+        assert summary['changed'] == 1 and summary['pushed'] == 1
+        assert push == [{'title': 'Neue Einschätzungen vom Analysten', 'body': 'Bei einem Wert hat sich die Einschätzung geändert.',
+                         'url': '/app/analyse', 'tag': 'analyst'}]
+
+    def test_first_run_and_unchanged_stay_quiet(self, user, depot, push, monkeypatch):
+        self.at_hour(monkeypatch, 18)
+
+        summary = service.analyse_user(user, model(('position', 'hold', 'mittel'), ('position', 'add', 'mittel'),
+                                                   ('watchlist', 'wait', 'mittel')), today=SUNDAY)
+
+        assert 'changed' not in summary and push == []
+
+    def test_no_push_in_quiet_hours(self, user, depot, push, monkeypatch):
+        big, small, watched = depot
+        self.at_hour(monkeypatch, 23)
+        db.session.add(AnalystSignal(user_id=user.id, asset_id=big.id, run_date=SUNDAY - timedelta(days=7), kind='position',
+                                     stance='add', confidence='mittel', reasoning='r', invalidation='i', price=200))
+        db.session.commit()
+
+        summary = service.analyse_user(user, model(('position', 'hold', 'mittel'), ('position', 'add', 'mittel'),
+                                                   ('watchlist', 'wait', 'mittel')), today=SUNDAY)
+
+        assert summary['changed'] == 1 and summary['pushed'] == 0 and push == []
+
+
+def test_weekly_run_creates_the_benchmark(user, fake_yahoo):
+    """Ohne Vergleichsindex hätte die Trefferquote keinen MSCI-World-Vergleich"""
+    fake_yahoo.add_stock('EUNL.DE', asset_type='etf')
+
+    service.analyse_all_users(model(), today=SUNDAY)
+
+    assert Asset.query.filter_by(symbol='EUNL.DE').count() == 1

@@ -106,3 +106,49 @@ describe('Wöchentliche Einschätzungen', () => {
     expect(section).toHaveTextContent('(starkes-modell)');
   });
 });
+
+describe('Trefferquote des Analysten', () => {
+  const run = { run_date: '2026-11-15', model: 'm', items: [{
+    asset_id: 1, name: 'SAP SE', symbol: 'SAP.DE', kind: 'position', stance: 'add', stance_label: 'Nachkaufen', confidence: 'mittel',
+    reasoning: 'r', invalidation: 'i', price: 200, previous_label: null, changed: false,
+    indicators: { trend: 'up', pullback: false, overheated: false, trend_break: false, rsi14: 40, above_sma200_pct: 5, from_high_pct: -3, sma200: 190 },
+  }] };
+  const empty = { evaluated: 0, scored: 0, hits: 0, hit_rate: null, avg_change: null, avg_benchmark: null };
+
+  it('nennt den Tag der ersten Auswertung, solange alle Einschätzungen zu jung sind', async () => {
+    server.use(
+      http.get('/api/v1/me/analyst', () => HttpResponse.json(run)),
+      http.get('/api/v1/me/analyst/track-record', () => HttpResponse.json({
+        benchmark: 'MSCI World', signals: 9, first_result_on: '2026-12-14', by_stance: [], horizons: { 30: empty, 90: empty },
+      })),
+    );
+    renderApp('/analyse');
+    const track = await screen.findByRole('region', { name: 'Trefferquote' });
+    expect(await within(track).findByText(/ab 14. Dez., 30 Tage nach der ersten Einschätzung/)).toBeInTheDocument();
+  });
+
+  it('zeigt Quote, Treffer und den Vergleich zum MSCI World', async () => {
+    server.use(
+      http.get('/api/v1/me/analyst', () => HttpResponse.json(run)),
+      http.get('/api/v1/me/analyst/track-record', () => HttpResponse.json({
+        benchmark: 'MSCI World', signals: 20, first_result_on: '2026-12-14',
+        horizons: {
+          30: { evaluated: 10, scored: 8, hits: 6, hit_rate: 75, avg_change: 2.4, avg_benchmark: 1.1 },
+          90: empty,
+        },
+        by_stance: [
+          { stance: 'add', stance_label: 'Nachkaufen', direction: 'up', horizons: { 30: { evaluated: 8, scored: 8, hits: 6, hit_rate: 75, avg_change: 3.1, avg_benchmark: 1.1 }, 90: empty } },
+          { stance: 'hold', stance_label: 'Halten', direction: null, horizons: { 30: { evaluated: 2, scored: 0, hits: 0, hit_rate: null, avg_change: -0.5, avg_benchmark: 1.1 }, 90: empty } },
+        ],
+      })),
+    );
+    renderApp('/analyse');
+    const track = await screen.findByRole('region', { name: 'Trefferquote' });
+    expect(await within(track).findAllByText('75 %')).toHaveLength(2); // gesamt und bei Nachkaufen
+    expect(track).toHaveTextContent('6 von 8 Treffern · Ø +2,4 %, MSCI World +1,1 %');
+    expect(track).toHaveTextContent('Nach 90 Tagen–noch keine Auswertung');
+    expect(track).toHaveTextContent('Halten');
+    expect(track).toHaveTextContent('ohne Richtung, zählt nicht zur Quote');
+    expect(track).toHaveTextContent('−0,5 %');
+  });
+});

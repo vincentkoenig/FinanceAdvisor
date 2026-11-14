@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify
 from flask_login import current_user
 
 from fintrack.analyst.service import STANCE_LABELS, model_name
+from fintrack.analyst.track_record import track_record
 from fintrack.auth.session import protect_blueprint
 from fintrack.extensions import db
 from fintrack.models import AnalystSignal, Asset
@@ -53,3 +54,9 @@ def latest_signals():
     # 'position' kommt alphabetisch vor 'watchlist'
     return jsonify({'run_date': latest.isoformat(), 'model': rows[0][0].model if rows else model_name(),
                     'items': items}), 200
+
+
+@bp.route('/me/analyst/track-record', methods=['GET'])
+def get_track_record():
+    """Wie gut lag der Analyst nach 30 und 90 Tagen, im Vergleich zum MSCI World."""
+    return jsonify(track_record(current_user.id)), 200

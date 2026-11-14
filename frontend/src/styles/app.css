@@ -108,6 +108,8 @@ h2 { font-size: var(--fs-section); line-height: 24px; font-weight: 600; }
 .load-error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 8px; background: var(--raised); color: var(--muted); }
 .insight { line-height: 22px; white-space: pre-line; }
 /* News zu den Depotpositionen unter dem Tages-Update */
+.track { margin-top: 8px; }
+.track .strip { margin-bottom: 12px; }
 .news { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--rule); }
 .news-title { font-size: var(--fs-small); font-weight: 600; color: var(--muted); margin-bottom: 8px; }
 .news ul { list-style: none; margin: 0; padding: 0; }

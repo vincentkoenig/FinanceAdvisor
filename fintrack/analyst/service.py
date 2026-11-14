@@ -11,15 +11,18 @@ Pro Wert:
    keine Euro-Beträge oder Stückzahlen.
 
 Gespeichert wird jede Einschätzung mit dem Kurs vom Lauf (AnalystSignal), damit sich
-später messen lässt, wie gut der Analyst lag. Er handelt nie selbst, und seine
+später messen lässt, wie gut der Analyst lag (analyst/track_record.py). Hat sich eine
+Einschätzung gegenüber dem letzten Lauf geändert, kommt eine Push-Meldung, ohne Namen
+oder Stufe, weil sie auf dem Sperrbildschirm stünden. Er handelt nie selbst, und seine
 Einschätzungen sind automatisch erzeugt, keine Anlageberatung.
 """
 
 import json
 import logging
 import os
-from datetime import date
+from datetime import date, datetime
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 
@@ -28,7 +31,8 @@ from fintrack.contracts.terms import today_berlin
 from fintrack.extensions import db
 from fintrack.insights import news
 from fintrack.market.service import price_history_in_eur
-from fintrack.models import AnalystSignal, Asset, User, UserAsset, Watchlist
+from fintrack.models import AnalystSignal, Asset, PushLog, User, UserAsset, Watchlist
+from fintrack.push.service import send_to_user
 
 logger = logging.getLogger(__name__)
 
@@ -196,11 +200,43 @@ def analyse_user(user, openai_client, today=None):
             indicators=json.dumps({**values, **signals}), model=model_name()))
         db.session.commit()
         summary['signals'] += 1
+        previous = AnalystSignal.query.filter(
+            AnalystSignal.user_id == user.id, AnalystSignal.asset_id == asset.id,
+            AnalystSignal.run_date < today).order_by(AnalystSignal.run_date.desc()).first()
+        if previous and previous.stance != answer.stance:
+            summary.setdefault('changed', 0)
+            summary['changed'] += 1
+    if summary.get('changed'):
+        summary['pushed'] = _notify_changes(user.id, today, summary['changed'])
     return summary
 
 
+def _notify_changes(user_id, today, changed):
+    """
+    Eine Meldung pro Lauf, wenn sich Einschätzungen geändert haben. Nicht in der
+    Ruhezeit (22-8 Uhr): ein Lauf von Hand in der Nacht meldet sich nicht.
+    """
+    hour = datetime.now(ZoneInfo('Europe/Berlin')).hour
+    key = f'analyst:{today.isoformat()}'
+    if hour >= 22 or hour < 8 or PushLog.query.filter_by(user_id=user_id, key=key).first():
+        return 0
+    body = ('Bei einem Wert hat sich die Einschätzung geändert.' if changed == 1
+            else f'Bei {changed} Werten hat sich die Einschätzung geändert.')
+    sent = send_to_user(user_id, 'analyst', 'Neue Einschätzungen vom Analysten', body,
+                        url='/app/analyse', tag='analyst')
+    db.session.add(PushLog(user_id=user_id, key=key))
+    db.session.commit()
+    return sent
+
+
 def analyse_all_users(openai_client, today=None):
-    """Wöchentlicher Lauf für alle Nutzer (FinTrack hat derzeit einen)."""
+    """
+    Wöchentlicher Lauf für alle Nutzer (FinTrack hat derzeit einen). Legt vorher den
+    Vergleichsindex an, falls es ihn noch nicht gibt: Die Trefferquote vergleicht mit
+    ihm, und der tägliche Kurs-Lauf hält ihn danach aktuell.
+    """
+    from fintrack.portfolio.performance import benchmark_asset
+    benchmark_asset(create=True)
     result = {}
     for user in User.query.order_by(User.id).all():
         result[user.id] = analyse_user(user, openai_client, today)
