@@ -340,3 +340,55 @@ def test_weekly_run_creates_the_benchmark(user, fake_yahoo):
     service.analyse_all_users(model(), today=SUNDAY)
 
     assert Asset.query.filter_by(symbol='EUNL.DE').count() == 1
+
+
+class TestFundamentals:
+    """Fundamentaldaten bei Einzelaktien (analyst/fundamentals.py), aus FakeYahoo"""
+
+    SAP = {'trailingPE': 30.89, 'forwardPE': 25.16, 'priceToBook': 5.34, 'revenueGrowth': 0.132, 'earningsGrowth': -0.05,
+           'profitMargins': 0.204, 'returnOnEquity': 0.18, 'debtToEquity': 22.79, 'freeCashflow': 10_000_000_000,
+           'currentPrice': 200.0, 'targetMeanPrice': 236.0, 'recommendationKey': 'buy', 'numberOfAnalystOpinions': 24}
+
+    def test_collect_converts_and_skips_missing(self, app, fake_yahoo):
+        from fintrack.analyst import fundamentals
+        fake_yahoo.fundamentals['SAP.DE'] = {**self.SAP, 'trailingPE': float('nan'), 'freeCashflow': -5}
+        asset = Asset(name='SAP SE', symbol='SAP.DE', currency='EUR', asset_type='stock')
+
+        data = fundamentals.collect(asset)
+
+        assert 'pe' not in data  # NaN zählt als fehlend
+        assert data['forward_pe'] == 25.2 and data['revenue_growth_pct'] == 13.2 and data['earnings_growth_pct'] == -5.0
+        assert data['debt_to_equity'] == 0.23 and data['free_cashflow_positive'] is False
+        assert (data['recommendation'], data['analysts'], data['target_pct']) == ('Kaufen', 24, 18.0)
+
+    def test_only_for_stocks(self, app, fake_yahoo):
+        from fintrack.analyst import fundamentals
+        fake_yahoo.fundamentals['EUNL.DE'] = {'trailingPE': 20.0}
+
+        assert fundamentals.collect(Asset(name='ETF', symbol='EUNL.DE', asset_type='etf')) is None
+        assert fundamentals.collect(Asset(name='Neu', symbol='NEU.DE', asset_type='stock')) is None
+
+    def test_prompt_and_storage(self, user, depot, fake_yahoo, login_client):
+        big, small, watched = depot
+        fake_yahoo.fundamentals['SAP.DE'] = self.SAP
+        client = model(('position', 'hold', 'mittel'), ('position', 'add', 'mittel'), ('watchlist', 'wait', 'mittel'))
+
+        service.analyse_user(user, client, today=SUNDAY)
+
+        calls = client.beta.chat.completions.parse.call_args_list
+        sap_prompt = calls[0].kwargs['messages'][1]['content']
+        assert 'KGV 30.9, erwartetes KGV 25.2' in sap_prompt
+        assert 'Umsatz +13.2 %, Gewinn -5.0 %' in sap_prompt and 'Free Cashflow positiv' in sap_prompt
+        assert 'Kaufen (24 Analysten, mittleres Kursziel +18.0 % zum aktuellen Kurs)' in sap_prompt
+        assert 'Fundamentaldaten' not in calls[1].kwargs['messages'][1]['content']  # Tesla: keine Daten in FakeYahoo
+        assert 'Fundamentaldaten' in client.beta.chat.completions.parse.call_args_list[0].kwargs['messages'][0]['content']
+
+        items = login_client('a@test.com').get('/api/v1/me/analyst').get_json()['items']
+        assert items[0]['indicators']['fundamentals']['pe'] == 30.9
+        assert items[1]['indicators']['fundamentals'] is None
+
+    def test_missing_values_are_called_unknown(self):
+        from fintrack.analyst import fundamentals
+        lines = '\n'.join(fundamentals.prompt_lines({'pe': 12.0}))
+
+        assert 'KGV 12.0, erwartetes KGV unbekannt' in lines and 'Analystenkonsens: unbekannt' in lines

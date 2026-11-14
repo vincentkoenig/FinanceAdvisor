@@ -156,6 +156,28 @@ def fetch_splits(symbol):
     return [(timestamp.date(), float(ratio)) for timestamp, ratio in splits.items() if ratio and ratio > 0]
 
 
+# Felder aus Ticker.info, die der Analyst als Fundamentaldaten nutzt (analyst/fundamentals.py)
+FUNDAMENTAL_FIELDS = (
+    'trailingPE', 'forwardPE', 'priceToBook', 'revenueGrowth', 'earningsGrowth', 'profitMargins',
+    'returnOnEquity', 'debtToEquity', 'freeCashflow', 'currentPrice', 'currency',
+    'recommendationKey', 'numberOfAnalystOpinions', 'targetMeanPrice',
+)
+
+
+def fetch_fundamentals(symbol):
+    """
+    Fundamentaldaten eines Symbols als dict (nur vorhandene Felder aus FUNDAMENTAL_FIELDS),
+    oder None, wenn yfinance nichts liefert. Wirft keine Fehler.
+    """
+    try:
+        info = yf.Ticker(yahoo_symbol(symbol)).info or {}
+    except Exception as error:
+        logger.info('Keine Fundamentaldaten für %s: %s', symbol, error)
+        return None
+    values = {key: info[key] for key in FUNDAMENTAL_FIELDS if info.get(key) is not None}
+    return values or None
+
+
 def search_quotes(query, max_results=15):
     """
     Rohe Suchtreffer von yfinance für Name, Symbol oder ISIN, in der
