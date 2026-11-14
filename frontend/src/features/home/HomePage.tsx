@@ -7,7 +7,7 @@ import { Suspense, lazy, useState } from 'react';
 import { Link } from 'react-router';
 import { useContracts } from '../../api/contracts';
 import {
-  type Booking, useBookings, useBudgetSummary, useExecutePlan, useInsight, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
+  type Booking, type DepotNews, useBookings, useBudgetSummary, useExecutePlan, useInsight, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
 } from '../../api/overview';
 import { CountUp } from '../../components/CountUp';
 import { Fold } from '../../components/Fold';
@@ -197,7 +197,12 @@ export function HomePage() {
           action={insight.data?.created_at && <span className="meta">KI · {dayShort(insight.data.created_at)}</span>}>
           <Loaded queries={[insight]}>
             {() => insight.data!.content
-              ? <p className="insight">{text(insight.data!.content)}</p>
+              ? (
+                <>
+                  <p className="insight">{text(insight.data!.content)}</p>
+                  {!!insight.data!.news?.length && <NewsList news={insight.data!.news} />}
+                </>
+              )
               : <p className="empty-line">Das Tages-Update erscheint jeden Morgen, sobald es Daten zu deinem Depot oder Haushaltsbuch gibt.</p>}
           </Loaded>
         </Fold>
@@ -285,5 +290,31 @@ function DayBar({ pct }: { pct: number }) {
     <span className="daybar" aria-hidden="true">
       <span className={pct >= 0 ? 'up' : 'down'} style={{ width: `${width.toFixed(1)}%` }} />
     </span>
+  );
+}
+
+// News zu den Depotpositionen unter dem Tages-Update: ein Satz pro Wert, darunter die Artikel.
+// Die Links sind oft Google-Weiterleitungen, deshalb steht die Schlagzeile da, nicht die Domain.
+function NewsList({ news }: { news: DepotNews[] }) {
+  const { text } = useMoney();
+  return (
+    <section className="news" aria-labelledby="news-title">
+      <h3 id="news-title" className="news-title">News zu deinem Depot</h3>
+      <ul>
+        {news.map((item) => (
+          <li key={item.asset_id}>
+            <span className="strong">{item.name}</span>
+            <p>{text(item.summary)}</p>
+            <ul className="news-sources" aria-label={`Quellen zu ${item.name}`}>
+              {item.sources.map((source) => (
+                <li key={source.url}>
+                  <a href={source.url} target="_blank" rel="noopener noreferrer">{source.title}</a>
+                </li>
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

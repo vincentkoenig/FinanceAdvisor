@@ -182,4 +182,26 @@ describe('Übersicht', () => {
     await userEvent.setup().click(within(insight).getByRole('button', { name: 'Erneut versuchen' }));
     expect(await within(insight).findByText('Dein Depot hat diese Woche 1,4 % zugelegt.')).toBeInTheDocument();
   });
+
+  it('zeigt News zum Depot mit Quellen unter dem Tages-Update', async () => {
+    data.insight = {
+      ...data.insight,
+      news: [{ asset_id: 1, name: 'SAP SE', symbol: 'SAP.DE', summary: 'SAP hat die Jahresprognose angehoben.',
+        sources: [{ title: 'SAP hebt Prognose an', url: 'https://www.google.com/url?q=abc' }] }],
+    } as typeof data.insight;
+    renderApp('/');
+    const insight = await section('Tages-Update');
+    const news = await within(insight).findByRole('region', { name: 'News zu deinem Depot' });
+    expect(news).toHaveTextContent('SAP SESAP hat die Jahresprognose angehoben.');
+    const link = within(news).getByRole('link', { name: 'SAP hebt Prognose an' });
+    expect(link).toHaveAttribute('href', 'https://www.google.com/url?q=abc');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('zeigt an ruhigen Tagen keine News-Liste', async () => {
+    renderApp('/');
+    const insight = await section('Tages-Update');
+    expect(await within(insight).findByText('Dein Depot hat diese Woche 1,4 % zugelegt.')).toBeInTheDocument();
+    expect(within(insight).queryByRole('region', { name: 'News zu deinem Depot' })).not.toBeInTheDocument();
+  });
 });

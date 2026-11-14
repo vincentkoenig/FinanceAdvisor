@@ -11,6 +11,7 @@ nach der Ruhezeit (22-8 Uhr) mit dem Morgen-Lauf raus. Jede Meldung einzeln und 
 Inhalt ohne Beträge, weil Meldungen auf dem Sperrbildschirm stehen.
 """
 
+import json
 from datetime import datetime, timedelta
 
 from fintrack.contracts.terms import contract_status, today_berlin
@@ -92,8 +93,12 @@ def notify_daily_update(user_id, now):
     key = f'insight:{insight.id}'
     if _already_sent(user_id, key):
         return 0
-    sent = send_to_user(user_id, 'daily_update', 'Dein Tages-Update ist da',
-                        'Was sich in Depot und Haushaltsbuch getan hat.', url='/app/', tag='daily-update')
+    # Nur die Anzahl, keine Namen: sie würden auf dem Sperrbildschirm verraten, was im Depot liegt
+    count = len(json.loads(insight.news)) if insight.news else 0
+    body = ('Was sich in Depot und Haushaltsbuch getan hat.' if not count
+            else 'Mit News zu einem Wert aus deinem Depot.' if count == 1
+            else f'Mit News zu {count} Werten aus deinem Depot.')
+    sent = send_to_user(user_id, 'daily_update', 'Dein Tages-Update ist da', body, url='/app/', tag='daily-update')
     _remember(user_id, key)
     return sent
 

@@ -176,6 +176,8 @@ class DailyInsight(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     content = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=db.func.now())
+    # News zu den Depotpositionen als JSON-Text, siehe insights/news.py; leer an ruhigen Tagen
+    news = db.Column(db.Text)
 
 
 class PriceHistory(db.Model):

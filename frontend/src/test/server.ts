@@ -88,7 +88,7 @@ const initialData = () => ({
     contract({ id: 53, name: 'Fitnessstudio', category: 'fitness', amount: 29.9, interval: 'monthly', start_date: '2025-01-01', renewal_months: 1, notice_value: 1, status: 'cancelled', cancelled_at: '2026-10-01', end_date: '2026-12-31', ends_on: '2026-12-31' }),
   ] as Contract[],
   contractSuggestions: [] as { key: string; keys?: string[]; aliases?: string[]; name: string; amount: number; interval: string; first_date: string; last_date: string; count: number; category_id: number; category_name: string; kind: string }[],
-  insight: { content: 'Dein Depot hat diese Woche 1,4 % zugelegt.', created_at: '2026-10-30 07:00' } as { content: string | null; created_at?: string },
+  insight: { content: 'Dein Depot hat diese Woche 1,4 % zugelegt.', created_at: '2026-10-30 07:00' } as { content: string | null; created_at?: string; news?: unknown[] },
 });
 
 const PER_YEAR: Record<string, number> = { monthly: 12, quarterly: 4, half_yearly: 2, yearly: 1 };

@@ -66,6 +66,7 @@ Das Projekt ist außerdem ein Lernprojekt: Jeder Baustein, vom Datenbankschema b
 
 ### 🤖 KI-Finanzberater und Analyse
 - **Chat** mit einem Berater, der Depot, Haushaltsbuch, Verträge und Anlageprofil kennt. Über **Function Calling** ruft er Live-Kurse und die eigenen Zahlen ab und sucht bei Bedarf aktuelle Nachrichten (**Tavily**)
+- **News zu deinem Depot** im Tages-Update: Jeden Abend sucht FinTrack per Tavily nach News der letzten 24 Stunden zu den (höchstens 20 größten) Positionen, die KI behält nur Kursrelevantes als einen Satz pro Wert mit den Artikeln als Quellen. An Tavily geht nur der Name des Werts
 - Antworten mit Tabellen und Listen, formatiert ohne fremdes HTML in der Seite. Der Verlauf bleibt gespeichert, an die KI geht ein gleitendes Fenster der letzten Nachrichten
 - **Portfolio-Analyse** per Structured Output: Risiko, Streuung, Zusammenfassung und Empfehlungen. Rechenwerte wie der Gesamtwert kommen vom Server, nicht aus der KI
 

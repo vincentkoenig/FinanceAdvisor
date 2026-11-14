@@ -1,6 +1,9 @@
 """
-insights/routes.py - Liefert den zuletzt generierten täglichen KI-Insight.
+insights/routes.py - Liefert den zuletzt generierten täglichen KI-Insight
+samt News zu den Depotpositionen.
 """
+
+import json
 
 from flask import Blueprint, jsonify
 from flask_login import current_user
@@ -20,9 +23,10 @@ def get_latest_insight():
         .order_by(DailyInsight.created_at.desc()).first()
 
     if not insight:
-        return jsonify({"content": None}), 200
+        return jsonify({"content": None, "news": []}), 200
 
     return jsonify({
         "content": insight.content,
-        "created_at": insight.created_at.strftime('%Y-%m-%d %H:%M')
+        "created_at": insight.created_at.strftime('%Y-%m-%d %H:%M'),
+        "news": json.loads(insight.news) if insight.news else [],
     }), 200

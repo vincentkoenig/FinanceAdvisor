@@ -3,14 +3,20 @@ insight_logic.py - Generiert einen täglichen, proaktiven KI-Insight
 pro Nutzer: fasst die Portfolio-Entwicklung der letzten 7 Tage und
 den aktuellen Haushaltsbuch-Status in wenigen, natürlichen Sätzen
 zusammen. Wird vom Scheduler täglich aufgerufen und in DailyInsight
-gespeichert, damit die Home-Seite sie anzeigen kann.
+gespeichert, damit die Home-Seite sie anzeigen kann. Dazu kommen die
+kursrelevanten News zu den Depotpositionen (insights/news.py).
 """
 
+import json
+import logging
 from datetime import datetime, timedelta
 
 from fintrack.models import db, User, DailyInsight
 from fintrack.portfolio.history import portfolio_value_on
 from fintrack.budget.service import calculate_budget_summary
+from fintrack.insights.news import collect_depot_news
+
+logger = logging.getLogger(__name__)
 
 
 def calculate_portfolio_value_at(user_id, target_date):
@@ -85,7 +91,15 @@ def generate_insight_for_user(user_id, openai_client):
 
     # Zeitpunkt ausdrücklich setzen, damit die Prüfung "heute schon einer?"
     # dieselbe Uhr nutzt wie hier (nicht die der Datenbank)
-    new_insight = DailyInsight(user_id=user_id, content=insight_text, created_at=today)
+    # News sind eine Zugabe: Fällt Tavily oder die Auswertung aus, gibt es das Update trotzdem
+    try:
+        news = collect_depot_news(user_id, openai_client)
+    except Exception:
+        logger.exception('News für Nutzer %s nicht verfügbar', user_id)
+        news = []
+
+    new_insight = DailyInsight(user_id=user_id, content=insight_text, created_at=today,
+                               news=json.dumps(news, ensure_ascii=False) if news else None)
     db.session.add(new_insight)
     db.session.commit()
     return True
