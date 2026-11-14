@@ -192,5 +192,7 @@ def no_fallback_network(monkeypatch):
     monkeypatch.setattr(fallback, 'requests', _NoNetwork)
     monkeypatch.delenv('ALPHAVANTAGE_API_KEY', raising=False)
     monkeypatch.delenv('COINGECKO_API_KEY', raising=False)
+    # Ohne Schlüssel sucht insights/news.py nie bei Tavily; Tests, die News prüfen, ersetzen _search
+    monkeypatch.delenv('TAVILY_API_KEY', raising=False)
     monkeypatch.setattr(fallback, '_found_ids', {})
     monkeypatch.setitem(fallback._alphavantage_state, 'calls', 0)

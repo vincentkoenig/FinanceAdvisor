@@ -107,6 +107,15 @@ h2 { font-size: var(--fs-section); line-height: 24px; font-weight: 600; }
 @keyframes fade { from { opacity: 0; } }
 .load-error { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: 8px; background: var(--raised); color: var(--muted); }
 .insight { line-height: 22px; white-space: pre-line; }
+/* News zu den Depotpositionen unter dem Tages-Update */
+.news { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.news-title { font-size: var(--fs-small); font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+.news ul { list-style: none; margin: 0; padding: 0; }
+.news > ul { display: flex; flex-direction: column; gap: 12px; }
+.news p { margin-top: 2px; line-height: 20px; }
+.news-sources { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; font-size: var(--fs-small); }
+.news-sources a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+.news-sources a:hover { color: var(--text); }
 .sub-line { display: block; color: var(--muted); font-size: var(--fs-small); line-height: 16px; margin-top: 2px; }
 
 /* ─── Kennzahlen, Anteile, Monatsfluss ─── */

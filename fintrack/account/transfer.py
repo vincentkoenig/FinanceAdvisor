@@ -136,7 +136,7 @@ def export_user_data(user):
             for a in _by_id(PortfolioAnalysis, user_id)
         ],
         "insights": [
-            {"content": i.content, "created_at": _iso(i.created_at)}
+            {"content": i.content, "created_at": _iso(i.created_at), "news": json.loads(i.news) if i.news else None}
             for i in _by_id(DailyInsight, user_id)
         ],
         "contracts": [
@@ -259,7 +259,8 @@ def import_user_data(user, data):
                 recommendations=json.dumps(entry.recommendations, ensure_ascii=False),
                 allocation=json.dumps(entry.allocation, ensure_ascii=False), created_at=entry.created_at)
     for entry in data.insights:
-        _create(DailyInsight, user_id=user_id, content=entry.content, created_at=entry.created_at)
+        _create(DailyInsight, user_id=user_id, content=entry.content, created_at=entry.created_at,
+                news=json.dumps(entry.news, ensure_ascii=False) if entry.news else None)
     for entry in data.contracts:
         _create(Contract, user_id=user_id, transaction_id=transaction_ids.get(entry.transaction_ref),
                 **entry.model_dump(exclude={'transaction_ref'}))

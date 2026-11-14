@@ -81,7 +81,9 @@ export type Dividend = {
   total_amount: number;
 };
 
-export type Insight = { content: string | null; created_at?: string };
+/** Kursrelevante News zu einer Depotposition, ausgewählt beim abendlichen Tages-Update */
+export type DepotNews = { asset_id: number; name: string; symbol: string; summary: string; sources: { title: string; url: string }[] };
+export type Insight = { content: string | null; created_at?: string; news?: DepotNews[] };
 
 export const keys = {
   positions: ['positions'] as const,

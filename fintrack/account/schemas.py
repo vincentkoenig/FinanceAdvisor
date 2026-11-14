@@ -122,6 +122,8 @@ class ExportAnalysis(_Entry):
 class ExportInsight(_Entry):
     content: str
     created_at: Optional[datetime] = None
+    # Seit den Depot-News; ältere Exportdateien haben das Feld nicht
+    news: Optional[List[dict]] = None
 
 
 class ExportContract(_Entry):
