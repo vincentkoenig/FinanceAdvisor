@@ -26,6 +26,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 
+from fintrack.analyst import fundamentals as fund
 from fintrack.analyst import indicators as ind
 from fintrack.contracts.terms import today_berlin
 from fintrack.extensions import db
@@ -62,6 +63,10 @@ Wertpapier nach dem Ansatz "Trend + Rücksetzer" ein:
   ob verkauft oder abgesichert werden sollte.
 - Wichtige Nachrichten können die Einschätzung verstärken oder abschwächen. Das Risikoprofil des
   Anlegers und das Gewicht der Position im Depot fließen ein (hohes Gewicht: vorsichtiger nachkaufen).
+- Bei Einzelaktien kommen Fundamentaldaten dazu. Sie ändern den Ansatz nicht, sondern vor allem die
+  Zuversicht: Ein Rücksetzer bei wachsendem Gewinn und vertretbarer Bewertung verdient mehr Zuversicht
+  als einer bei schrumpfendem Gewinn, hoher Bewertung oder hoher Verschuldung. Der Analystenkonsens ist
+  eine Meinung unter mehreren, nicht ausschlaggebend. Werte mit "unbekannt" fehlen: nicht schätzen.
 
 Antworte nur mit einer der erlaubten Stufen. Zuversicht "niedrig", wenn die Signale widersprüchlich
 sind oder Daten fehlen. Begründung: 2 bis 3 sachliche Sätze auf Deutsch, die sich auf die genannten
@@ -135,7 +140,7 @@ def _fmt(value, suffix=''):
     return 'unbekannt' if value is None else f'{value}{suffix}'
 
 
-def _prompt(asset, kind, weight, values, signals, articles, user):
+def _prompt(asset, kind, weight, values, signals, articles, user, fundamentals=None):
     stances = POSITION_STANCES if kind == 'position' else WATCHLIST_STANCES
     trend = {'up': 'aufwärts', 'down': 'abwärts', 'sideways': 'seitwärts', None: 'unbekannt (zu wenig Historie)'}
     lines = [
@@ -157,8 +162,10 @@ def _prompt(asset, kind, weight, values, signals, articles, user):
         + (', überhitzt' if signals['overheated'] else '')
         + (', Trendbruch' if signals['trend_break'] else ''),
         '',
-        'Nachrichten der letzten Woche:' if articles else 'Keine Nachrichten der letzten Woche gefunden.',
     ]
+    if fundamentals:
+        lines += fund.prompt_lines(fundamentals) + ['']
+    lines.append('Nachrichten der letzten Woche:' if articles else 'Keine Nachrichten der letzten Woche gefunden.')
     lines += [f'- {a["title"]}: {a["content"]}' for a in articles]
     return '\n'.join(lines)
 
@@ -187,8 +194,10 @@ def analyse_user(user, openai_client, today=None):
             summary['skipped'] += 1
             continue
         signals = ind.classify(values)
+        fundamentals = fund.collect(asset)
         try:
-            answer = _ask(openai_client, _prompt(asset, kind, weight, values, signals, _week_news(asset), user), kind)
+            prompt = _prompt(asset, kind, weight, values, signals, _week_news(asset), user, fundamentals)
+            answer = _ask(openai_client, prompt, kind)
         except Exception as error:
             logger.exception('Einschätzung für %s fehlgeschlagen', asset.symbol)
             summary['errors'].append(f'{asset.symbol}: {error}')
@@ -197,7 +206,7 @@ def analyse_user(user, openai_client, today=None):
             user_id=user.id, asset_id=asset.id, run_date=today, kind=kind, stance=answer.stance,
             confidence=answer.confidence, reasoning=' '.join(answer.reasoning.split()),
             invalidation=' '.join(answer.invalidation.split()), price=values['price'],
-            indicators=json.dumps({**values, **signals}), model=model_name()))
+            indicators=json.dumps({**values, **signals, 'fundamentals': fundamentals}), model=model_name()))
         db.session.commit()
         summary['signals'] += 1
         previous = AnalystSignal.query.filter(

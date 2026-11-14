@@ -19,7 +19,8 @@ bp = Blueprint('analyst', __name__)
 protect_blueprint(bp)
 
 # Nur diese Kennzahlen braucht die Anzeige
-SHOWN = ('trend', 'pullback', 'overheated', 'trend_break', 'rsi14', 'above_sma200_pct', 'from_high_pct', 'sma200')
+SHOWN = ('trend', 'pullback', 'overheated', 'trend_break', 'rsi14', 'above_sma200_pct', 'from_high_pct', 'sma200',
+         'fundamentals')
 
 
 @bp.route('/me/analyst', methods=['GET'])

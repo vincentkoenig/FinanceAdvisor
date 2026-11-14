@@ -132,6 +132,7 @@ class FakeYahoo:
         self.dividends = {}
         self.quotes = {}
         self.splits = {}
+        self.fundamentals = {}
         self.calls = []
 
     def add_stock(self, symbol, currency='EUR', asset_type='stock', exchange='GER'):
@@ -158,6 +159,9 @@ class FakeYahoo:
     def fetch_splits(self, symbol):
         return self.splits.get(symbol, [])
 
+    def fetch_fundamentals(self, symbol):
+        return self.fundamentals.get(symbol)
+
 
 @pytest.fixture(autouse=True)
 def fake_yahoo(monkeypatch):
@@ -165,7 +169,8 @@ def fake_yahoo(monkeypatch):
     from fintrack.market import prices, yahoo
 
     fake = FakeYahoo()
-    for name in ('fetch_metadata', 'fetch_last_price', 'fetch_daily_closes', 'fetch_dividends', 'search_quotes', 'fetch_splits'):
+    for name in ('fetch_metadata', 'fetch_last_price', 'fetch_daily_closes', 'fetch_dividends', 'search_quotes', 'fetch_splits',
+                 'fetch_fundamentals'):
         monkeypatch.setattr(yahoo, name, getattr(fake, name))
     prices.clear_cache()
     yield fake

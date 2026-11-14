@@ -17,9 +17,18 @@ export type AnalystItem = {
     trend: 'up' | 'down' | 'sideways' | null;
     pullback: boolean; overheated: boolean; trend_break: boolean;
     rsi14: number | null; above_sma200_pct: number | null; from_high_pct: number | null; sma200: number | null;
+    /** Nur bei Einzelaktien; fehlende Werte fehlen auch hier */
+    fundamentals?: Fundamentals | null;
   };
   previous_label: string | null;
   changed: boolean;
+};
+
+export type Fundamentals = {
+  pe?: number; forward_pe?: number; price_to_book?: number;
+  revenue_growth_pct?: number; earnings_growth_pct?: number;
+  profit_margin_pct?: number; return_on_equity_pct?: number; debt_to_equity?: number; free_cashflow_positive?: boolean;
+  recommendation?: string; analysts?: number; target_pct?: number;
 };
 
 export type AnalystRun = { run_date: string | null; model: string; items: AnalystItem[] };
