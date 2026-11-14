@@ -84,6 +84,16 @@ def model_name():
     return os.getenv('ANALYST_MODEL') or DEFAULT_MODEL
 
 
+# Nur ältere Modelle nehmen eine eigene Temperatur an; GPT-5 und neuer (Denkmodelle)
+# lehnen einen anderen Wert als den Standard mit einem Fehler ab
+TEMPERATURE_MODELS = ('gpt-4o', 'gpt-4.1', 'gpt-4-', 'gpt-3.5')
+
+
+def _sampling(model):
+    """Zusätzliche Parameter je nach Modell: eine niedrige Temperatur nur, wo sie erlaubt ist."""
+    return {'temperature': 0.2} if model.startswith(TEMPERATURE_MODELS) else {}
+
+
 def _candidates(user_id):
     """
     (Asset, kind, Gewicht im Depot in Prozent oder None): Positionen zuerst, nach Wert,
@@ -150,11 +160,12 @@ def _prompt(asset, kind, weight, values, signals, articles, user):
 
 
 def _ask(openai_client, prompt, kind):
+    model = model_name()
     response = openai_client.beta.chat.completions.parse(
-        model=model_name(),
+        model=model,
         messages=[{'role': 'system', 'content': INSTRUCTIONS}, {'role': 'user', 'content': prompt}],
-        temperature=0.2,
         response_format=_PositionAnswer if kind == 'position' else _WatchlistAnswer,
+        **_sampling(model),
     )
     return response.choices[0].message.parsed
 

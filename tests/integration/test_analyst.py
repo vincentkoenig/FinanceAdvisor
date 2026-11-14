@@ -107,6 +107,17 @@ class TestRun:
         assert client.beta.chat.completions.parse.call_args.kwargs['model'] == 'starkes-modell'
         assert AnalystSignal.query.first().model == 'starkes-modell'
 
+    @pytest.mark.parametrize('name, temperature', [
+        ('gpt-4o-mini', 0.2), ('gpt-4.1', 0.2), ('gpt-6.1-sol', None), ('gpt-5.5', None), ('o3', None)])
+    def test_temperature_only_for_models_that_accept_it(self, user, depot, monkeypatch, name, temperature):
+        """GPT-5 und neuer lehnen eine eigene Temperatur ab; dann wird sie gar nicht erst geschickt"""
+        monkeypatch.setenv('ANALYST_MODEL', name)
+        client = model(('position', 'hold', 'mittel'), ('position', 'hold', 'mittel'), ('watchlist', 'wait', 'mittel'))
+
+        service.analyse_user(user, client, today=SUNDAY)
+
+        assert client.beta.chat.completions.parse.call_args.kwargs.get('temperature') == temperature
+
     def test_second_run_same_day_skips_done(self, user, depot):
         service.analyse_user(user, model(('position', 'hold', 'mittel'), ('position', 'hold', 'mittel'),
                                          ('watchlist', 'wait', 'mittel')), today=SUNDAY)
