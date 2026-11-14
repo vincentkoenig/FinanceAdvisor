@@ -10,14 +10,14 @@ from datetime import datetime, timedelta
 
 # Third Party
 from flask import Blueprint, current_app, jsonify
-from flask_login import current_user, login_user, logout_user
+from flask_login import current_user, logout_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
 # Lokale Imports
 from fintrack.api import parse_body
 from fintrack.auth.email import generate_verification_code, send_verification_email
 from fintrack.auth.schemas import Credentials, ResendVerification, SettingsUpdate, VerifyEmail
-from fintrack.auth.session import login_required_api
+from fintrack.auth.session import login_required_api, start_session
 from fintrack.budget.service import create_default_categories
 from fintrack.extensions import db, limiter
 from fintrack.models import User
@@ -44,15 +44,6 @@ def normalize_email(value):
 def find_user_by_email(email):
     """Sucht einen Nutzer unabhängig von Groß-/Kleinschreibung der E-Mail."""
     return User.query.filter(db.func.lower(User.email) == normalize_email(email)).first()
-
-
-def start_session(user):
-    """Meldet den Nutzer an (Cookie für 30 Tage) und speichert ein neues
-    session_token, falls der Nutzer noch keins hat."""
-    if not user.session_token:
-        user.rotate_session_token()
-    db.session.commit()
-    login_user(user, remember=True)
 
 
 @bp.route('/auth/register', methods=['POST'])

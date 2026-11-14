@@ -6,6 +6,7 @@ import { Shell, type RootContext } from './components/Shell';
 import { ToastProvider } from './components/Toast';
 import { LoginPage } from './features/auth/LoginPage';
 import { HomePage } from './features/home/HomePage';
+import { useLogoutWhenAway } from './lib/idleLogout';
 import { lazyPage } from './lib/lazyPage';
 import { PrivacyProvider } from './lib/privacy';
 import { useTheme } from './lib/theme';
@@ -38,6 +39,7 @@ function RequireAuth() {
   const context = useOutletContext<RootContext>();
   const { data: user, isPending, isError } = useMe();
   const location = useLocation();
+  useLogoutWhenAway();
   if (isPending) return <p className="center-note" role="status">Lädt …</p>;
   if (isError) return <p className="center-note" role="alert">Der Server ist gerade nicht erreichbar. Bitte lade die Seite gleich noch einmal.</p>;
   if (!user) return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;

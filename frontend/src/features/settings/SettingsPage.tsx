@@ -1,5 +1,5 @@
 // Einstellungen: Anlageprofil (für KI-Berater und Analyse), Kategorien des Haushaltsbuchs,
-// Darstellung und Benachrichtigungen auf diesem Gerät, eigene Daten exportieren/importieren und das Konto.
+// Anmeldung per Face ID/Fingerabdruck, Darstellung und Benachrichtigungen auf diesem Gerät, eigene Daten exportieren/importieren und das Konto.
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useOutletContext } from 'react-router';
 import { useLogout, useMe, type User } from '../../api/auth';
@@ -11,6 +11,7 @@ import { useToast } from '../../components/Toast';
 import { parseAmount } from '../../lib/format';
 import { usePrivacy } from '../../lib/privacy';
 import { CategoriesSection } from './Categories';
+import { PasskeySection } from './Passkeys';
 import { PushSection } from './Push';
 import { RulesSection } from './Rules';
 
@@ -208,6 +209,9 @@ export function SettingsPage() {
             </div>
             <input type="checkbox" className="switch" id="hide-amounts" checked={hidden} onChange={(e) => setHidden(e.target.checked)} />
           </div>
+        </Row>
+        <Row title="Anmeldung" description="Face ID, Touch ID oder Fingerabdruck statt Passwort. Jedes Gerät richtest du einmal auf dem Gerät selbst ein.">
+          <PasskeySection />
         </Row>
         <Row title="Benachrichtigungen" description="Push-Meldungen aufs Handy oder den Laptop, auch wenn FinTrack geschlossen ist. Gilt für dieses Gerät.">
           <PushSection />
