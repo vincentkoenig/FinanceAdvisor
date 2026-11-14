@@ -29,6 +29,8 @@ from tests.conftest import flask_app
 PUBLIC_ENDPOINTS = {
     'auth.register', 'auth.login', 'auth.logout',
     'auth.verify_email', 'auth.resend_verification',
+    # Anmeldung per Passkey (Face ID, Fingerabdruck) - ersetzt die Passworteingabe
+    'passkeys.authentication_options', 'passkeys.passkey_login',
     # Das React-Frontend unter /app: reine Dateien ohne Nutzerdaten,
     # die Anmeldung prüft es selbst über /api/v1/me
     'spa.app_root', 'spa.frontend',

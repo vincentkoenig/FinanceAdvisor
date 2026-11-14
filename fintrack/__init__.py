@@ -52,7 +52,7 @@ def create_app(config_name=None, config_overrides=None):
     login_manager.init_app(app)
     limiter.init_app(app)
 
-    from fintrack.auth.session import reject_cross_site_requests
+    from fintrack.auth.session import expire_idle_session, reject_cross_site_requests
 
     @app.before_request
     def load_user_fresh_per_request():
@@ -65,6 +65,7 @@ def create_app(config_name=None, config_overrides=None):
         g.pop('_login_user', None)
 
     app.before_request(reject_cross_site_requests)
+    app.before_request(expire_idle_session)
 
     # Einheitliche JSON-Fehler für die API (Validierung, 404, 429, 500 ...)
     from fintrack.api import API_PREFIX, register_error_handlers
@@ -97,7 +98,7 @@ def create_app(config_name=None, config_overrides=None):
     from fintrack.account import routes as account_routes
     from fintrack.analyst import routes as analyst_routes
     from fintrack.admin import routes as admin_routes
-    from fintrack.auth import routes as auth_routes
+    from fintrack.auth import passkeys as passkey_routes, routes as auth_routes
     from fintrack.budget import routes as budget_routes
     from fintrack.chat import routes as chat_routes
     from fintrack.contracts import routes as contract_routes
@@ -115,7 +116,7 @@ def create_app(config_name=None, config_overrides=None):
     app.register_blueprint(spa.bp)
     for blueprint in (auth_routes.bp, portfolio_routes.bp, analysis.bp, budget_routes.bp,
                       chat_routes.bp, contract_routes.bp, import_routes.bp, insights_routes.bp,
-                      account_routes.bp, push_routes.bp, analyst_routes.bp):
+                      account_routes.bp, push_routes.bp, analyst_routes.bp, passkey_routes.bp):
         app.register_blueprint(blueprint, url_prefix=API_PREFIX)
     app.register_blueprint(admin_routes.bp, url_prefix=f'{API_PREFIX}/admin')
 

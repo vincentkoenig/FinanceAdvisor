@@ -61,6 +61,9 @@ class Config:
     REMEMBER_COOKIE_SAMESITE = 'Lax'
     REMEMBER_COOKIE_DURATION = timedelta(days=30)
     PERMANENT_SESSION_LIFETIME = timedelta(days=30)
+    # Nach so langer Zeit ohne Anfrage (App geschlossen oder im Hintergrund) ist man
+    # abgemeldet und meldet sich neu an - per Passwort oder Passkey (Face ID, Fingerabdruck)
+    IDLE_TIMEOUT = timedelta(minutes=5)
 
     # Mindestlänge für neue Passwörter
     PASSWORD_MIN_LENGTH = 10

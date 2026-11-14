@@ -446,6 +446,30 @@ class PushSubscription(db.Model):
     created_at = db.Column(db.DateTime, default=db.func.now())
 
 
+class Passkey(db.Model):
+    """
+    Passkey Tabelle - ein Gerät, mit dem sich der Nutzer per Face ID, Touch ID oder
+    Fingerabdruck anmeldet (WebAuthn). Der Fingerabdruck bzw. das Gesicht verlässt das
+    Gerät nie: Der Server kennt nur den öffentlichen Schlüssel (public_key) und prüft
+    damit die Signatur, die das Gerät bei jeder Anmeldung erzeugt.
+    credential_id: Kennung des Passkeys (base64url), schickt das Gerät bei der Anmeldung mit.
+    sign_count: Zähler des Geräts - springt er zurück, wurde der Schlüssel womöglich kopiert.
+    Viele Geräte (iPhone, Android) zählen nicht und schicken immer 0.
+    name: Gerätename zum Wiedererkennen in den Einstellungen, z.B. "iPhone".
+    Gerätedaten gehören nicht in den Export: Auf einem neuen Server richtet man den
+    Passkey einfach neu ein.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    credential_id = db.Column(db.String(512), nullable=False, unique=True)
+    public_key = db.Column(db.LargeBinary, nullable=False)
+    sign_count = db.Column(db.Integer, nullable=False, default=0)
+    transports = db.Column(db.String(200))
+    name = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+    last_used_at = db.Column(db.DateTime)
+
+
 class PushLog(db.Model):
     """
     PushLog Tabelle - welche Meldung ein Nutzer schon bekommen hat, damit der tägliche

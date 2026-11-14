@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 
 const LIMITS = {
-  start: 130, // Einstieg + Bibliotheken + CSS, alles was die erste Seite braucht
+  start: 131, // Einstieg + Bibliotheken + CSS, alles was die erste Seite braucht (inkl. Anmeldung per Passkey)
   app: 20, // eigener Code im Einstieg, wird nach jedem Deploy neu geladen
   page: 15, // jede nachgeladene Seite
 };

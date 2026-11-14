@@ -1,14 +1,15 @@
 """
-auth/session.py - Anmeldung über das Session-Cookie: Nutzer aus dem Cookie
-laden, nicht angemeldete Anfragen abweisen und Datensätze nur laden, wenn
-sie dem angemeldeten Nutzer gehören.
+auth/session.py - Anmeldung über das Session-Cookie: Nutzer anmelden und aus dem
+Cookie laden, nach 5 Minuten ohne Anfrage automatisch abmelden, nicht angemeldete
+Anfragen abweisen und Datensätze nur laden, wenn sie dem angemeldeten Nutzer gehören.
 """
 
+import time
 from functools import wraps
 from urllib.parse import urlparse
 
-from flask import jsonify, request
-from flask_login import current_user
+from flask import current_app, jsonify, request, session
+from flask_login import current_user, login_user, logout_user
 
 from fintrack.extensions import db, login_manager
 from fintrack.models import User
@@ -32,6 +33,44 @@ def load_user(cookie_id):
     if user is None or user.session_token != token:
         return None
     return user
+
+
+# Zeitpunkt der letzten Anfrage in der (signierten) Flask-Session
+LAST_SEEN_KEY = 'last_seen'
+
+
+def start_session(user):
+    """
+    Meldet den Nutzer an und speichert ein neues session_token, falls er noch keins
+    hat. Bewusst ohne "Angemeldet bleiben"-Cookie: Die Anmeldung endet, wenn der
+    Browser geschlossen wird oder 5 Minuten lang keine Anfrage kam (expire_idle_session).
+    """
+    if not user.session_token:
+        user.rotate_session_token()
+    db.session.commit()
+    login_user(user, remember=False)
+    session[LAST_SEEN_KEY] = int(time.time())
+
+
+def expire_idle_session():
+    """
+    before_request-Hook für die ganze App: Kam länger als IDLE_TIMEOUT keine Anfrage
+    (App geschlossen oder im Hintergrund), wird der Nutzer abgemeldet und muss sich
+    neu anmelden. Sonst zählt diese Anfrage als neue Aktivität.
+    Fehlt der Zeitstempel (z.B. ein altes 30-Tage-Cookie von vor dieser Regel),
+    gilt die Anmeldung ebenfalls als abgelaufen.
+    """
+    if not request.path.startswith('/api/') or not current_user.is_authenticated:
+        return None
+    now = int(time.time())
+    last_seen = session.get(LAST_SEEN_KEY)
+    timeout = current_app.config['IDLE_TIMEOUT'].total_seconds()
+    if not isinstance(last_seen, int) or now - last_seen > timeout:
+        logout_user()
+        session.pop(LAST_SEEN_KEY, None)
+        return None
+    session[LAST_SEEN_KEY] = now
+    return None
 
 
 @login_manager.unauthorized_handler

@@ -159,6 +159,7 @@ export const handlers = [
     session.loggedIn = false;
     return HttpResponse.json({ message: 'Abgemeldet' });
   }),
+  http.get('/api/v1/me/passkeys', () => HttpResponse.json([])),
 
   http.get('/api/v1/me/positions', () => HttpResponse.json(data.positions)),
   http.get('/api/v1/me/budget/summary', () => HttpResponse.json(data.summary)),
