@@ -79,11 +79,14 @@ def _query(asset):
     return f'{asset.name} {kinds.get(asset.asset_type, "Aktie")} News'
 
 
-def _search(query):
-    """News der letzten 24 Stunden bei Tavily als Liste von Treffern (url, title, content, published_date)."""
+def _search(query, time_range='day'):
+    """
+    News bei Tavily als Liste von Treffern (url, title, content, published_date):
+    standardmäßig der letzten 24 Stunden, für den Analysten der letzten Woche ('week').
+    """
     from langchain_tavily import TavilySearch
 
-    search = TavilySearch(max_results=RESULTS_PER_POSITION + 2, topic='news', time_range='day',
+    search = TavilySearch(max_results=RESULTS_PER_POSITION + 2, topic='news', time_range=time_range,
                           api_key=os.getenv('TAVILY_API_KEY'))
     return search.invoke({'query': query}).get('results') or []
 

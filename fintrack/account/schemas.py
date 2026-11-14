@@ -91,6 +91,23 @@ class ExportWatchlistItem(_Entry):
     asset_ref: PositiveInt
     price_added: Optional[float] = None
     added_at: Optional[datetime] = None
+    # Seit den Zielkursen; ältere Dateien haben die Felder nicht
+    target_price: Optional[float] = None
+    target_direction: Optional[Literal['above', 'below']] = None
+    target_hit_at: Optional[datetime] = None
+
+
+class ExportAnalystSignal(_Entry):
+    asset_ref: PositiveInt
+    run_date: date
+    kind: Literal['position', 'watchlist']
+    stance: str = Field(max_length=20)
+    confidence: str = Field(max_length=10)
+    reasoning: str
+    invalidation: str
+    price: float
+    indicators: Optional[dict] = None
+    model: Optional[str] = Field(default=None, max_length=60)
 
 
 class ExportDividend(_Entry):
@@ -178,6 +195,8 @@ class ExportFile(_Entry):
     category_rules: List[ExportCategoryRule] = []
     # Seit den eingetragenen Kontoständen; ältere Dateien haben den Abschnitt nicht
     account_balances: List[ExportAccountBalance] = []
+    # Seit dem Analysten; ältere Dateien haben den Abschnitt nicht
+    analyst_signals: List[ExportAnalystSignal] = []
     # Ausgeblendete Vertragsvorschläge (Empfängernamen); ältere Dateien haben den Abschnitt nicht
     dismissed_suggestions: List[Annotated[str, StringConstraints(min_length=1, max_length=200)]] = []
 

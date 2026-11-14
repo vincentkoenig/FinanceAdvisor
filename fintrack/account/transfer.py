@@ -16,7 +16,7 @@ from datetime import datetime
 from fintrack.api import ApiError
 from fintrack.budget.service import ensure_transfer_categories
 from fintrack.extensions import db
-from fintrack.models import (AccountBalance, Asset, AssetTransaction, Category, CategoryRule, ChatHistory, Contract, ContractSuggestionDismissal, DailyInsight, Dividend,
+from fintrack.models import (AccountBalance, AnalystSignal, Asset, AssetTransaction, Category, CategoryRule, ChatHistory, Contract, ContractSuggestionDismissal, DailyInsight, Dividend,
                              PortfolioAnalysis, SavingsPlan, Transaction, UserAsset, Watchlist)
 from fintrack.portfolio.analysis import parse_stored_list
 from fintrack.account.schemas import EXPORT_FORMAT, EXPORT_VERSION
@@ -24,7 +24,8 @@ from fintrack.account.schemas import EXPORT_FORMAT, EXPORT_VERSION
 # Tabellen mit Nutzerdaten, die beim Import leer sein müssen (Kategorien
 # zählen nicht - die legt jede Registrierung automatisch an)
 USER_DATA_MODELS = (Transaction, UserAsset, AssetTransaction, SavingsPlan, Watchlist,
-                    Dividend, ChatHistory, PortfolioAnalysis, DailyInsight, Contract, AccountBalance)
+                    Dividend, ChatHistory, PortfolioAnalysis, DailyInsight, Contract, AccountBalance,
+                    AnalystSignal)
 
 
 def _iso(value):
@@ -35,13 +36,14 @@ def _by_id(model, user_id):
     return model.query.filter_by(user_id=user_id).order_by(model.id).all()
 
 
-def _create(model, **values):
+def _create(table, **values):
     """
     Legt einen Datensatz an und lässt leere Werte weg. So greifen die
     Standardwerte der Spalten (z.B. created_at = jetzt), statt dass ein
-    ausdrückliches None als NULL gespeichert wird.
+    ausdrückliches None als NULL gespeichert wird. Der erste Parameter heißt
+    table, weil AnalystSignal eine Spalte "model" hat.
     """
-    obj = model(**{key: value for key, value in values.items() if value is not None})
+    obj = table(**{key: value for key, value in values.items() if value is not None})
     db.session.add(obj)
     return obj
 
@@ -63,10 +65,11 @@ def export_user_data(user):
     savings_plans = _by_id(SavingsPlan, user_id)
     watchlist = _by_id(Watchlist, user_id)
     dividends = _by_id(Dividend, user_id)
+    signals = _by_id(AnalystSignal, user_id)
 
     # Nur Assets, auf die der Nutzer verweist
     used_asset_ids = sorted({row.asset_id for rows in (positions, asset_transactions, savings_plans,
-                                                       watchlist, dividends) for row in rows})
+                                                       watchlist, dividends, signals) for row in rows})
     assets = [db.session.get(Asset, asset_id) for asset_id in used_asset_ids]
     asset_ref = {asset.id: index for index, asset in enumerate(assets, start=1)}
 
@@ -114,7 +117,9 @@ def export_user_data(user):
             for p in savings_plans
         ],
         "watchlist": [
-            {"asset_ref": asset_ref[w.asset_id], "price_added": w.price_added, "added_at": _iso(w.added_at)}
+            {"asset_ref": asset_ref[w.asset_id], "price_added": w.price_added, "added_at": _iso(w.added_at),
+             "target_price": w.target_price, "target_direction": w.target_direction,
+             "target_hit_at": _iso(w.target_hit_at)}
             for w in watchlist
         ],
         "dividends": [
@@ -134,6 +139,12 @@ def export_user_data(user):
              "recommendations": parse_stored_list(a.recommendations),
              "allocation": parse_stored_list(a.allocation), "created_at": _iso(a.created_at)}
             for a in _by_id(PortfolioAnalysis, user_id)
+        ],
+        "analyst_signals": [
+            {"asset_ref": asset_ref[a.asset_id], "run_date": _iso(a.run_date), "kind": a.kind, "stance": a.stance,
+             "confidence": a.confidence, "reasoning": a.reasoning, "invalidation": a.invalidation,
+             "price": a.price, "indicators": json.loads(a.indicators) if a.indicators else None, "model": a.model}
+            for a in signals
         ],
         "insights": [
             {"content": i.content, "created_at": _iso(i.created_at), "news": json.loads(i.news) if i.news else None}
@@ -243,7 +254,13 @@ def import_user_data(user, data):
                 last_executed=entry.last_executed, active=entry.active)
     for entry in data.watchlist:
         _create(Watchlist, user_id=user_id, asset_id=asset_ids[entry.asset_ref],
-                price_added=entry.price_added, added_at=entry.added_at)
+                price_added=entry.price_added, added_at=entry.added_at, target_price=entry.target_price,
+                target_direction=entry.target_direction, target_hit_at=entry.target_hit_at)
+    for entry in data.analyst_signals:
+        _create(AnalystSignal, user_id=user_id, asset_id=asset_ids[entry.asset_ref], run_date=entry.run_date,
+                kind=entry.kind, stance=entry.stance, confidence=entry.confidence, reasoning=entry.reasoning,
+                invalidation=entry.invalidation, price=entry.price, model=entry.model,
+                indicators=json.dumps(entry.indicators) if entry.indicators is not None else None)
     for entry in data.dividends:
         _create(Dividend, user_id=user_id, asset_id=asset_ids[entry.asset_ref],
                 ex_dividend_date=entry.ex_dividend_date, amount_per_share=entry.amount_per_share,
@@ -281,6 +298,7 @@ def import_user_data(user, data):
         "savings_plans": len(data.savings_plans), "watchlist": len(data.watchlist),
         "dividends": len(data.dividends), "chat_history": len(data.chat_history),
         "analyses": len(data.analyses), "insights": len(data.insights),
+        "analyst_signals": len(data.analyst_signals),
         "contracts": len(data.contracts), "category_rules": len(data.category_rules),
         "account_balances": len(data.account_balances),
         "dismissed_suggestions": len(set(data.dismissed_suggestions)),
