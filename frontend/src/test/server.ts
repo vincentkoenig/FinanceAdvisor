@@ -466,6 +466,11 @@ export const handlers = [
   }),
 
   http.get('/api/v1/me/analyst', () => HttpResponse.json({ run_date: null, model: 'gpt-4o-mini', items: [] })),
+  http.get('/api/v1/me/analyst/track-record', () => HttpResponse.json({
+    benchmark: 'MSCI World', signals: 0, first_result_on: null, by_stance: [],
+    horizons: { 30: { evaluated: 0, scored: 0, hits: 0, hit_rate: null, avg_change: null, avg_benchmark: null },
+      90: { evaluated: 0, scored: 0, hits: 0, hit_rate: null, avg_change: null, avg_benchmark: null } },
+  })),
   // Push ist im Test-Server nicht eingerichtet; die Push-Tests schalten es selbst ein
   http.get('/api/v1/me/push', () => HttpResponse.json({ available: false, public_key: null })),
 

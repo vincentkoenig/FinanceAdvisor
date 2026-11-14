@@ -26,3 +26,20 @@ export type AnalystRun = { run_date: string | null; model: string; items: Analys
 
 export const useAnalyst = () =>
   useQuery({ queryKey: ['analyst'], queryFn: () => api<AnalystRun>('/me/analyst'), staleTime: 30 * 60 * 1000 });
+
+/** Auswertung einer Gruppe von Einschätzungen nach 30 bzw. 90 Tagen */
+export type TrackSummary = {
+  evaluated: number; scored: number; hits: number;
+  hit_rate: number | null; avg_change: number | null; avg_benchmark: number | null;
+};
+
+export type TrackRecord = {
+  benchmark: string;
+  signals: number;
+  first_result_on: string | null;
+  horizons: Record<'30' | '90', TrackSummary>;
+  by_stance: { stance: string; stance_label: string; direction: 'up' | 'down' | null; horizons: Record<'30' | '90', TrackSummary> }[];
+};
+
+export const useTrackRecord = () =>
+  useQuery({ queryKey: ['analyst', 'track-record'], queryFn: () => api<TrackRecord>('/me/analyst/track-record'), staleTime: 30 * 60 * 1000 });
