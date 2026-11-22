@@ -63,3 +63,8 @@ class SuggestionDismiss(RequestModel):
 class ContractCancel(RequestModel):
     # Leer = zum nächstmöglichen Laufzeitende
     end_date: Optional[date] = None
+
+
+class PriceChangeAction(RequestModel):
+    """Schlüssel einer erkannten Preisänderung, z.B. 'price:contract:12:13.99'."""
+    key: str = Field(min_length=1, max_length=200, pattern=r'^price:(contract|booking):\d+:-?\d+\.\d{2}$')

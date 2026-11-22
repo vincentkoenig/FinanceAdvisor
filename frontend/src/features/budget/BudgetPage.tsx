@@ -14,6 +14,7 @@ import { useToast } from '../../components/Toast';
 import { dayShort, isoDay, monthKey, parseDay } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import { monthFlow, signedAmount } from '../home/model';
+import { PriceChanges } from '../contracts/PriceChanges';
 import { BalancesDialog } from './BalancesDialog';
 import { AddBookingDialog, DeleteBookingDialog, EditBookingDialog } from './dialogs';
 import {
@@ -78,6 +79,8 @@ export function BudgetPage() {
           <Link to="/budget/import?source=bank" className="btn btn-sm btn-primary">Prüfen</Link>
         </div>
       )}
+
+      <PriceChanges only="booking" />
 
       <div className="grid grid-3">
         <section className="panel hero span-2" aria-labelledby="h-left">
