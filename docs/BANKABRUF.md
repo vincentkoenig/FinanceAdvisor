@@ -31,13 +31,14 @@ Oder von Hand in `/opt/fintrack/.env` (siehe `deploy/README.md`) ergänzen:
 
 ```
 ENABLE_BANKING_APP_ID=deine-application-id
-ENABLE_BANKING_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIIJ...\n-----END PRIVATE KEY-----\n
+ENABLE_BANKING_PRIVATE_KEY_B64=LS0tLS1CRUdJTi...
 ```
 
-Der Schlüssel muss in **einer** Zeile stehen, Zeilenumbrüche als `\n`. Umwandeln:
+Der Schlüssel steht dort **Base64-kodiert in einer Zeile**: Docker liest die `.env`-Datei selbst
+und schneidet Werte an Leerzeichen ab, ein PEM-Schlüssel käme also kaputt an. Umwandeln:
 
 ```bash
-awk 'NF {sub(/\r/, ""); printf "%s\\n", $0}' private.pem
+base64 -w0 private.pem
 ```
 
 Alternativ die Datei auf den Server legen, in den Container einbinden und
