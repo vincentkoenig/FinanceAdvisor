@@ -26,7 +26,7 @@ from flask_login import current_user
 from fintrack.api import API_PREFIX, ApiError, parse_body
 from fintrack.auth.session import current_user_key, get_own, protect_blueprint
 from fintrack.bank import service
-from fintrack.bank.client import BankApiError, is_configured
+from fintrack.bank.client import BankApiError, configuration_error, is_configured
 from fintrack.bank.schemas import AccountUpdate, ConnectRequest, ReviewCommit
 from fintrack.extensions import db, limiter
 from fintrack.models import BankAccount, BankConnection
@@ -70,6 +70,8 @@ def overview():
                                               BankConnection.status != 'pending').order_by(BankConnection.id).all()
     return jsonify({
         "configured": is_configured(),
+        # Eingerichtet, aber unbrauchbar (z.B. Schlüssel beim Eintragen beschädigt): der Grund
+        "configuration_error": configuration_error(),
         "redirect_url": redirect_url(),
         "review_count": service.review_count(current_user.id),
         "connections": [{
@@ -92,6 +94,9 @@ def aspsps():
             banks = service.client().aspsps(country)
         except BankApiError as error:
             raise _bank_error(error)
+        except Exception as error:
+            logger.exception('Bankenliste nicht abrufbar')
+            raise ApiError(502, f'Bankenliste nicht abrufbar ({error.__class__.__name__})')
         _aspsp_cache[country] = sorted({b['name'] for b in banks if b.get('name')}, key=str.lower)
     return jsonify({"configured": True, "aspsps": _aspsp_cache[country]}), 200
 

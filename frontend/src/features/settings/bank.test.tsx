@@ -60,6 +60,14 @@ describe('Bankabruf in den Einstellungen', () => {
     expect(within(panel).queryByRole('button', { name: 'Bei der Bank anmelden' })).not.toBeInTheDocument();
   });
 
+  it('nennt den Grund, wenn der Schlüssel auf dem Server unbrauchbar ist', async () => {
+    data.bank = { ...data.bank, configuration_error: 'Der private Schlüssel auf dem Server ist ungültig (12 Zeichen)' };
+    renderApp('/settings');
+    const panel = await section();
+
+    expect(await within(panel).findByRole('alert')).toHaveTextContent('Der private Schlüssel auf dem Server ist ungültig');
+  });
+
   it('meldet das Ergebnis des Rücksprungs von der Bank', async () => {
     renderApp('/settings?bank=verbunden');
 

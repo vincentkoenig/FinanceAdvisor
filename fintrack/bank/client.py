@@ -57,6 +57,25 @@ def _private_key_pem():
     return None
 
 
+def _describe_pem(pem):
+    """Form des Schlüssels für die Fehlersuche, ohne etwas vom Inhalt zu verraten."""
+    text = pem.decode('utf-8', 'replace')
+    first = text.strip().splitlines()[0] if text.strip() else ''
+    return (f'{len(text)} Zeichen, {text.count(chr(10))} Zeilenumbrüche, '
+            f'beginnt mit "{first[:31]}", \\n im Text: {"ja" if chr(92) + "n" in text else "nein"}')
+
+
+def configuration_error():
+    """Warum der Bankabruf nicht nutzbar ist (Text) oder None, wenn alles passt."""
+    if not is_configured():
+        return None
+    try:
+        EnableBankingClient()
+    except BankApiError as error:
+        return str(error)
+    return None
+
+
 def is_configured():
     """Ist der Server für den Bankabruf eingerichtet (App-ID und Schlüssel vorhanden)?"""
     return bool(os.getenv('ENABLE_BANKING_APP_ID') and _private_key_pem())
@@ -69,7 +88,10 @@ class EnableBankingClient:
         pem = private_key_pem or _private_key_pem()
         if not self.app_id or not pem:
             raise BankApiError('Der Bankabruf ist auf dem Server nicht eingerichtet')
-        self._key = serialization.load_pem_private_key(pem, password=None)
+        try:
+            self._key = serialization.load_pem_private_key(pem, password=None)
+        except (ValueError, TypeError) as error:
+            raise BankApiError(f'Der private Schlüssel auf dem Server ist ungültig ({_describe_pem(pem)})') from error
         self._http = session or requests.Session()
 
     def _token(self):

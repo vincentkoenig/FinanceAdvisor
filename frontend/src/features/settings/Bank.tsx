@@ -50,6 +50,15 @@ export function BankSection() {
     );
   }
 
+  if (bank.data.configuration_error) {
+    return (
+      <div className="bank-setup">
+        <p className="err" role="alert">{bank.data.configuration_error}</p>
+        <p className="hint">Der Schlüssel in der Einstellungsdatei des Servers lässt sich nicht lesen. Das Einrichtungs-Skript neu laufen lassen hilft meist.</p>
+      </div>
+    );
+  }
+
   return (
     <>
       {reviewCount > 0 && (
@@ -140,6 +149,15 @@ function ConnectForm() {
   const [chosen, setChosen] = useState<string | null>(null);
   const banks = aspsps.data ?? [];
   const selected = chosen ?? banks.find((name) => PREFERRED_BANK.test(name)) ?? banks[0] ?? '';
+
+  if (aspsps.isError) {
+    return (
+      <div className="load-error" role="alert">
+        <span>{aspsps.error.message}</span>
+        <button className="btn btn-sm" onClick={() => aspsps.refetch()}>Erneut versuchen</button>
+      </div>
+    );
+  }
 
   return (
     <div className="field">
