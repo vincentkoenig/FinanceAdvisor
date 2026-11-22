@@ -1,5 +1,5 @@
 // Einstellungen: Anlageprofil (für KI-Berater und Analyse), Kategorien des Haushaltsbuchs,
-// Anmeldung per Face ID/Fingerabdruck, Darstellung und Benachrichtigungen auf diesem Gerät, eigene Daten exportieren/importieren und das Konto.
+// Bankabruf, Anmeldung per Face ID/Fingerabdruck, Darstellung und Benachrichtigungen auf diesem Gerät, eigene Daten exportieren/importieren und das Konto.
 import { useState, type FormEvent } from 'react';
 import { useNavigate, useOutletContext } from 'react-router';
 import { useLogout, useMe, type User } from '../../api/auth';
@@ -10,6 +10,7 @@ import type { RootContext } from '../../components/Shell';
 import { useToast } from '../../components/Toast';
 import { parseAmount } from '../../lib/format';
 import { usePrivacy } from '../../lib/privacy';
+import { BankSection } from './Bank';
 import { CategoriesSection } from './Categories';
 import { PasskeySection } from './Passkeys';
 import { PushSection } from './Push';
@@ -193,6 +194,9 @@ export function SettingsPage() {
         </Row>
         <Row title="Regeln für den Import" description="Feste Zuordnungen, die beim Kontoimport vor der KI greifen. Korrekturen im Haushaltsbuch merkt sich FinTrack zusätzlich von selbst.">
           <RulesSection />
+        </Row>
+        <Row title="Bankabruf" description="Umsätze und Kontostand kommen jede Nacht direkt von der Bank. Mit bekanntem Empfänger oder passender Regel bucht FinTrack selbst, alles andere wartet auf deine Prüfung.">
+          <BankSection />
         </Row>
         <Row title="Darstellung" description="Gilt auf diesem Gerät. Das Handy kann ein anderes Design haben als der Laptop.">
           <div className="field">

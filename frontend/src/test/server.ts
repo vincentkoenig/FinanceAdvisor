@@ -2,6 +2,7 @@
 // dazu Beispieldaten für Übersicht und Portfolio. resetData() stellt vor jedem Test den Ausgangszustand her.
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
+import type { BankConnection } from '../api/bank';
 
 export const testUser = {
   id: 1, username: null, email: 'test@fintrack.test',
@@ -67,6 +68,16 @@ const initialData = () => ({
   dividends: [
     { id: 31, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', ex_dividend_date: '2026-06-12', amount_per_share: 0.4512, shares_held: 100, total_amount: 45.12 },
     { id: 32, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', ex_dividend_date: '2025-12-10', amount_per_share: 0.4, shares_held: 100, total_amount: 40 },
+  ],
+  bank: {
+    configured: true, redirect_url: 'http://localhost/api/v1/bank/callback', review_count: 0,
+    connections: [] as BankConnection[],
+  },
+  bankReview: [
+    { key: 'bank-71', occurrence: 0, line: 71, date: '2026-10-28', amount: -18, counterparty: 'Laden A', purpose: 'Karte',
+      description: 'Laden A', status: 'new' as const, covered_by: null, category_id: 2 as number | null, category_source: 'merchant' as const },
+    { key: 'bank-72', occurrence: 0, line: 72, date: '2026-10-29', amount: -25, counterparty: 'Laden B', purpose: 'Karte',
+      description: 'Laden B', status: 'new' as const, covered_by: null, category_id: null as number | null, category_source: null },
   ],
   lots: [
     { bought_on: '2025-03-01', quantity: 60, unit_cost: 70, cost: 4200, value: 6000, gain: 1800, gain_pct: 42.86, opening: false, tax_free_from: null },
@@ -150,7 +161,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown; balance?: unknown; dismissed?: unknown; target?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown; balance?: unknown; dismissed?: unknown; target?: unknown; bankConnect?: unknown; bankReview?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -268,6 +279,24 @@ export const handlers = [
   http.get('/api/v1/me/asset-transactions', () => HttpResponse.json(data.trades)),
   http.get('/api/v1/me/dividends', () => HttpResponse.json(data.dividends)),
   http.get('/api/v1/me/positions/:id/lots', () => HttpResponse.json({ current_price: 100, lots: data.lots })),
+  http.get('/api/v1/me/bank', () => HttpResponse.json({ ...data.bank, review_count: data.bank.review_count })),
+  http.get('/api/v1/me/bank/aspsps', () => HttpResponse.json({ configured: true, aspsps: ['Commerzbank', 'HypoVereinsbank', 'ING'] })),
+  http.post('/api/v1/me/bank/connect', async ({ request }) => {
+    sent.bankConnect = await request.json();
+    return HttpResponse.json({ url: '#bank-login' });
+  }),
+  http.post('/api/v1/me/bank/sync', () => HttpResponse.json({ booked: 3, review: 2, covered: 1, duplicate: 0, balance: 2345.67, errors: [] })),
+  http.get('/api/v1/me/bank/review', () => HttpResponse.json({
+    columns: [], mapping: {}, rows: data.bankReview, skipped: [], counts: { new: data.bankReview.length, covered: 0, duplicate: 0 },
+  })),
+  http.post('/api/v1/me/bank/review/commit', async ({ request }) => {
+    const body = await request.json() as { book: unknown[]; dismiss: unknown[] };
+    sent.bankReview = body;
+    data.bankReview = [];
+    data.bank = { ...data.bank, review_count: 0 };
+    return HttpResponse.json({ message: `${body.book.length} Umsätze übernommen, ${body.dismiss.length} verworfen`,
+      created: body.book.length, dismissed: body.dismiss.length }, { status: 201 });
+  }),
   http.put('/api/v1/me/tax-settings', async ({ request }) => {
     const { tax_joint } = await request.json() as { tax_joint: boolean };
     const allowance = tax_joint ? 2000 : 1000;

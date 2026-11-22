@@ -1,10 +1,11 @@
 """
 jobs.py - Tägliche Hintergrundjobs und ihr Scheduler.
 
-Ein Lauf besteht aus drei Schritten in fester Reihenfolge:
-1. Kurse und Wechselkurse aktualisieren (market/service.py)
-2. neue Dividenden verbuchen (braucht aktuelle Wechselkurse)
-3. tägliche KI-Insights erzeugen (braucht aktuelle Kurse)
+Ein Lauf besteht aus vier Schritten in fester Reihenfolge:
+1. Kontoumsätze und Kontostand von der Bank abrufen (bank/service.py), falls eingerichtet
+2. Kurse und Wechselkurse aktualisieren (market/service.py)
+3. neue Dividenden verbuchen (braucht aktuelle Wechselkurse)
+4. tägliche KI-Insights erzeugen (braucht aktuelle Kurse und kennt so auch die neuen Umsätze)
 
 Gestartet wird der Lauf auf zwei Wegen, die sich nicht in die Quere kommen:
 - vom Scheduler im Server, abends um 22:30 Uhr deutscher Zeit
@@ -26,6 +27,7 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 
 from fintrack.analyst.service import analyse_all_users
+from fintrack.bank.service import sync_all_users as sync_banks
 
 from fintrack.extensions import get_openai_client
 from fintrack.insights.service import generate_insights_for_all_users
@@ -51,6 +53,12 @@ def update_prices(flask_app):
         invalidate_alerts()
         logger.info('Kurse aktualisiert: %s', summary)
         return summary
+
+
+def sync_bank_accounts(flask_app):
+    """Umsätze und Kontostand aller verbundenen Bankkonten abrufen (einmal täglich, weit unter dem Limit der Banken)."""
+    with flask_app.app_context():
+        return sync_banks()
 
 
 def check_dividends(flask_app):
@@ -80,9 +88,9 @@ def run_analyst(flask_app):
 
 
 def run_daily_jobs(flask_app):
-    """Alle drei Schritte nacheinander. Ein Fehler in einem Schritt stoppt die folgenden nicht."""
+    """Alle Schritte nacheinander. Ein Fehler in einem Schritt stoppt die folgenden nicht."""
     result = {}
-    for name, job in (('prices', update_prices), ('dividends', check_dividends),
+    for name, job in (('bank', sync_bank_accounts), ('prices', update_prices), ('dividends', check_dividends),
                       ('insights', generate_daily_insights)):
         try:
             result[name] = job(flask_app)
@@ -94,6 +102,7 @@ def run_daily_jobs(flask_app):
 
 JOBS = {
     'daily': run_daily_jobs,
+    'bank': sync_bank_accounts,
     'prices': update_prices,
     'dividends': check_dividends,
     'insights': generate_daily_insights,

@@ -486,6 +486,72 @@ class PushLog(db.Model):
     __table_args__ = (db.UniqueConstraint('user_id', 'key'),)
 
 
+# ─── BANKABRUF (ENABLE BANKING) ───────────────────────────────────────────────
+
+class BankConnection(db.Model):
+    """
+    BankConnection Tabelle - Zugang zu einer Bank über Enable Banking (PSD2).
+    status: 'pending' (Anmeldung bei der Bank läuft, state wartet auf den Rücksprung),
+    'active', 'expired' (Freigabe abgelaufen, neu bestätigen), 'error'.
+    session_id ist die Sitzung bei Enable Banking; ohne den privaten Schlüssel
+    des Servers lässt sich damit nichts abrufen. Gehört nicht in den Export.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    aspsp_name = db.Column(db.String(200), nullable=False)
+    aspsp_country = db.Column(db.String(2), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='pending')
+    state = db.Column(db.String(64), unique=True)
+    session_id = db.Column(db.String(200))
+    valid_until = db.Column(db.DateTime)
+    last_sync_at = db.Column(db.DateTime)
+    last_error = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+
+class BankAccount(db.Model):
+    """
+    BankAccount Tabelle - ein Konto aus einem Bankzugang. uid ist die Konto-ID der
+    aktuellen Sitzung (ändert sich beim Erneuern), identification_hash bleibt gleich
+    und ordnet das Konto nach dem Erneuern wieder zu. synced_until: bis zu welchem
+    Buchungstag zuletzt abgerufen wurde (der nächste Abruf überlappt ein paar Tage).
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    connection_id = db.Column(db.Integer, db.ForeignKey('bank_connection.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    uid = db.Column(db.String(200), nullable=False)
+    identification_hash = db.Column(db.String(200), nullable=False)
+    name = db.Column(db.String(200))
+    iban_last4 = db.Column(db.String(4))
+    currency = db.Column(db.String(3))
+    enabled = db.Column(db.Boolean, nullable=False, default=True)
+    synced_until = db.Column(db.Date)
+
+
+class BankTransaction(db.Model):
+    """
+    BankTransaction Tabelle - jeder abgerufene Umsatz genau einmal (ext_key), mit dem,
+    was daraus wurde: 'booked' (als Buchung angelegt, transaction_id), 'review' (wartet
+    auf Prüfung, mit vorgeschlagener Kategorie), 'covered' (steckt schon in einer
+    wiederkehrenden Buchung), 'duplicate' (war schon importiert), 'dismissed' (verworfen).
+    So kommt kein Umsatz doppelt, auch wenn sich die Abrufzeiträume überlappen.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    ext_key = db.Column(db.String(64), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    counterparty = db.Column(db.String(500), nullable=False, default='')
+    purpose = db.Column(db.String(1000), nullable=False, default='')
+    status = db.Column(db.String(20), nullable=False)
+    category_id = db.Column(db.Integer, db.ForeignKey('category.id', ondelete='SET NULL'))
+    category_source = db.Column(db.String(20))
+    transaction_id = db.Column(db.Integer, db.ForeignKey('transaction.id', ondelete='SET NULL'))
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+    __table_args__ = (db.UniqueConstraint('user_id', 'ext_key'),)
+
+
 # ─── PYDANTIC SCHEMAS ─────────────────────────────────────────────────────────
 
 class AllocationItem(PydanticBaseModel):

@@ -99,6 +99,7 @@ def create_app(config_name=None, config_overrides=None):
     from fintrack.analyst import routes as analyst_routes
     from fintrack.admin import routes as admin_routes
     from fintrack.auth import passkeys as passkey_routes, routes as auth_routes
+    from fintrack.bank import routes as bank_routes
     from fintrack.budget import routes as budget_routes
     from fintrack.chat import routes as chat_routes
     from fintrack.contracts import routes as contract_routes
@@ -116,7 +117,8 @@ def create_app(config_name=None, config_overrides=None):
     app.register_blueprint(spa.bp)
     for blueprint in (auth_routes.bp, portfolio_routes.bp, analysis.bp, budget_routes.bp,
                       chat_routes.bp, contract_routes.bp, import_routes.bp, insights_routes.bp,
-                      account_routes.bp, push_routes.bp, analyst_routes.bp, passkey_routes.bp):
+                      account_routes.bp, push_routes.bp, analyst_routes.bp, passkey_routes.bp,
+                      bank_routes.bp, bank_routes.callback_bp):
         app.register_blueprint(blueprint, url_prefix=API_PREFIX)
     app.register_blueprint(admin_routes.bp, url_prefix=f'{API_PREFIX}/admin')
 
