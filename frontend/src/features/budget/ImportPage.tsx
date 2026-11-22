@@ -4,8 +4,10 @@
 // Regeln und bekannten Händlern, fehlende auf Wunsch von der KI, neue Kategorien direkt hier) → übernehmen.
 // Gespeichert wird erst beim Übernehmen; die Datei selbst bleibt nirgends liegen.
 // Auf Android kommt die Datei auch über "Teilen → FinTrack → Haushaltsbuch" (?shared=1, siehe lib/sharedFile.ts).
+// Mit ?source=bank zeigt dieselbe Seite die Umsätze vom Bankabruf, die auf Prüfung warten (ohne Datei).
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { useBankReview, useCommitBankReview } from '../../api/bank';
 import { type Category, useAddCategory, useCategories } from '../../api/budget';
 import {
   type ColumnMapping, type ImportPreview, type ImportRow, UnknownColumnsError, useCategorizeBankImport, useCommitBankImport, usePreviewBankImport,
@@ -18,7 +20,7 @@ import { useMoney } from '../../lib/privacy';
 import { takeSharedFile } from '../../lib/sharedFile';
 import {
   MAPPING_FIELDS, type Choice, type Group, type GroupFilter, type Proposal, applySuggestions, assignCategory, assignRest, assignToPayees,
-  categoryOptions, groupRows, initialChoices, payeesWithoutCategory, proposalsFrom, setGroupCategory, setGroupSelected, toCommit,
+  categoryOptions, groupRows, initialChoices, payeesWithoutCategory, proposalsFrom, setGroupCategory, setGroupSelected, toBankReview, toCommit,
   visibleGroups,
 } from './importModel';
 
@@ -34,6 +36,9 @@ export function ImportPage() {
   const navigate = useNavigate();
   const [search, setSearch] = useSearchParams();
   const shared = search.get('shared');
+  const bankMode = search.get('source') === 'bank';
+  const bankReview = useBankReview(bankMode);
+  const commitReview = useCommitBankReview();
   const [file, setFile] = useState<File | null>(null);
   const [inputKey, setInputKey] = useState(0);
   const [columns, setColumns] = useState<string[] | null>(null);
@@ -87,6 +92,15 @@ export function ImportPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shared]);
 
+  // Prüfliste vom Bankabruf: einmal als Vorschau übernehmen, sobald sie geladen ist
+  const reviewLoaded = useRef(false);
+  useEffect(() => {
+    if (!bankMode || !bankReview.data || reviewLoaded.current) return;
+    reviewLoaded.current = true;
+    setPreview(bankReview.data);
+    setChoices(initialChoices(bankReview.data.rows));
+  }, [bankMode, bankReview.data]);
+
   const reset = () => {
     setFile(null);
     setPreview(null);
@@ -133,6 +147,17 @@ export function ImportPage() {
   };
 
   const save = () => {
+    if (bankMode) {
+      if (!preview || !summary || summary.missing) return;
+      commitReview.mutate(toBankReview(preview.rows, choices), {
+        onSuccess: (result) => {
+          notify(result.message);
+          navigate('/budget');
+        },
+        onError: (failure) => setError(failure.message),
+      });
+      return;
+    }
     if (!summary || summary.missing || !summary.commit.length) return;
     commit.mutate(summary.commit, {
       onSuccess: (result) => {
@@ -147,15 +172,23 @@ export function ImportPage() {
     <>
       <div className="title-row">
         <div className="text">
-          <h1>Umsätze importieren</h1>
-          <p className="sub">CSV-Export oder Kontoauszug als PDF. Vor dem Speichern siehst du alles in einer Vorschau.</p>
+          <h1>{bankMode ? 'Umsätze von der Bank prüfen' : 'Umsätze importieren'}</h1>
+          <p className="sub">{bankMode
+            ? 'Vom Bankabruf, ohne sichere Kategorie. Nicht ausgewählte Umsätze werden verworfen.'
+            : 'CSV-Export oder Kontoauszug als PDF. Vor dem Speichern siehst du alles in einer Vorschau.'}</p>
         </div>
         <div className="actions">
           <Link to="/budget" className="btn"><Icon name="left" size={16} />Haushaltsbuch</Link>
         </div>
       </div>
 
-      <section className="panel" aria-labelledby="h-file">
+      {bankMode && bankReview.isPending && <section className="panel"><p className="muted">Lädt …</p></section>}
+      {bankMode && bankReview.isError && <section className="panel"><p className="err" role="alert">{bankReview.error.message}</p></section>}
+      {bankMode && preview && preview.rows.length === 0 && (
+        <section className="panel"><p className="empty-line">Keine Umsätze warten auf Prüfung.</p></section>
+      )}
+
+      {!bankMode && <section className="panel" aria-labelledby="h-file">
         <div className="panel-head"><h2 id="h-file">Datei</h2></div>
         <div className="file-row">
           <label className="btn btn-primary" htmlFor="bank-file"><Icon name="upload" size={16} />{file ? 'Andere Datei' : 'Datei wählen'}</label>
@@ -176,7 +209,7 @@ export function ImportPage() {
         )}
         {/* Mit Vorschau steht der Fehler dort, nicht zweimal */}
         {error && !columns && !preview && <p className="err" role="alert">{error}</p>}
-      </section>
+      </section>}
 
       {columns && file && (
         <section className="panel" aria-labelledby="h-columns">
@@ -207,7 +240,7 @@ export function ImportPage() {
         </section>
       )}
 
-      {preview && (
+      {preview && preview.rows.length > 0 && (
         <section className="panel" aria-labelledby="h-preview">
           <div className="panel-head">
             <h2 id="h-preview">Vorschau</h2>
@@ -306,12 +339,22 @@ export function ImportPage() {
           )}
           {summary!.missing > 0 && <p className="err">Bei {summary!.missing} ausgewählten Umsätzen fehlt noch die Kategorie.</p>}
           {error && <p className="err" role="alert">{error}</p>}
-          <div className="dialog-actions">
-            <button className="btn" onClick={reset} disabled={commit.isPending}>Verwerfen</button>
-            <button className="btn btn-primary" onClick={save} disabled={commit.isPending || summary!.missing > 0 || summary!.total === 0}>
-              {commit.isPending ? 'Speichert …' : summary!.total === 1 ? '1 Umsatz übernehmen' : `${summary!.total} Umsätze übernehmen`}
-            </button>
-          </div>
+          {bankMode ? (
+            <div className="dialog-actions">
+              <Link to="/budget" className="btn">Später</Link>
+              <button className="btn btn-primary" onClick={save} disabled={commitReview.isPending || summary!.missing > 0}>
+                {commitReview.isPending ? 'Speichert …' : summary!.total === 0 ? 'Alle verwerfen'
+                  : summary!.total === 1 ? '1 Umsatz übernehmen' : `${summary!.total} Umsätze übernehmen`}
+              </button>
+            </div>
+          ) : (
+            <div className="dialog-actions">
+              <button className="btn" onClick={reset} disabled={commit.isPending}>Verwerfen</button>
+              <button className="btn btn-primary" onClick={save} disabled={commit.isPending || summary!.missing > 0 || summary!.total === 0}>
+                {commit.isPending ? 'Speichert …' : summary!.total === 1 ? '1 Umsatz übernehmen' : `${summary!.total} Umsätze übernehmen`}
+              </button>
+            </div>
+          )}
         </section>
       )}
       {creatingFor && (

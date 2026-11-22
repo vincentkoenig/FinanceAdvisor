@@ -28,6 +28,7 @@ const PATHS = {
   doc: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6',
   ring: 'M21 12a9 9 0 1 1-9-9M16.5 12A4.5 4.5 0 1 1 12 7.5',
   spark: 'M11 3l1.8 5.2L18 10l-5.2 1.8L11 17l-1.8-5.2L4 10l5.2-1.8zM19 15v6M16 18h6',
+  refresh: 'M20 11a8 8 0 0 0-14.8-4M4 4v4h4M4 13a8 8 0 0 0 14.8 4M20 20v-4h-4',
 } as const;
 
 export type IconName = keyof typeof PATHS;

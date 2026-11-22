@@ -4,6 +4,8 @@ push/notify.py - Welche Meldungen der Morgen-Lauf (jobs.py, 8:00 Uhr) verschickt
 - Kündigungsfristen: 14 Tage und 3 Tage vor dem letzten Kündigungstag eines Vertrags
 - Sparplan fällig: am Ausführungstag, solange er noch nicht bestätigt ist
 - Tages-Update: ein Hinweis, dass der KI-Text vom Vorabend bereitliegt
+- Bankabruf: Umsätze warten auf Prüfung (wie das Tages-Update), Freigabe der Bank läuft
+  in 7 bzw. 1 Tag ab oder ist abgelaufen (wie die Kündigungsfristen)
 
 Alle drei entstehen über Nacht (Datumswechsel, KI-Lauf um 22:30) und gehen deshalb
 nach der Ruhezeit (22-8 Uhr) mit dem Morgen-Lauf raus. Jede Meldung einzeln und nur einmal
@@ -16,12 +18,15 @@ from datetime import datetime, timedelta
 
 from fintrack.contracts.terms import contract_status, today_berlin
 from fintrack.extensions import db
-from fintrack.models import Asset, Contract, DailyInsight, PushLog, PushSubscription, SavingsPlan
+from fintrack.models import (Asset, BankConnection, BankTransaction, Contract, DailyInsight, PushLog,
+                             PushSubscription, SavingsPlan)
 from fintrack.portfolio.savings_plans import due_date_this_month, is_due
 from fintrack.push.service import send_to_user, vapid_keys
 
 # Erinnerungen so viele Tage vor dem letzten Kündigungstag
 REMINDER_DAYS = (14, 3)
+# Erinnerungen so viele Tage, bevor die Freigabe der Bank abläuft
+BANK_REMINDER_DAYS = (7, 1)
 
 
 def _already_sent(user_id, key):
@@ -103,6 +108,40 @@ def notify_daily_update(user_id, now):
     return sent
 
 
+def notify_bank(user_id, today):
+    """Wartende Umsätze vom Bankabruf und ablaufende Bank-Freigaben."""
+    sent = 0
+    waiting = BankTransaction.query.filter_by(user_id=user_id, status='review').count()
+    key = f'bank-review:{today.isoformat()}'
+    if waiting and not _already_sent(user_id, key):
+        body = '1 Umsatz wartet auf deine Prüfung.' if waiting == 1 else f'{waiting} Umsätze warten auf deine Prüfung.'
+        sent += send_to_user(user_id, 'daily_update', 'Neue Umsätze von der Bank', body,
+                             url='/app/budget/import?source=bank', tag='bank-review')
+        _remember(user_id, key)
+
+    for connection in BankConnection.query.filter(BankConnection.user_id == user_id,
+                                                  BankConnection.status.in_(('active', 'expired'))).all():
+        if not connection.valid_until:
+            continue
+        end = connection.valid_until.date()
+        days_left = (end - today).days
+        if connection.status == 'expired' or days_left < 0:
+            key, title = f'bank-expired:{connection.id}:{end.isoformat()}', 'Bankzugang abgelaufen'
+            body = f'Die Freigabe für {connection.aspsp_name} ist abgelaufen. Verbinde die Bank in den Einstellungen neu.'
+        else:
+            due = [days for days in BANK_REMINDER_DAYS if days_left <= days]
+            if not due:
+                continue
+            key, title = f'bank-expiry:{connection.id}:{end.isoformat()}:{min(due)}', 'Bankzugang läuft ab'
+            when = 'morgen' if days_left == 1 else 'heute' if days_left == 0 else f'in {days_left} Tagen'
+            body = f'Die Freigabe für {connection.aspsp_name} endet {when}. In den Einstellungen erneuern.'
+        if _already_sent(user_id, key):
+            continue
+        sent += send_to_user(user_id, 'deadlines', title, body, url='/app/settings', tag=f'bank-{connection.id}')
+        _remember(user_id, key)
+    return sent
+
+
 def notify_all_users(today=None, now=None):
     """Morgen-Lauf für alle Nutzer mit mindestens einem angemeldeten Gerät."""
     if not vapid_keys():
@@ -110,9 +149,10 @@ def notify_all_users(today=None, now=None):
     today = today or today_berlin()
     now = now or datetime.now()
     user_ids = [row[0] for row in db.session.query(PushSubscription.user_id).distinct()]
-    summary = {'users': len(user_ids), 'deadlines': 0, 'savings_plan': 0, 'daily_update': 0}
+    summary = {'users': len(user_ids), 'deadlines': 0, 'savings_plan': 0, 'daily_update': 0, 'bank': 0}
     for user_id in user_ids:
         summary['deadlines'] += notify_deadlines(user_id, today)
         summary['savings_plan'] += notify_savings_plans(user_id, now)
         summary['daily_update'] += notify_daily_update(user_id, now)
+        summary['bank'] += notify_bank(user_id, today)
     return summary

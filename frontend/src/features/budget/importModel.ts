@@ -1,5 +1,6 @@
 // Logik der Import-Seite ohne Oberfläche: Kategorien je Richtung, Auswahl und gemeinsame Zuordnung.
 import type { Category } from '../../api/budget';
+import type { ReviewCommit } from '../../api/bank';
 import type { CommitRow, ImportField, ImportRow, NewCategoryProposal, Payee, PayeeSuggestion } from '../../api/imports';
 
 /** Felder der Spaltenzuordnung, wie sie die Seite abfragt */
@@ -206,4 +207,18 @@ export function toCommit(rows: ImportRow[], choices: Record<string, Choice>) {
     description: choices[r.key].description.trim() || r.description, category_id: choices[r.key].category!,
   }));
   return { commit, missing, total: chosen.length };
+}
+
+/**
+ * Prüfliste vom Bankabruf: ausgewählte Umsätze mit Kategorie werden gebucht, nicht ausgewählte verworfen
+ * (sie kämen sonst jeden Tag wieder). line ist die ID des abgerufenen Umsatzes.
+ */
+export function toBankReview(rows: ImportRow[], choices: Record<string, Choice>): ReviewCommit {
+  const fresh = rows.filter((r) => r.status === 'new');
+  return {
+    book: fresh.filter((r) => choices[r.key].selected && choices[r.key].category !== null).map((r) => ({
+      id: r.line, category_id: choices[r.key].category!, description: choices[r.key].description.trim() || r.description,
+    })),
+    dismiss: fresh.filter((r) => !choices[r.key].selected).map((r) => r.line),
+  };
 }

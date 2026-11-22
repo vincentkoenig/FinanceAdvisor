@@ -290,7 +290,7 @@ class TestJobs:
 
         status = jobs.job_status()
         assert status['state'] == 'done'
-        assert status['result'] == {'prices': {'assets': 1, 'errors': []},
+        assert status['result'] == {'bank': {'bank': 'nicht eingerichtet'}, 'prices': {'assets': 1, 'errors': []},
                                     'dividends': {'dividends': 'geprüft'}, 'insights': {'insights': 2}}
 
     def test_failed_step_does_not_stop_later_steps(self, app, fresh_job_state, monkeypatch):

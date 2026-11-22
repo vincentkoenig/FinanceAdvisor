@@ -39,6 +39,8 @@ PUBLIC_ENDPOINTS = {
     'spa.legacy_chat_page', 'spa.legacy_analyse_page', 'spa.legacy_settings_page',
     # Teilen an FinTrack ohne Service Worker: nur eine Weiterleitung, die Datei wird nicht angenommen
     'spa.share_without_service_worker',
+    # Rücksprung von der Bank nach der Anmeldung: zugeordnet über den zufälligen state, nicht über die Sitzung
+    'bank_callback.callback',
     # Statuspunkt für Docker und Überwachung, ohne Nutzerdaten
     'health.healthz',
 }

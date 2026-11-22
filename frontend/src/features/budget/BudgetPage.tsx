@@ -3,6 +3,7 @@
 // darunter alle Buchungen des Monats. Mit den Pfeilen geht es in andere Monate.
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { useBank } from '../../api/bank';
 import { type Category, useCategories, useMonthBookings, useTogglePause } from '../../api/budget';
 import { type Booking, useBudgetSummary, useSavingsPlans } from '../../api/overview';
 import { CountUp } from '../../components/CountUp';
@@ -36,6 +37,8 @@ export function BudgetPage() {
   const categories = useCategories();
   const summary = useBudgetSummary();
   const plans = useSavingsPlans();
+  const bank = useBank();
+  const waiting = bank.data?.review_count ?? 0;
   const [open, setOpen] = useState<Open>(null);
 
   const totals = bookings.data ? monthTotals(bookings.data, month) : null;
@@ -68,6 +71,13 @@ export function BudgetPage() {
           <button className="btn btn-primary" onClick={() => setOpen({ type: 'add' })}><Icon name="plus" size={16} />Buchung</button>
         </div>
       </div>
+
+      {waiting > 0 && (
+        <div className="bank-waiting" role="status">
+          <span><Icon name="refresh" size={16} />{waiting === 1 ? '1 Umsatz vom Bankabruf wartet' : `${waiting} Umsätze vom Bankabruf warten`} auf deine Prüfung</span>
+          <Link to="/budget/import?source=bank" className="btn btn-sm btn-primary">Prüfen</Link>
+        </div>
+      )}
 
       <div className="grid grid-3">
         <section className="panel hero span-2" aria-labelledby="h-left">

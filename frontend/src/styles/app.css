@@ -558,3 +558,13 @@ details.older[open] .clamp-2 { display: none; }
 details.lots > summary { cursor: pointer; color: var(--muted); font-size: var(--fs-small); padding: 4px 0; }
 details.lots[open] > summary { margin-bottom: 4px; }
 .allowance-kind { margin-bottom: 12px; }
+/* Bankabruf in den Einstellungen */
+.bank-connect { display: flex; gap: 8px; flex-wrap: wrap; }
+.bank-connect .select { flex: 1 1 220px; width: auto; }
+.bank-connection + .bank-connection { margin-top: 16px; padding-top: 16px; box-shadow: inset 0 1px 0 var(--rule-strong); }
+.bank-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.bank-setup code { font-size: var(--fs-small); }
+code.break { word-break: break-all; }
+.bank-waiting { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; padding: 10px 14px; border-radius: var(--radius-inner); background: var(--raised); }
+.bank-waiting > span { display: inline-flex; align-items: center; gap: 8px; }
+.bank-review { padding-bottom: 12px; margin-bottom: 12px; box-shadow: inset 0 -1px 0 var(--rule-strong); }
