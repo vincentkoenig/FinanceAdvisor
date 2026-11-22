@@ -30,7 +30,7 @@ Voraussetzungen: Docker mit Compose, Traefik mit Entrypoint `websecure` und Zert
 2. `/opt/fintrack/.env` anlegen (`chmod 600`) mit `SECRET_KEY` (`openssl rand -hex 32`),
    `DATABASE_URL`, `OPENAI_API_KEY`, `TAVILY_API_KEY`, `COINGECKO_API_KEY`, `ADMIN_API_KEY`,
    optional `RESEND_API_KEY`, `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` und `ENABLE_BANKING_APP_ID`/
-   `ENABLE_BANKING_PRIVATE_KEY` (Bankabruf, siehe `docs/BANKABRUF.md`), und `SCHEDULER_ENABLED=0`, solange noch ein anderer Server den
+   `ENABLE_BANKING_PRIVATE_KEY_B64` (Bankabruf, siehe `docs/BANKABRUF.md`), und `SCHEDULER_ENABLED=0`, solange noch ein anderer Server den
    täglichen Lauf macht (sonst `1`).
 3. Deploy-Schlüssel auf dem Server erzeugen und auf das Skript beschränken:
    ```bash

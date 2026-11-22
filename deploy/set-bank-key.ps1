@@ -23,7 +23,10 @@ if (-not (Test-Path $KeyFile)) { throw "Datei nicht gefunden: $KeyFile" }
 
 $lines = Get-Content -Path $KeyFile | ForEach-Object { $_.Trim() } | Where-Object { $_ }
 if (-not ($lines[0] -like '-----BEGIN*PRIVATE KEY-----')) { throw "$KeyFile ist kein privater Schlüssel (PEM)." }
-$oneLine = ($lines -join '\n') + '\n'
+# Base64 statt PEM: eine Zeile ohne Leerzeichen. Docker liest die .env-Datei selbst und schneidet
+# Werte an Leerzeichen ab ("-----BEGIN PRIVATE KEY-----" käme nur als "KEY-----" an).
+$pem = ($lines -join "`n") + "`n"
+$oneLine = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes($pem))
 
 Write-Host "Schlüssel:  $KeyFile"
 Write-Host "App-ID:     $AppId"
@@ -38,7 +41,7 @@ f=/opt/fintrack/.env
 IFS= read -r key
 cp "`$f" "`$f.bak-bank"
 sed -i '/^ENABLE_BANKING_/d' "`$f"
-printf 'ENABLE_BANKING_APP_ID=%s\nENABLE_BANKING_PRIVATE_KEY=%s\n' '$AppId' "`$key" >> "`$f"
+printf 'ENABLE_BANKING_APP_ID=%s\nENABLE_BANKING_PRIVATE_KEY_B64=%s\n' '$AppId' "`$key" >> "`$f"
 chmod 600 "`$f" "`$f.bak-bank"
 echo 'Eingetragen. Starte FinTrack neu ...'
 sh /opt/fintrack/src/deploy/server-deploy.sh

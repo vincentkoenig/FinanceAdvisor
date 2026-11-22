@@ -395,3 +395,26 @@ class TestConfigurationError:
         monkeypatch.setenv('ENABLE_BANKING_PRIVATE_KEY', pem)
 
         assert login_client('a@test.com').get('/api/v1/me/bank').get_json()['configuration_error'] is None
+
+
+class TestBase64Key:
+
+    def test_base64_key_is_used(self, app, user, login_client, monkeypatch):
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                serialization.NoEncryption())
+        monkeypatch.delenv('ENABLE_BANKING_PRIVATE_KEY', raising=False)
+        monkeypatch.setenv('ENABLE_BANKING_APP_ID', 'app-1')
+        monkeypatch.setenv('ENABLE_BANKING_PRIVATE_KEY_B64', base64.b64encode(pem).decode())
+
+        body = login_client('a@test.com').get('/api/v1/me/bank').get_json()
+
+        assert body['configured'] is True and body['configuration_error'] is None
+
+    def test_garbled_base64_is_reported(self, app, user, login_client, monkeypatch):
+        monkeypatch.setenv('ENABLE_BANKING_APP_ID', 'app-1')
+        monkeypatch.setenv('ENABLE_BANKING_PRIVATE_KEY_B64', 'KEY-----')
+
+        body = login_client('a@test.com').get('/api/v1/me/bank').get_json()
+
+        assert body['configuration_error'].startswith('Der private Schlüssel auf dem Server ist ungültig')

@@ -270,8 +270,7 @@ Optionale Variablen:
 | `ALLOW_REGISTRATION=1` | Erlaubt neue Konten über die Startseite. Standard: geschlossen — Konten dann per `create-user` anlegen (siehe unten). |
 | `ADMIN_API_KEY` | Schlüssel für die Routen unter `/api/v1/admin/...` (Header `X-Admin-Key`). Ohne ihn sind diese Endpoints gesperrt. |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Schlüsselpaar für Push-Benachrichtigungen, einmalig erzeugen mit `flask --app app make-vapid-keys`. Ohne sie zeigt die App, dass Push nicht eingerichtet ist. Optional `VAPID_SUBJECT` (mailto:- oder https-Adresse als Kontakt für die Push-Dienste). |
-| `ENABLE_BANKING_APP_ID`, `ENABLE_BANKING_PRIVATE_KEY` | Bankabruf über Enable Banking (Application-ID und privater Schlüssel als PEM, Zeilenumbrüche als `
-`; alternativ `ENABLE_BANKING_KEY_FILE`). Einrichtung Schritt für Schritt in [docs/BANKABRUF.md](docs/BANKABRUF.md). Ohne sie zeigt die App, dass der Bankabruf nicht eingerichtet ist. |
+| `ENABLE_BANKING_APP_ID`, `ENABLE_BANKING_PRIVATE_KEY_B64` | Bankabruf über Enable Banking (Application-ID und privater Schlüssel als Base64-kodierte PEM-Datei in einer Zeile; alternativ `ENABLE_BANKING_PRIVATE_KEY` als PEM oder `ENABLE_BANKING_KEY_FILE` als Pfad zur Datei). Einrichtung Schritt für Schritt in [docs/BANKABRUF.md](docs/BANKABRUF.md). Ohne sie zeigt die App, dass der Bankabruf nicht eingerichtet ist. |
 | `ANALYST_MODEL` | OpenAI-Modell des wöchentlichen Analysten. Ohne Angabe `gpt-4o-mini`. |
 | `FLASK_DEBUG=1` | Debug-Modus beim lokalen Start mit `python app.py`. Wird automatisch abgeschaltet, wenn der Server im Netzwerk erreichbar ist. |
 | `FLASK_HOST=0.0.0.0` | Server im lokalen Netzwerk erreichbar machen, z.B. für Tests vom Handy. Standard ist nur dieser PC (`127.0.0.1`). |

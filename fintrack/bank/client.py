@@ -4,15 +4,19 @@ bank/client.py - Schmaler Client für die PSD2-Schnittstelle von Enable Banking.
 Jede Anfrage trägt ein frisch signiertes JWT (RS256, kid = Application-ID), signiert
 mit dem privaten Schlüssel der eigenen Enable-Banking-App. Konfiguration über
 Umgebungsvariablen:
-- ENABLE_BANKING_APP_ID        Application-ID aus dem Control Panel
-- ENABLE_BANKING_PRIVATE_KEY   privater Schlüssel als PEM (Zeilenumbrüche dürfen als \\n stehen)
-  oder ENABLE_BANKING_KEY_FILE Pfad zur PEM-Datei
+- ENABLE_BANKING_APP_ID            Application-ID aus dem Control Panel
+- ENABLE_BANKING_PRIVATE_KEY_B64   privater Schlüssel: die PEM-Datei Base64-kodiert, eine Zeile ohne
+                                   Leerzeichen (übersteht jede .env-Auswertung, auch die von Docker)
+  oder ENABLE_BANKING_PRIVATE_KEY  als PEM, Zeilenumbrüche als \\n (in Docker-.env-Dateien ungeeignet:
+                                   dort wird der Wert an den Leerzeichen abgeschnitten)
+  oder ENABLE_BANKING_KEY_FILE     Pfad zur PEM-Datei
 
 Im "restricted mode" (kostenlos, für eigene Konten) liefert die API nur Daten von
 Konten, die im Control Panel verknüpft wurden.
 """
 
 import base64
+import binascii
 import json
 import os
 import time
@@ -47,6 +51,13 @@ def _b64(data):
 
 
 def _private_key_pem():
+    encoded = os.getenv('ENABLE_BANKING_PRIVATE_KEY_B64')
+    if encoded:
+        try:
+            return base64.b64decode(''.join(encoded.split()), validate=True)
+        except (ValueError, binascii.Error):
+            # Unlesbar: der Schlüssel-Check meldet das dann mit der Form des Werts
+            return encoded.encode('utf-8')
     pem = os.getenv('ENABLE_BANKING_PRIVATE_KEY')
     if pem:
         return pem.replace('\\n', '\n').encode('utf-8')
