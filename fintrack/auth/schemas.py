@@ -26,6 +26,10 @@ class ResendVerification(RequestModel):
     email: str = Field(min_length=1, max_length=254)
 
 
+class TaxSettingsUpdate(RequestModel):
+    tax_joint: bool
+
+
 class SettingsUpdate(RequestModel):
     """Alle Felder optional - leere Eingaben werden als "nicht angegeben" gespeichert."""
     risk_profile: Optional[str] = Field(default=None, max_length=50)

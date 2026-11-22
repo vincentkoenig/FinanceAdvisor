@@ -16,7 +16,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 # Lokale Imports
 from fintrack.api import parse_body
 from fintrack.auth.email import generate_verification_code, send_verification_email
-from fintrack.auth.schemas import Credentials, ResendVerification, SettingsUpdate, VerifyEmail
+from fintrack.auth.schemas import Credentials, ResendVerification, SettingsUpdate, TaxSettingsUpdate, VerifyEmail
 from fintrack.auth.session import login_required_api, start_session
 from fintrack.budget.service import create_default_categories
 from fintrack.extensions import db, limiter
@@ -150,7 +150,8 @@ def me():
         "risk_profile": current_user.risk_profile,
         "investment_experience": current_user.investment_experience,
         "monthly_budget": current_user.monthly_budget,
-        "investment_horizon": current_user.investment_horizon
+        "investment_horizon": current_user.investment_horizon,
+        "tax_joint": current_user.tax_joint,
     }), 200
 
 
@@ -235,3 +236,16 @@ def settings():
     db.session.commit()
 
     return jsonify({"message": "Einstellungen gespeichert"}), 200
+
+
+@bp.route('/me/tax-settings', methods=['PUT'])
+@login_required_api
+def tax_settings():
+    """
+    Steuer-Einstellung für die Gewinn-Übersicht: gemeinsam veranlagt (verheiratet)
+    oder nicht. Eigener Endpoint, weil PUT /me/settings alle Anlage-Felder ersetzt.
+    """
+    data = parse_body(TaxSettingsUpdate)
+    current_user.tax_joint = data.tax_joint
+    db.session.commit()
+    return jsonify({"tax_joint": current_user.tax_joint}), 200

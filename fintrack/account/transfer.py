@@ -82,6 +82,7 @@ def export_user_data(user):
             "investment_experience": user.investment_experience,
             "monthly_budget": user.monthly_budget,
             "investment_horizon": user.investment_horizon,
+            "tax_joint": user.tax_joint,
         },
         "categories": [
             {"ref": category_ref[c.id], "name": c.name, "type": c.type,
@@ -213,6 +214,7 @@ def import_user_data(user, data):
     user.investment_experience = profile.investment_experience
     user.monthly_budget = profile.monthly_budget
     user.investment_horizon = profile.investment_horizon
+    user.tax_joint = profile.tax_joint
 
     # Kategorien in zwei Durchgängen: erst Haupt-, dann Unterkategorien
     category_ids = {}

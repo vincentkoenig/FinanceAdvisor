@@ -20,7 +20,7 @@ import pytest
 from fintrack.budget.service import create_default_categories
 from fintrack.extensions import db
 from fintrack.models import (Asset, AssetTransaction, Category, ChatHistory, Contract, ContractSuggestionDismissal, DailyInsight, Dividend,
-                             PortfolioAnalysis, SavingsPlan, Transaction, UserAsset, Watchlist)
+                             PortfolioAnalysis, SavingsPlan, Transaction, User, UserAsset, Watchlist)
 
 
 @pytest.fixture(autouse=True)
@@ -35,6 +35,7 @@ def full_account(make_user):
     user = make_user('a@test.com')
     user.risk_profile = 'balanced'
     user.monthly_budget = 750.0
+    user.tax_joint = True
     create_default_categories(user.id)
 
     own_main = Category(user_id=user.id, name='Reisen', type='variable_expense')
@@ -123,6 +124,7 @@ class TestExport:
         assert {a['symbol'] for a in data['assets']} == {'AAPL', 'BTC-EUR'}
         assert data['analyses'][0]['recommendations'] == ["Das geht's besser streuen"]
         assert data['profile']['monthly_budget'] == 750.0
+        assert data['profile']['tax_joint'] is True
         assert [c['name'] for c in data['contracts']] == ['Kfz "Golf"', 'Handy']
         assert data['dismissed_suggestions'] == ['gym berlin']
 
@@ -162,6 +164,7 @@ class TestRoundTrip:
         assert Asset.query.filter_by(symbol='NEU').count() == 1
         assert Asset.query.filter_by(symbol='AAPL').count() == 1  # vorhandenes wiederverwendet
         no_price_downloads.assert_called_once()
+        assert User.query.filter_by(email='b@test.com').one().tax_joint is True
 
 
 class TestImportSafety:

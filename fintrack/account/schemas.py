@@ -30,6 +30,8 @@ class ExportProfile(_Entry):
     investment_experience: Optional[str] = None
     monthly_budget: Optional[float] = None
     investment_horizon: Optional[str] = None
+    # Seit dem Pauschbetrag für Verheiratete; ältere Dateien haben das Feld nicht
+    tax_joint: bool = False
 
 
 class ExportCategory(_Entry):

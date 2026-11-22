@@ -9,6 +9,8 @@ export type Position = {
   asset_type: string | null;
   quantity: number;
   avg_buy_price: number;
+  /** Einstand je Stück der nach FIFO noch offenen Kaufposten; fehlt bei älteren Antworten */
+  buy_price?: number | null;
   current_price: number | null;
   /** Letzter Schlusskurs vor heute in Euro, für die Tagesänderung */
   previous_close?: number | null;
