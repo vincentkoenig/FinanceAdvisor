@@ -21,7 +21,13 @@ Konten lesen, die du im Control Panel verknüpft hast. FinTrack kann nur lesen, 
 
 ## 2. Server einrichten
 
-In `/opt/fintrack/.env` (siehe `deploy/README.md`) ergänzen:
+Am einfachsten vom eigenen PC aus (trägt beides ein und startet FinTrack neu):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File deploy\set-bank-key.ps1 -KeyFile "C:\Pfad\zur\datei.pem"
+```
+
+Oder von Hand in `/opt/fintrack/.env` (siehe `deploy/README.md`) ergänzen:
 
 ```
 ENABLE_BANKING_APP_ID=deine-application-id
