@@ -73,6 +73,12 @@ const initialData = () => ({
     configured: true, redirect_url: 'http://localhost/api/v1/bank/callback', review_count: 0,
     connections: [] as BankConnection[], configuration_error: null as string | null,
   },
+  priceChanges: [
+    { key: 'price:contract:5:13.99', kind: 'contract' as const, id: 5, name: 'Netflix', interval: 'monthly' as const,
+      old_amount: 12.99, new_amount: 13.99, since: '2026-09-15', charges: 2, yearly_difference: 12 },
+    { key: 'price:booking:7:1250.00', kind: 'booking' as const, id: 7, name: 'Miete', interval: 'monthly' as const,
+      old_amount: 1200, new_amount: 1250, since: '2026-10-01', charges: 2, yearly_difference: 600 },
+  ],
   bankReview: [
     { key: 'bank-71', occurrence: 0, line: 71, date: '2026-10-28', amount: -18, counterparty: 'Laden A', purpose: 'Karte',
       description: 'Laden A', status: 'new' as const, covered_by: null, category_id: 2 as number | null, category_source: 'merchant' as const },
@@ -161,7 +167,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown; balance?: unknown; dismissed?: unknown; target?: unknown; bankConnect?: unknown; bankReview?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown; balance?: unknown; dismissed?: unknown; target?: unknown; bankConnect?: unknown; bankReview?: unknown; priceAccept?: unknown; priceDismiss?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -279,6 +285,14 @@ export const handlers = [
   http.get('/api/v1/me/asset-transactions', () => HttpResponse.json(data.trades)),
   http.get('/api/v1/me/dividends', () => HttpResponse.json(data.dividends)),
   http.get('/api/v1/me/positions/:id/lots', () => HttpResponse.json({ current_price: 100, lots: data.lots })),
+  http.get('/api/v1/me/price-changes', () => HttpResponse.json(data.priceChanges)),
+  http.post('/api/v1/me/price-changes/:action', async ({ params, request }) => {
+    const { key } = await request.json() as { key: string };
+    if (params.action === 'accept') sent.priceAccept = key; else sent.priceDismiss = key;
+    const change = data.priceChanges.find((c) => c.key === key);
+    data.priceChanges = data.priceChanges.filter((c) => c.key !== key);
+    return HttpResponse.json({ message: params.action === 'accept' ? `${change?.name}: neuer Preis übernommen` : 'Hinweis ausgeblendet' });
+  }),
   http.get('/api/v1/me/bank', () => HttpResponse.json({ ...data.bank, review_count: data.bank.review_count })),
   http.get('/api/v1/me/bank/aspsps', () => HttpResponse.json({ configured: true, aspsps: ['Commerzbank', 'HypoVereinsbank', 'ING'] })),
   http.post('/api/v1/me/bank/connect', async ({ request }) => {

@@ -10,6 +10,7 @@ import { Loaded } from '../../components/Loaded';
 import { dayShort } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import { CancelContractDialog, ContractDialog, DeleteContractDialog } from './dialogs';
+import { PriceChanges } from './PriceChanges';
 import { SOON_DAYS, STATUS_PILL, byCategory, dateLong, deadlineText, hasDeadline, inDays, clearLegacyDismissed, intervalLabel, readLegacyDismissed, soonCancellable } from './model';
 
 type Open =
@@ -94,6 +95,8 @@ export function ContractsPage() {
           </Loaded>
         </section>
       </div>
+
+      <PriceChanges />
 
       {found.length > 0 && (
         <section className="panel" aria-labelledby="h-found">

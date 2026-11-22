@@ -13,7 +13,8 @@ from fintrack.api import ApiError, parse_body
 from fintrack.auth.session import get_own, protect_blueprint
 from fintrack.contracts.booking import create_booking, sync_booking_end
 from fintrack.contracts.detect import contract_suggestions, dismissed_keys
-from fintrack.contracts.schemas import ContractBooking, ContractCancel, ContractInput, SuggestionDismiss
+from fintrack.contracts.prices import accept_price_change, dismiss_price_change, price_changes
+from fintrack.contracts.schemas import ContractBooking, ContractCancel, ContractInput, PriceChangeAction, SuggestionDismiss
 from fintrack.contracts.service import contracts_overview, serialize_contract
 from fintrack.contracts.terms import contract_status, today_berlin
 from fintrack.extensions import db
@@ -185,3 +186,25 @@ def unlink_booking(contract_id):
     db.session.commit()
 
     return jsonify({"message": "Verknüpfung gelöst", "contract": serialize_contract(contract, today_berlin())}), 200
+
+
+# ─── PREISÄNDERUNGEN ──────────────────────────────────────────────────────────
+
+@bp.route('/me/price-changes', methods=['GET'])
+def get_price_changes():
+    """Verträge und wiederkehrende Buchungen, deren Abbuchungen einen neuen Preis zeigen."""
+    return jsonify(price_changes(current_user.id)), 200
+
+
+@bp.route('/me/price-changes/accept', methods=['POST'])
+def accept_price():
+    """Neuen Preis übernehmen (Vertrag ändern, wiederkehrende Buchung ab dem neuen Preis teilen)."""
+    change = accept_price_change(current_user.id, parse_body(PriceChangeAction).key)
+    return jsonify({"message": f'{change["name"]}: neuer Preis übernommen'}), 200
+
+
+@bp.route('/me/price-changes/dismiss', methods=['POST'])
+def dismiss_price():
+    """Hinweis ignorieren; ändert sich der Preis noch einmal, kommt ein neuer."""
+    dismiss_price_change(current_user.id, parse_body(PriceChangeAction).key)
+    return jsonify({"message": "Hinweis ausgeblendet"}), 200
