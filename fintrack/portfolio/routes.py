@@ -22,9 +22,10 @@ from fintrack.market.service import price_in_eur_on
 from fintrack.market.search import create_asset, search_assets
 from fintrack.models import (Asset, AssetTransaction, Dividend,
                              SavingsPlan, UserAsset, Watchlist)
-from fintrack.portfolio.schemas import (AssetCreate, AssetSearchQuery, BuyTrade, PositionCreate,
+from fintrack.portfolio.schemas import (AssetCreate, AssetSearchQuery, BuyTrade, PositionCreate, RealizedGainsQuery,
                                         SavingsPlanCreate, SellTrade, WatchlistAdd, WatchlistTarget)
 from fintrack.portfolio.history import portfolio_value_series
+from fintrack.portfolio.lots import buy_price, open_lots, realized_overview, user_books
 from fintrack.portfolio.performance import BENCHMARK_NAME, BENCHMARK_SYMBOL, performance_series
 from fintrack.portfolio.service import record_buy, record_sell
 
@@ -102,6 +103,7 @@ def get_positions():
     """
     positions = UserAsset.query.filter_by(user_id=current_user.id).filter(UserAsset.quantity > 0).all()
     yesterday = date.today() - timedelta(days=1)
+    books = user_books(current_user.id)
 
     result = []
     for position in positions:
@@ -115,6 +117,8 @@ def get_positions():
             "asset_type": asset.asset_type,
             "quantity": position.quantity,
             "avg_buy_price": position.avg_buy_price,
+            # Einstand je Stück der nach FIFO noch offenen Kaufposten
+            "buy_price": _rounded(buy_price(books[position.asset_id][0]) if position.asset_id in books else None),
             "bought_at": position.bought_at,
             "status": position.status,
             "current_price": get_current_price(asset, unknown_type_default=position.avg_buy_price),
@@ -167,6 +171,32 @@ def sell(asset_id):
     db.session.commit()
 
     return jsonify({"message": "Verkauf gespeichert"}), 200
+
+
+@bp.route('/me/positions/<int:asset_id>/lots', methods=['GET'])
+def get_position_lots(asset_id):
+    """
+    Offene Kaufposten einer Position nach FIFO (älteste zuerst) mit Einstand
+    und Gewinn je Posten. Bei Krypto zusätzlich der Tag, ab dem ein Verkauf
+    des Postens steuerfrei wäre.
+    """
+    asset = get_asset_or_404(asset_id)
+    position = UserAsset.query.filter_by(user_id=current_user.id, asset_id=asset_id).first()
+    if not position:
+        raise ApiError(404, 'Position nicht gefunden')
+    price = get_current_price(asset, unknown_type_default=position.avg_buy_price)
+    return jsonify({"current_price": _rounded(price),
+                    "lots": open_lots(current_user.id, asset_id, price, asset.asset_type)}), 200
+
+
+@bp.route('/me/realized-gains', methods=['GET'])
+def get_realized_gains():
+    """
+    Realisierte Gewinne eines Jahres (?year=2026, ohne: laufendes Jahr) nach FIFO,
+    mit geschätzter Ausschöpfung des Sparerpauschbetrags und dem Krypto-Block.
+    """
+    year = parse_query(RealizedGainsQuery).year
+    return jsonify(realized_overview(current_user.id, year)), 200
 
 
 @bp.route('/me/asset-transactions', methods=['GET'])

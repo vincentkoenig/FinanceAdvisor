@@ -545,3 +545,16 @@ details.older[open] .clamp-2 { display: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-delay: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
+/* Realisierte Gewinne: Sparerpauschbetrag als Balken, Krypto-Block, Verkäufe */
+.select.select-sm { width: auto; height: 32px; padding-right: 28px; }
+.allowance { margin-bottom: 16px; }
+.allowance-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.allowance-track { height: 8px; border-radius: 999px; background: var(--raised); overflow: hidden; }
+.allowance-track > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--t-hover); }
+.allowance .hint { margin-top: 6px; }
+.crypto-block, .sales-head { margin-top: 20px; }
+.gains-note { margin-top: 16px; }
+/* Kaufposten im Positions-Dialog */
+details.lots > summary { cursor: pointer; color: var(--muted); font-size: var(--fs-small); padding: 4px 0; }
+details.lots[open] > summary { margin-bottom: 4px; }
+.allowance-kind { margin-bottom: 12px; }

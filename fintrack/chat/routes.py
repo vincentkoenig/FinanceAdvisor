@@ -18,6 +18,7 @@ from fintrack.auth.session import current_user_key, protect_blueprint
 from fintrack.budget.service import calculate_budget_summary
 from fintrack.chat.tools import tools
 from fintrack.contracts.service import contracts_overview
+from fintrack.portfolio.lots import realized_overview
 from fintrack.extensions import db, get_openai_client, limiter
 from fintrack.market.data import get_crypto_price, search_web
 from fintrack.market.service import quote_in_eur
@@ -151,6 +152,8 @@ def chat():
                 result = calculate_budget_summary(user_id)
             elif function_name == "get_contracts":
                 result = contracts_overview(user_id)
+            elif function_name == "get_realized_gains":
+                result = realized_overview(user_id, function_args.get('year'))
             else:
                 result = None
 

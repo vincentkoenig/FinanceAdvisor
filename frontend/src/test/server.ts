@@ -68,6 +68,22 @@ const initialData = () => ({
     { id: 31, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', ex_dividend_date: '2026-06-12', amount_per_share: 0.4512, shares_held: 100, total_amount: 45.12 },
     { id: 32, asset_name: 'iShares Core MSCI World', asset_symbol: 'EUNL.DE', ex_dividend_date: '2025-12-10', amount_per_share: 0.4, shares_held: 100, total_amount: 40 },
   ],
+  lots: [
+    { bought_on: '2025-03-01', quantity: 60, unit_cost: 70, cost: 4200, value: 6000, gain: 1800, gain_pct: 42.86, opening: false, tax_free_from: null },
+    { bought_on: '2026-01-02', quantity: 40, unit_cost: 95, cost: 3800, value: 4000, gain: 200, gain_pct: 5.26, opening: false, tax_free_from: null },
+  ],
+  realized: {
+    year: 2026, years: [2026, 2025],
+    sales: [
+      { asset_id: 2, name: 'Bitcoin', symbol: 'BTC-EUR', asset_type: 'crypto', bucket: 'crypto', date: '2026-08-01', first_bought: '2024-01-01',
+        quantity: 0.05, proceeds: 3000, cost: 1000, gain: 2000, tax_free: true, unknown_cost: false },
+      { asset_id: 4, name: 'Allianz SE', symbol: 'ALV.DE', asset_type: 'stock', bucket: 'stock', date: '2026-05-04', first_bought: '2024-02-01',
+        quantity: 10, proceeds: 3000, cost: 2400, gain: 600, tax_free: false, unknown_cost: false },
+    ],
+    securities: { stock_gains: 600, other_gains: 0, dividends: 45.12, taxable: 645.12, allowance: 1000, joint: false, allowance_used: 645.12,
+      allowance_left: 354.88, above_allowance: 0, stock_loss_carried: 0 },
+    crypto: { taxable_gains: 0, tax_free_gains: 2000, exemption_limit: 1000, over_limit: false },
+  },
   watchlist: [
     { asset_id: 3, name: 'SAP SE', symbol: 'SAP.DE', price_added: 200, current_price: 220, added_at: '01.10.2026', target_price: null, target_direction: null, target_hit: null },
   ] as { asset_id: number; name: string; symbol: string; price_added: number | null; current_price: number | null; added_at: string;
@@ -251,6 +267,19 @@ export const handlers = [
   }),
   http.get('/api/v1/me/asset-transactions', () => HttpResponse.json(data.trades)),
   http.get('/api/v1/me/dividends', () => HttpResponse.json(data.dividends)),
+  http.get('/api/v1/me/positions/:id/lots', () => HttpResponse.json({ current_price: 100, lots: data.lots })),
+  http.put('/api/v1/me/tax-settings', async ({ request }) => {
+    const { tax_joint } = await request.json() as { tax_joint: boolean };
+    const allowance = tax_joint ? 2000 : 1000;
+    const s = data.realized.securities;
+    data.realized.securities = { ...s, joint: tax_joint, allowance, allowance_left: allowance - s.allowance_used };
+    return HttpResponse.json({ tax_joint });
+  }),
+  http.get('/api/v1/me/realized-gains', ({ request }) => {
+    const year = Number(new URL(request.url).searchParams.get('year'));
+    return HttpResponse.json(year === data.realized.year ? data.realized
+      : { ...data.realized, year, sales: [], securities: { ...data.realized.securities, stock_gains: 0, dividends: 40, taxable: 40, allowance_used: 40, allowance_left: 960 } });
+  }),
   http.get('/api/v1/me/insight', () => HttpResponse.json(data.insight)),
   http.post('/api/v1/me/savings-plans/:id/execute', ({ params }) => {
     const plan = data.savingsPlans.find((p) => p.id === Number(params.id));

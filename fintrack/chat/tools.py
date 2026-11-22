@@ -7,6 +7,7 @@ Definiert die Tools die das LLM benutzen kann:
 - search_web         → aktuelle Informationen aus dem Web suchen
 - get_budget_status  → Haushaltsbuch-Status des Nutzers abrufen
 - get_contracts      → Verträge des Nutzers mit Kosten und Kündigungsfristen
+- get_realized_gains → realisierte Gewinne nach FIFO und Sparerpauschbetrag
 Das LLM entscheidet selbst wann es welches Tool aufrufen soll.
 """
 
@@ -129,6 +130,34 @@ tools = [
             "parameters": {
                 "type": "object",
                 "properties": {},
+                "required": []
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_realized_gains",
+            "description": (
+                "Get the user's realized gains and losses from sales for one year "
+                "(FIFO, as German tax law requires), dividends, and an ESTIMATE of how "
+                "much of the Sparerpauschbetrag (1,000 EUR allowance) is used and left. "
+                "Stock losses can only offset stock gains (stock_loss_carried). Crypto "
+                "is separate: sales after more than one year are tax free, short-term "
+                "crypto gains are tax free below the 1,000 EUR Freigrenze, otherwise all "
+                "taxable. The estimate ignores Teilfreistellung, Vorabpauschale and "
+                "losses carried over from earlier years - say so when you use it, and "
+                "never present it as tax advice. Use this when the user asks about "
+                "realized gains, sales, taxes, Pauschbetrag or Freistellungsauftrag."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "year": {
+                        "type": "integer",
+                        "description": "Calendar year, e.g. 2026. Omit for the current year."
+                    }
+                },
                 "required": []
             }
         }

@@ -169,3 +169,47 @@ describe('Portfolio', () => {
     expect(panel).not.toHaveTextContent('MSCI');
   });
 });
+
+describe('Realisierte Gewinne', () => {
+  it('zeigt den Sparerpauschbetrag, Töpfe, Krypto und die Verkäufe', async () => {
+    renderApp('/portfolio');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('tab', { name: /Gewinne/ }));
+    const meter = await screen.findByRole('meter', { name: 'Genutzter Sparerpauschbetrag' });
+    expect(meter).toHaveAttribute('aria-valuenow', '645.12');
+    const panel = tabPanel();
+    expect(panel).toHaveTextContent('645,12 € von 1.000,00 € genutzt');
+    expect(panel).toHaveTextContent('Noch 354,88 € frei.');
+    expect(panel).toHaveTextContent('Gehalten über 1 Jahrsteuerfrei+2.000,00 €');
+    expect(panel).toHaveTextContent('Allianz SE');
+    expect(panel).toHaveTextContent('Keine Steuerberatung');
+
+    await user.selectOptions(within(panel).getByRole('combobox', { name: 'Jahr' }), '2025');
+    expect(await within(panel).findByText('Keine Verkäufe im Jahr 2025.')).toBeInTheDocument();
+    expect(panel).not.toHaveTextContent('Krypto');
+  });
+
+  it('rechnet für Verheiratete mit 2.000 € Pauschbetrag', async () => {
+    renderApp('/portfolio');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('tab', { name: /Gewinne/ }));
+    const kind = await screen.findByRole('group', { name: 'Veranlagung' });
+    expect(within(kind).getByRole('button', { name: 'Alleinstehend' })).toHaveAttribute('aria-pressed', 'true');
+
+    await user.click(within(kind).getByRole('button', { name: 'Verheiratet' }));
+    await waitFor(() => expect(tabPanel()).toHaveTextContent('645,12 € von 2.000,00 € genutzt'));
+    expect(tabPanel()).toHaveTextContent('Noch 1.354,88 € frei.');
+    expect(within(kind).getByRole('button', { name: 'Verheiratet' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('zeigt die offenen Kaufposten einer Position', async () => {
+    renderApp('/portfolio');
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'iShares Core MSCI World' }));
+    const box = await screen.findByRole('dialog', { name: 'iShares Core MSCI World' });
+    await user.click(within(box).getByText(/Kaufposten/));
+    expect(await within(box).findByText('60 Stück zu 70,00 €')).toBeInTheDocument();
+    expect(within(box).getByText('Kaufposten (2)')).toBeInTheDocument();
+    expect(within(box).getByText('+1.800,00 €')).toBeInTheDocument();
+  });
+});

@@ -30,8 +30,54 @@ export type WatchItem = {
 
 export type Asset = { id: number; name: string; symbol: string; asset_type: string | null; current_price: number | null };
 
+export type Lot = {
+  bought_on: string;
+  quantity: number;
+  /** Einstand je Stück inklusive Kaufgebühren */
+  unit_cost: number;
+  cost: number;
+  value: number | null;
+  gain: number | null;
+  gain_pct: number | null;
+  /** Stücke ohne einzelne Kaufbuchung, zum Durchschnittspreis der Position */
+  opening: boolean;
+  /** Nur Krypto: erster Tag, an dem ein Verkauf dieses Postens steuerfrei wäre */
+  tax_free_from: string | null;
+};
+
+export type Sale = {
+  asset_id: number;
+  name: string;
+  symbol: string;
+  asset_type: string | null;
+  bucket: 'stock' | 'other' | 'crypto';
+  date: string;
+  first_bought: string | null;
+  quantity: number;
+  proceeds: number;
+  cost: number;
+  gain: number;
+  /** Krypto nach mehr als einem Jahr Haltedauer */
+  tax_free: boolean;
+  /** Mehr verkauft als gebucht: Einstand unbekannt, Gewinn als 0 gezählt */
+  unknown_cost: boolean;
+};
+
+export type RealizedGains = {
+  year: number;
+  years: number[];
+  sales: Sale[];
+  securities: {
+    stock_gains: number; other_gains: number; dividends: number; taxable: number;
+    allowance: number; joint: boolean; allowance_used: number; allowance_left: number; above_allowance: number; stock_loss_carried: number;
+  };
+  crypto: { taxable_gains: number; tax_free_gains: number; exemption_limit: number; over_limit: boolean };
+};
+
 export const portfolioKeys = {
   watchlist: ['watchlist'] as const,
+  lots: (assetId: number) => ['lots', assetId] as const,
+  realized: (year: number) => ['realized-gains', year] as const,
   search: (query: string) => ['asset-search', query] as const,
   asset: (id: number) => ['asset', id] as const,
 };
@@ -65,6 +111,31 @@ export const useAsset = (id: number | null) =>
     staleTime: 2 * minute,
   });
 
+/** Offene Kaufposten einer Position nach FIFO (älteste zuerst) */
+export const useLots = (assetId: number) =>
+  useQuery({
+    queryKey: portfolioKeys.lots(assetId),
+    queryFn: () => api<{ current_price: number | null; lots: Lot[] }>(`/me/positions/${assetId}/lots`),
+    staleTime: 2 * minute,
+  });
+
+/** Realisierte Gewinne eines Jahres mit geschätztem Sparerpauschbetrag */
+export const useRealizedGains = (year: number) =>
+  useQuery({
+    queryKey: portfolioKeys.realized(year),
+    queryFn: () => api<RealizedGains>(`/me/realized-gains?year=${year}`),
+    staleTime: 10 * minute,
+  });
+
+/** Gemeinsam veranlagt (verheiratet): Sparerpauschbetrag 2.000 € statt 1.000 € */
+export function useTaxJoint() {
+  const invalidate = useInvalidate();
+  return useMutation({
+    mutationFn: (taxJoint: boolean) => api<{ tax_joint: boolean }>('/me/tax-settings', { method: 'PUT', body: { tax_joint: taxJoint } }),
+    onSuccess: () => invalidate(['realized-gains']),
+  });
+}
+
 /** Gewählten Suchtreffer anlegen (oder das vorhandene Asset holen) und seine ID liefern */
 export async function ensureAsset(result: SearchResult) {
   if (result.asset_id) return result.asset_id;
@@ -78,7 +149,7 @@ function useInvalidate() {
     Promise.all(queryKeys.map((queryKey) => client.invalidateQueries({ queryKey })));
 }
 
-const afterTrade = [keys.positions, keys.history, keys.performance, keys.trades];
+const afterTrade = [keys.positions, keys.history, keys.performance, keys.trades, ['lots'], ['realized-gains']];
 
 // Ein Kauf mit Datum; ist das Asset schon im Depot, ergibt das einen neuen Durchschnittspreis
 export function useBuy() {

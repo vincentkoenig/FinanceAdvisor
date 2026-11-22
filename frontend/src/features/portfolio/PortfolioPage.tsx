@@ -1,6 +1,7 @@
 // Portfolio. Frage der Seite: Wie hat sich mein Depot entwickelt?
 // Oben der Depotwert als Leitfläche mit Wertverlauf und Zeitraum, daneben die Aufteilung nach
-// Anlageart, darunter Reiter für Positionen, Watchlist, Transaktionen, Sparpläne und Dividenden.
+// Anlageart, darunter Reiter für Positionen, Watchlist, Transaktionen, Sparpläne, Dividenden und
+// realisierte Gewinne (FIFO, mit geschätztem Sparerpauschbetrag).
 // Kaufen, Verkaufen, Beobachten und Sparpläne laufen über Dialoge (dialogs.tsx).
 import { useState } from 'react';
 import { Link } from 'react-router';
@@ -8,7 +9,7 @@ import {
   type Dividend, type SavingsPlan, type Trade,
   useDividends, useExecutePlan, usePerformance, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
 } from '../../api/overview';
-import { type WatchItem, useWatchlist } from '../../api/portfolio';
+import { type RealizedGains, type Sale, type WatchItem, useRealizedGains, useTaxJoint, useWatchlist } from '../../api/portfolio';
 import { CountUp } from '../../components/CountUp';
 import { Icon } from '../../components/Icon';
 import { Loaded } from '../../components/Loaded';
@@ -18,7 +19,7 @@ import { ValueChart } from '../../components/ValueChart';
 import { useIsPhone } from '../../components/Fold';
 import { dayShort, parseDay, pct, pctTone, tone } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
-import { type PositionRow, planDates, portfolioTotals, positionRows, token } from '../home/model';
+import { type PositionRow, costPrice, planDates, portfolioTotals, positionRows, token } from '../home/model';
 import { Heatmap } from './Heatmap';
 import { AddAssetDialog, DeletePlanDialog, type PlanAsset, PlanDialog, PositionDialog, WatchDialog } from './dialogs';
 import {
@@ -54,6 +55,7 @@ const TABS = [
   { id: 'trades', label: 'Transaktionen' },
   { id: 'plans', label: 'Sparpläne' },
   { id: 'dividends', label: 'Dividenden' },
+  { id: 'gains', label: 'Gewinne' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
 
@@ -113,7 +115,7 @@ export function PortfolioPage() {
   const gap = depotStats && benchStats ? depotStats.total - benchStats.total : null;
   const counts: Record<Tab, number | undefined> = {
     positions: positions.data?.length, watchlist: watchlist.data?.length, trades: trades.data?.length,
-    plans: plans.data?.length, dividends: dividends.data?.length,
+    plans: plans.data?.length, dividends: dividends.data?.length, gains: undefined,
   };
   // Ein Sparplan geht auf ein Asset aus dem Depot oder der Watchlist
   const planAssets: PlanAsset[] = [...(positions.data ?? []), ...(watchlist.data ?? [])]
@@ -279,6 +281,7 @@ export function PortfolioPage() {
             {() => <Dividends dividends={dividends.data!} total={dividendsThisYear(dividends.data!, today)} year={today.getFullYear()} />}
           </Loaded>
         )}
+        {tab === 'gains' && <Gains initialYear={today.getFullYear()} />}
       </section>
 
       {open?.type === 'add' && <AddAssetDialog mode="buy" onClose={close} />}
@@ -404,7 +407,7 @@ function Positions({ rows, onOpen }: { rows: PositionRow[]; onOpen: (row: Positi
                   </div>
                 </td>
                 <td className="r">{qty(p.quantity)}</td>
-                <td className="r">{eur(p.price)}<span className="sub-line">Ø {eur(p.avg_buy_price)}</span></td>
+                <td className="r">{eur(p.price)}<span className="sub-line">Ø {eur(costPrice(p))}</span></td>
                 <td className="r">
                   {p.dayPct === null ? <span className="muted">–</span>
                     : <><span className={pctTone(p.dayPct)}>{pct(p.dayPct)}</span><span className="sub-line">{eur(p.dayAbs!, { sign: true })}</span></>}
@@ -528,6 +531,121 @@ function Dividends({ dividends, total, year }: { dividends: Dividend[]; total: n
             </div>
           </>
         )}
+    </>
+  );
+}
+
+const BUCKET_NAMES: Record<Sale['bucket'], string> = { stock: 'Aktie', other: 'ETF/Fonds', crypto: 'Krypto' };
+
+// Realisierte Gewinne eines Jahres: Sparerpauschbetrag als Balken, Töpfe, Krypto-Block und die Verkäufe
+function Gains({ initialYear }: { initialYear: number }) {
+  const [year, setYear] = useState(initialYear);
+  const gains = useRealizedGains(year);
+  return (
+    <>
+      <div className="panel-head">
+        <h2>Realisierte Gewinne</h2>
+        {gains.data && gains.data.years.length > 1 && (
+          <select className="select select-sm" aria-label="Jahr" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+            {gains.data.years.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        )}
+      </div>
+      <Loaded queries={[gains]}>
+        {() => <GainsBody data={gains.data!} />}
+      </Loaded>
+    </>
+  );
+}
+
+function GainsBody({ data }: { data: RealizedGains }) {
+  const { eur, qty } = useMoney();
+  const s = data.securities;
+  const c = data.crypto;
+  const usedShare = s.allowance > 0 ? Math.min(1, s.allowance_used / s.allowance) : 0;
+  const hasCrypto = data.sales.some((sale) => sale.bucket === 'crypto');
+  const taxJoint = useTaxJoint();
+  const setJoint = (joint: boolean) => { if (joint !== s.joint && !taxJoint.isPending) taxJoint.mutate(joint); };
+  return (
+    <>
+      <div className="segmented allowance-kind" role="group" aria-label="Veranlagung">
+        <button aria-pressed={!s.joint} disabled={taxJoint.isPending} onClick={() => setJoint(false)}>Alleinstehend</button>
+        <button aria-pressed={s.joint} disabled={taxJoint.isPending} onClick={() => setJoint(true)}>Verheiratet</button>
+      </div>
+      <div className="allowance">
+        <div className="allowance-head">
+          <span>Sparerpauschbetrag {data.year}</span>
+          <span className="num"><span className="strong">{eur(s.allowance_used)}</span> von {eur(s.allowance)} genutzt</span>
+        </div>
+        <div className="allowance-track" role="meter" aria-label="Genutzter Sparerpauschbetrag"
+          aria-valuemin={0} aria-valuemax={s.allowance} aria-valuenow={s.allowance_used}>
+          <span style={{ width: `${usedShare * 100}%` }} />
+        </div>
+        <p className="hint">
+          {s.above_allowance > 0
+            ? <>Darüber hinaus <span className="strong">{eur(s.above_allowance)}</span> steuerpflichtig.</>
+            : <>Noch {eur(s.allowance_left)} frei.</>}
+        </p>
+      </div>
+
+      <div className="strip well">
+        <div>
+          <div className="kpi-label">Aktien</div>
+          <div className={`kpi-value kpi-small ${tone(s.stock_gains)}`}>{eur(s.stock_gains, { sign: true })}</div>
+          {s.stock_loss_carried > 0 && <div className="kpi-sub">nur mit Aktiengewinnen verrechenbar</div>}
+        </div>
+        <div>
+          <div className="kpi-label">ETFs, Fonds, Sonstiges</div>
+          <div className={`kpi-value kpi-small ${tone(s.other_gains)}`}>{eur(s.other_gains, { sign: true })}</div>
+        </div>
+        <div>
+          <div className="kpi-label">Dividenden</div>
+          <div className="kpi-value kpi-small">{eur(s.dividends)}</div>
+        </div>
+      </div>
+
+      {hasCrypto && (
+        <div className="crypto-block">
+          <h3 className="group-head">Krypto</h3>
+          <div className="rows">
+            <div className="row">
+              <div className="grow"><span>Gehalten bis 1 Jahr</span>
+                <span className="sub-line">{c.over_limit ? `Ab ${eur(c.exemption_limit)} Gewinn ist alles steuerpflichtig` : `Unter ${eur(c.exemption_limit)} Gewinn steuerfrei (Freigrenze)`}</span>
+              </div>
+              <div className={`end ${tone(c.taxable_gains)}`}>{eur(c.taxable_gains, { sign: true })}</div>
+            </div>
+            <div className="row">
+              <div className="grow"><span>Gehalten über 1 Jahr</span><span className="sub-line">steuerfrei</span></div>
+              <div className={`end ${tone(c.tax_free_gains)}`}>{eur(c.tax_free_gains, { sign: true })}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <h3 className="group-head sales-head">Verkäufe</h3>
+      {data.sales.length === 0 ? <p className="empty-line">Keine Verkäufe im Jahr {data.year}.</p> : (
+        <div className="rows">
+          {data.sales.map((sale, i) => (
+            <div className="row" key={i}>
+              <div className="grow">
+                <span className="trunc">{sale.name}</span>
+                <span className="sub-line">
+                  {dayShort(sale.date)} · {qty(sale.quantity)} Stück · {BUCKET_NAMES[sale.bucket]}
+                  {sale.tax_free && ' · steuerfrei'}
+                  {sale.unknown_cost && ' · Einstand unbekannt'}
+                </span>
+              </div>
+              <div className="end">
+                <span className={`block strong ${tone(sale.gain)}`}>{eur(sale.gain, { sign: true })}</span>
+                <span className="sub-line">Erlös {eur(sale.proceeds)}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <p className="hint gains-note">
+        Schätzung nach FIFO, ohne Teilfreistellung, Vorabpauschale und Verlustvorträge aus Vorjahren. Keine Steuerberatung.
+      </p>
     </>
   );
 }

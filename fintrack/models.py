@@ -51,6 +51,8 @@ class User(UserMixin, db.Model):
     verification_code_expires = db.Column(db.DateTime)
     verification_attempts = db.Column(db.Integer, nullable=False, default=0, server_default='0')
     session_token = db.Column(db.String)
+    # Gemeinsam veranlagt (verheiratet): Sparerpauschbetrag 2.000 € statt 1.000 €
+    tax_joint = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
 
     def get_id(self):
         """

@@ -2,6 +2,9 @@
 import type { Booking, BudgetSummary, HistoryPoint, Position, SavingsPlan, Trade } from '../../api/overview';
 import { isoDay, monthKey } from '../../lib/format';
 
+/** Einstand je Stück: nach FIFO aus den offenen Kaufposten, sonst der Durchschnittskaufpreis */
+export const costPrice = (p: Position) => p.buy_price ?? p.avg_buy_price;
+
 export type PortfolioTotals = { value: number; cost: number; gain: number; gainPct: number | null };
 
 // Ohne Kurs zählt die Position mit dem Einstandspreis, wie im bisherigen Portfolio
@@ -9,8 +12,8 @@ export function portfolioTotals(positions: Position[]): PortfolioTotals {
   let value = 0;
   let cost = 0;
   for (const p of positions) {
-    value += (p.current_price ?? p.avg_buy_price) * p.quantity;
-    cost += p.avg_buy_price * p.quantity;
+    value += (p.current_price ?? costPrice(p)) * p.quantity;
+    cost += costPrice(p) * p.quantity;
   }
   return { value, cost, gain: value - cost, gainPct: cost > 0 ? (value / cost - 1) * 100 : null };
 }
@@ -94,9 +97,9 @@ export type PositionRow = Position & {
 /** Positionen mit Wert, Einstand, Gewinn seit Kauf und Tagesänderung (ohne Kurs zählt der Einstandspreis) */
 export function positionRows(positions: Position[]): PositionRow[] {
   return positions.map((p) => {
-    const price = p.current_price ?? p.avg_buy_price;
+    const price = p.current_price ?? costPrice(p);
     const value = price * p.quantity;
-    const cost = p.avg_buy_price * p.quantity;
+    const cost = costPrice(p) * p.quantity;
     const prev = p.previous_close;
     const day = p.current_price != null && prev ? { dayAbs: (p.current_price - prev) * p.quantity, dayPct: (p.current_price / prev - 1) * 100 } : { dayAbs: null, dayPct: null };
     return { ...p, price, value, cost, gain: value - cost, gainPct: cost > 0 ? (value / cost - 1) * 100 : null, ...day };

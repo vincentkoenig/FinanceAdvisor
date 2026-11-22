@@ -2,15 +2,16 @@
 // Kauf aus der Watchlist, Sparplan anlegen und löschen.
 import { useState, type FormEvent } from 'react';
 import {
-  type SearchResult, type WatchItem, ensureAsset, useAsset, useAssetSearch, useBuy, useCreatePlan, useDeletePlan, useSell, useSetTarget, useUnwatch, useWatch, useWatchlist,
+  type SearchResult, type WatchItem, ensureAsset, useAsset, useAssetSearch, useBuy, useCreatePlan, useDeletePlan, useLots, useSell, useSetTarget, useUnwatch, useWatch, useWatchlist,
 } from '../../api/portfolio';
 import type { SavingsPlan } from '../../api/overview';
 import { Dialog } from '../../components/Dialog';
+import { Loaded } from '../../components/Loaded';
 import { Actions, type Errors, Field, apiErrors, describe, positive } from '../../components/form';
 import { useToast } from '../../components/Toast';
 import { dayShort, isoDay, parseAmount, pct, tone } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
-import { type PositionRow, token } from '../home/model';
+import { type PositionRow, costPrice, token } from '../home/model';
 
 const TYPE_NAMES: Record<string, string> = { etf: 'ETF', stock: 'Aktie', crypto: 'Krypto', metal: 'Edelmetall' };
 
@@ -168,9 +169,10 @@ export function PositionDialog({ row, onClose }: { row: PositionRow; onClose: ()
           <div>
             <div className="kpi-label">Gewinn / Verlust</div>
             <div className={`kpi-value kpi-small ${tone(row.gain)}`}>{eur(row.gain, { sign: true })}</div>
-            <div className="kpi-sub">{row.gainPct === null ? '' : `${pct(row.gainPct)} · `}Ø {eur(row.avg_buy_price)}</div>
+            <div className="kpi-sub">{row.gainPct === null ? '' : `${pct(row.gainPct)} · `}Ø {eur(costPrice(row))}</div>
           </div>
         </div>
+        <PositionLots assetId={row.asset_id} />
         <div className="segmented" role="group" aria-label="Art">
           <button type="button" aria-pressed={!selling} onClick={() => { setKind('buy'); setErrors({}); }}>Kauf</button>
           <button type="button" aria-pressed={selling} onClick={() => { setKind('sell'); setErrors({}); }}>Verkauf</button>
@@ -196,6 +198,42 @@ export function PositionDialog({ row, onClose }: { row: PositionRow; onClose: ()
         <Actions onCancel={onClose} busy={busy} label={selling ? 'Verkauf speichern' : 'Kauf speichern'} busyLabel="Speichert …" error={errors.form} />
       </form>
     </Dialog>
+  );
+}
+
+// Offene Kaufposten nach FIFO: diese Stücke würde ein Verkauf der Reihe nach abgeben
+function PositionLots({ assetId }: { assetId: number }) {
+  const { eur, qty } = useMoney();
+  const lots = useLots(assetId);
+  const today = isoDay(new Date());
+  return (
+    <details className="lots">
+      <summary>Kaufposten{lots.data ? ` (${lots.data.lots.length})` : ''}</summary>
+      <Loaded queries={[lots]}>
+        {() => lots.data!.lots.length === 0 ? <p className="hint">Keine offenen Kaufposten.</p> : (
+          <>
+            <div className="rows">
+              {lots.data!.lots.map((lot, i) => (
+                <div className="row" key={i}>
+                  <div className="grow">
+                    <span>{lot.opening ? 'Anfangsbestand' : `Kauf ${dayShort(lot.bought_on)}`}</span>
+                    <span className="sub-line">
+                      {qty(lot.quantity)} Stück zu {eur(lot.unit_cost)}
+                      {lot.tax_free_from && (lot.tax_free_from <= today ? ' · steuerfrei' : ` · steuerfrei ab ${dayShort(lot.tax_free_from)}`)}
+                    </span>
+                  </div>
+                  <div className="end">
+                    {lot.gain === null ? <span className="muted">–</span> : <span className={`block ${tone(lot.gain)}`}>{eur(lot.gain, { sign: true })}</span>}
+                    {lot.gain_pct !== null && <span className="sub-line">{pct(lot.gain_pct)}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="hint">Ein Verkauf gibt die ältesten Stücke zuerst ab (FIFO).</p>
+          </>
+        )}
+      </Loaded>
+    </details>
   );
 }
 

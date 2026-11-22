@@ -15,6 +15,10 @@ class AssetSearchQuery(RequestModel):
     query: str = Field(min_length=1, max_length=100)
 
 
+class RealizedGainsQuery(RequestModel):
+    year: Optional[int] = Field(default=None, ge=1990, le=2100)
+
+
 class AssetCreate(RequestModel):
     """Ein Treffer aus der Suche, den der Nutzer ausgewählt hat."""
     symbol: str = Field(min_length=1, max_length=30, pattern=r'^[A-Za-z0-9.=^-]+$')

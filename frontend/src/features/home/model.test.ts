@@ -46,6 +46,12 @@ describe('Depot', () => {
     expect(totals).toEqual({ value: 10100, cost: 8100, gain: 2000, gainPct: expect.closeTo(24.69, 2) });
   });
 
+  it('rechnet mit dem FIFO-Einstand, wenn die API ihn liefert', () => {
+    const totals = portfolioTotals([position({ quantity: 10, avg_buy_price: 150, buy_price: 200, current_price: 210 })]);
+    expect(totals.cost).toBe(2000);
+    expect(positionRows([position({ quantity: 10, avg_buy_price: 150, buy_price: 200, current_price: 210 })])[0].gain).toBe(100);
+  });
+
   it('hat ohne Positionen keinen Prozentwert', () => {
     expect(portfolioTotals([]).gainPct).toBeNull();
   });
