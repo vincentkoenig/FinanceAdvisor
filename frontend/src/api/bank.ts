@@ -20,6 +20,8 @@ export type BankConnection = {
 export type BankOverview = {
   /** Server hat App-ID und Schlüssel von Enable Banking */
   configured: boolean;
+  /** Eingerichtet, aber unbrauchbar (z.B. Schlüssel beim Eintragen beschädigt): der Grund */
+  configuration_error?: string | null;
   /** Muss genau so in der Enable-Banking-App eingetragen sein */
   redirect_url: string;
   review_count: number;

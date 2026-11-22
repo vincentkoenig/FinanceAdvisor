@@ -373,3 +373,25 @@ class TestMorningPush:
         titles = sorted(m['title'] for m in delivered)
         assert titles == ['Bankzugang läuft ab', 'Neue Umsätze von der Bank']
         assert PushLog.query.count() == 2
+
+
+class TestConfigurationError:
+
+    def test_broken_key_is_reported_without_its_content(self, app, user, login_client, monkeypatch):
+        monkeypatch.setenv('ENABLE_BANKING_APP_ID', 'app-1')
+        monkeypatch.setenv('ENABLE_BANKING_PRIVATE_KEY', '-----BEGIN PRIVATE KEY-----\nGEHEIMKAPUTT\n-----END PRIVATE KEY-----')
+
+        body = login_client('a@test.com').get('/api/v1/me/bank').get_json()
+
+        assert body['configured'] is True
+        assert body['configuration_error'].startswith('Der private Schlüssel auf dem Server ist ungültig')
+        assert 'GEHEIMKAPUTT' not in body['configuration_error']
+
+    def test_valid_key_has_no_error(self, app, user, login_client, monkeypatch):
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+                                serialization.NoEncryption()).decode().replace('\n', '\n')
+        monkeypatch.setenv('ENABLE_BANKING_APP_ID', 'app-1')
+        monkeypatch.setenv('ENABLE_BANKING_PRIVATE_KEY', pem)
+
+        assert login_client('a@test.com').get('/api/v1/me/bank').get_json()['configuration_error'] is None

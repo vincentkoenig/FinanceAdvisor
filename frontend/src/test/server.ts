@@ -71,7 +71,7 @@ const initialData = () => ({
   ],
   bank: {
     configured: true, redirect_url: 'http://localhost/api/v1/bank/callback', review_count: 0,
-    connections: [] as BankConnection[],
+    connections: [] as BankConnection[], configuration_error: null as string | null,
   },
   bankReview: [
     { key: 'bank-71', occurrence: 0, line: 71, date: '2026-10-28', amount: -18, counterparty: 'Laden A', purpose: 'Karte',
