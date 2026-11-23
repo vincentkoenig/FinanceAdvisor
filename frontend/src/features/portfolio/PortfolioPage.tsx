@@ -26,6 +26,9 @@ import {
   type Range, RANGES, type Slice, type Sort, type SortKey,
   allocation, dividendsThisYear, finding, rangeChange, rangeSeries, returnSeries, returnStats, sortRows, tradeMarks,
 } from './model';
+import './gains.css';
+import '../../components/table.css';
+import './portfolio.css';
 
 type AllocView = 'bar' | 'ring';
 const ALLOC_KEY = 'ft-alloc-view';

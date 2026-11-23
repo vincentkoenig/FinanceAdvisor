@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Icon } from '../../components/Icon';
 import { type SharedInfo, isZipName, peekSharedFiles, takeSharedFiles } from '../../lib/sharedFile';
+import '../budget/import.css';
 
 export function SharedPage() {
   const navigate = useNavigate();

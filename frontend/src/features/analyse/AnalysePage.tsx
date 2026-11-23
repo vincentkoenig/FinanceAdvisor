@@ -8,6 +8,7 @@ import { Loaded } from '../../components/Loaded';
 import { useToast } from '../../components/Toast';
 import { useMoney } from '../../lib/privacy';
 import { AnalystSection } from './AnalystSection';
+import './analyse.css';
 
 const scoreText = (score: number | null) => (score === null ? '–' : `${score} von 10`);
 

@@ -21,6 +21,7 @@ import { AddBookingDialog, DeleteBookingDialog, EditBookingDialog } from './dial
 import {
   asSummary, counts, dayInMonth, daysForAverage, expensesByCategory, largestVariable, mainCategory, monthStart, monthTotals, sortBookings,
 } from './model';
+import '../../components/table.css';
 
 const monthLabel = (month: Date) => month.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
 const monthOnly = (month: Date) => month.toLocaleDateString('de-DE', { month: 'long' });

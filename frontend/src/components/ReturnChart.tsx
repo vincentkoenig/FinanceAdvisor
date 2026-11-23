@@ -6,6 +6,7 @@ import { useState, type PointerEvent } from 'react';
 import { niceTicks, type ReturnPoint } from '../features/portfolio/model';
 import { parseDay, pct } from '../lib/format';
 import { useWidth } from './ValueChart';
+import './charts.css';
 
 const PAD_TOP = 8;
 const PAD_BOTTOM = 26;

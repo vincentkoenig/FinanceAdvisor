@@ -1,0 +1,10 @@
+/* Sparziele: Töpfe mit Fortschrittsbalken
+   Eigene Datei, damit sie mit der Seite nachgeladen wird und nicht den Start der App vergrößert. */
+.goal-list { display: grid; gap: 14px; }
+.goal-head, .goal-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
+.goal-foot { align-items: center; margin-top: 6px; }
+.goal-track { height: 8px; margin-top: 6px; border-radius: 999px; background: var(--raised); overflow: hidden; }
+.goal-track > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--t-hover); }
+.goal-track > span.done { background: var(--positive, var(--accent)); }
+.goal-warning { margin-bottom: 12px; }
+.goal-delete { align-self: flex-start; }

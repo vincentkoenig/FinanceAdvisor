@@ -16,6 +16,7 @@ import { useMoney } from '../../lib/privacy';
 import { takeSharedFiles } from '../../lib/sharedFile';
 import { recheckSales } from './depotModel';
 import { filesFromZip, isZip } from './zip';
+import '../budget/import.css';
 
 type FileResult =
   | { kind: 'rows'; name: string; rows: DepotRow[]; info: string; sent?: string }

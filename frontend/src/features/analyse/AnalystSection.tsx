@@ -5,6 +5,7 @@ import { type AnalystItem, type Fundamentals, type TrackSummary, useAnalyst, use
 import { Loaded } from '../../components/Loaded';
 import { dayShort } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
+import './analyse.css';
 
 const TREND: Record<string, string> = { up: 'Aufwärtstrend', down: 'Abwärtstrend', sideways: 'Seitwärts' };
 // Stufen, die zum Handeln auffordern, bekommen die Signalfarbe
