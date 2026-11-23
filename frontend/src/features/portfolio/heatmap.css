@@ -1,0 +1,28 @@
+/* Heatmap im Portfolio: Fläche = Anteil, Farbe = Entwicklung. --t (0 bis 1) kommt je Kachel aus dem Code.
+   Hell bleibt die Schrift dunkel (Farbe höchstens 60 %), dunkel bleibt sie hell (höchstens 42 %), so hält jede Kachel mindestens 4,5:1.
+   Eigene Datei, damit sie mit der Seite nachgeladen wird und nicht den Start der App vergrößert. */
+.heatmap { position: relative; }
+.heat-tile {
+  --heat: var(--positive); --heat-max: 60%;
+  position: absolute; display: flex; flex-direction: column; justify-content: space-between; gap: 4px;
+  padding: 10px 12px; border: 0; border-radius: var(--radius-inner); overflow: hidden; text-align: left;
+  background: color-mix(in srgb, var(--heat) calc(var(--t, 0) * var(--heat-max)), var(--raised)); color: var(--text);
+  transition: filter var(--t-hover);
+}
+.heat-tile.down { --heat: var(--negative); }
+:root[data-theme="dark"] .heat-tile { --heat-max: 42%; }
+.heat-tile:hover { filter: brightness(0.96); }
+:root[data-theme="dark"] .heat-tile:hover { filter: brightness(1.12); }
+.heat-top, .heat-bottom { display: flex; flex-direction: column; min-width: 0; }
+.heat-sym { font-weight: 600; font-size: 15px; line-height: 20px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.heat-name, .heat-val { font-size: var(--fs-small); line-height: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.heat-chg { font-family: var(--font-figure); font-size: 22px; line-height: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.heat-val { font-variant-numeric: tabular-nums; }
+.heat-tile.tiny { padding: 6px 8px; }
+.heat-tile.tiny .heat-name, .heat-tile.tiny .heat-val { display: none; }
+.heat-tile.tiny .heat-chg { font-size: 15px; line-height: 20px; }
+.heat-tile.dot > * { display: none; }
+.heat-scale { display: flex; align-items: center; gap: 8px; margin-top: 12px; color: var(--muted); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.heat-scale .ramp { flex: 0 1 200px; height: 8px; border-radius: 999px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--negative) 60%, var(--raised)), var(--raised), color-mix(in srgb, var(--positive) 60%, var(--raised))); }
+:root[data-theme="dark"] .heat-scale .ramp { background: linear-gradient(90deg, color-mix(in srgb, var(--negative) 42%, var(--raised)), var(--raised), color-mix(in srgb, var(--positive) 42%, var(--raised))); }

@@ -8,6 +8,7 @@ import type { HistoryPoint, Trade } from '../api/overview';
 import { niceTicks, type TradeMark } from '../features/portfolio/model';
 import { eur, parseDay } from '../lib/format';
 import { MASK, useMoney, usePrivacy } from '../lib/privacy';
+import './charts.css';
 
 const PAD_TOP = 8;
 const PAD_BOTTOM = 26;

@@ -1,0 +1,13 @@
+/* Realisierte Gewinne (Sparerpauschbetrag als Balken, Krypto-Block, Verkäufe) und Kaufposten im Positions-Dialog
+   Eigene Datei, damit sie mit der Seite nachgeladen wird und nicht den Start der App vergrößert. */
+.select.select-sm { width: auto; height: 32px; padding-right: 28px; }
+.allowance { margin-bottom: 16px; }
+.allowance-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.allowance-track { height: 8px; border-radius: 999px; background: var(--raised); overflow: hidden; }
+.allowance-track > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--t-hover); }
+.allowance .hint { margin-top: 6px; }
+.crypto-block, .sales-head { margin-top: 20px; }
+.gains-note { margin-top: 16px; }
+details.lots > summary { cursor: pointer; color: var(--muted); font-size: var(--fs-small); padding: 4px 0; }
+details.lots[open] > summary { margin-bottom: 4px; }
+.allowance-kind { margin-bottom: 12px; }

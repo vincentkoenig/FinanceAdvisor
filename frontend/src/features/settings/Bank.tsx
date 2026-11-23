@@ -8,6 +8,7 @@ import {
 import { Icon } from '../../components/Icon';
 import { useToast } from '../../components/Toast';
 import { dayShort } from '../../lib/format';
+import './bank.css';
 
 const PREFERRED_BANK = /hypovereinsbank|unicredit/i;
 // So viele Tage vor dem Ende der Freigabe bietet FinTrack das Erneuern an

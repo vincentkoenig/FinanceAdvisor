@@ -9,6 +9,7 @@ import { pct } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
 import type { PositionRow } from '../home/model';
 import { squarify } from './model';
+import './heatmap.css';
 
 type Mode = 'day' | 'total';
 const MODE_KEY = 'ft-heat-mode';

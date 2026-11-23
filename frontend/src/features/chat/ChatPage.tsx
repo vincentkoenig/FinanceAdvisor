@@ -8,6 +8,7 @@ import { Loaded } from '../../components/Loaded';
 import { useToast } from '../../components/Toast';
 import { Markdown } from '../../lib/markdown';
 import { useMoney } from '../../lib/privacy';
+import './chat.css';
 
 const SUGGESTIONS = [
   'Wie viel habe ich diesen Monat übrig?',

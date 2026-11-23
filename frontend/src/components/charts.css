@@ -1,0 +1,27 @@
+/* Wertverlauf und Rendite-Diagramm (ValueChart, ReturnChart)
+   Eigene Datei, damit sie mit der Seite nachgeladen wird und nicht den Start der App vergrößert. */
+.value-chart { position: relative; }
+.value-chart svg { display: block; overflow: visible; font-variant-numeric: tabular-nums; touch-action: pan-y; }
+.value-chart .grid { stroke: var(--rule); stroke-width: 1; }
+.value-chart .axis { fill: var(--muted); font-size: 12px; }
+.value-chart .line { fill: none; stroke: var(--accent); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.value-chart .area { fill: var(--accent); opacity: 0.12; }
+.value-chart .rule { stroke: var(--muted); stroke-width: 1; opacity: 0.5; }
+.value-chart .dot-mark { fill: var(--surface); stroke: var(--accent); stroke-width: 2; }
+.chart-tip { position: absolute; top: 0; pointer-events: none; padding: 6px 8px; border-radius: 6px; background: var(--surface); color: var(--text); box-shadow: var(--shadow-float); font-size: var(--fs-small); line-height: 16px; white-space: nowrap; }
+.chart-tip b { font-weight: 600; }
+.value-chart .trade-buy { fill: var(--positive); stroke: var(--surface); stroke-width: 1.5; }
+.value-chart .trade-sell { fill: var(--surface); stroke: var(--negative); stroke-width: 2.5; }
+.tip-trade { margin-top: 4px; padding-left: 12px; position: relative; }
+.tip-trade::before { content: ""; position: absolute; left: 0; top: 5px; width: 7px; height: 7px; border-radius: 50%; }
+.tip-trade.trade-buy::before { background: var(--positive); }
+.tip-trade.trade-sell::before { box-shadow: inset 0 0 0 2px var(--negative); }
+.chart-legend { display: flex; gap: 14px; margin-top: 6px; color: var(--muted); font-size: var(--fs-small); }
+.chart-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart-legend i { width: 8px; height: 8px; border-radius: 50%; }
+.chart-legend .trade-buy { background: var(--positive); }
+.value-chart .grid.zero { stroke: var(--rule-strong); }
+.return-chart .bench { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 3; stroke-linejoin: round; }
+.chart-legend .key-depot, .chart-legend .key-bench { width: 14px; height: 0; border-radius: 0; border-top: 2px solid var(--accent); }
+.chart-legend .key-bench { border-top: 2px dashed var(--muted); }
+.chart-legend .trade-sell { box-shadow: inset 0 0 0 2px var(--negative); }

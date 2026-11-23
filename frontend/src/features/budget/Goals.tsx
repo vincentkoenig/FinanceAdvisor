@@ -9,6 +9,7 @@ import { Icon } from '../../components/Icon';
 import { useToast } from '../../components/Toast';
 import { dayShort, parseAmount } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
+import './goals.css';
 
 type Open = { type: 'add' } | { type: 'edit'; goal: Goal } | { type: 'entry'; goal: Goal } | null;
 

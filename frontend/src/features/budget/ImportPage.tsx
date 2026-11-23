@@ -23,6 +23,7 @@ import {
   categoryOptions, groupRows, initialChoices, payeesWithoutCategory, proposalsFrom, setGroupCategory, setGroupSelected, toBankReview, toCommit,
   visibleGroups,
 } from './importModel';
+import './import.css';
 
 const SHARE_MISSING = 'Die geteilte Datei ist nicht angekommen. Bitte hier von Hand wählen.';
 

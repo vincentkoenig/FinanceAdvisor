@@ -2,7 +2,7 @@
 // Übernehmen ändert den Vertrag bzw. führt die wiederkehrende Buchung ab dem neuen Preis weiter,
 // Ignorieren blendet den Hinweis aus (bis sich der Preis noch einmal ändert).
 // Auf der Vertragsseite stehen alle, im Haushaltsbuch nur die wiederkehrenden Buchungen.
-import { type PriceChange, useAcceptPriceChange, useDismissPriceChange, usePriceChanges } from '../../api/contracts';
+import { type PriceChange, useAcceptPriceChange, useDismissPriceChange, usePriceChanges } from '../../api/priceChanges';
 import { useToast } from '../../components/Toast';
 import { dayShort } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
