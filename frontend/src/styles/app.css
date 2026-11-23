@@ -568,3 +568,12 @@ code.break { word-break: break-all; }
 .bank-waiting { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 14px; border-radius: var(--radius-inner); background: var(--raised); }
 .bank-waiting > span { display: inline-flex; align-items: center; gap: 8px; }
 .bank-review { padding-bottom: 12px; margin-bottom: 12px; box-shadow: inset 0 -1px 0 var(--rule-strong); }
+/* Sparziele: Töpfe mit Fortschrittsbalken */
+.goal-list { display: grid; gap: 14px; }
+.goal-head, .goal-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; min-width: 0; }
+.goal-foot { align-items: center; margin-top: 6px; }
+.goal-track { height: 8px; margin-top: 6px; border-radius: 999px; background: var(--raised); overflow: hidden; }
+.goal-track > span { display: block; height: 100%; border-radius: inherit; background: var(--accent); transition: width var(--t-hover); }
+.goal-track > span.done { background: var(--positive, var(--accent)); }
+.goal-warning { margin-bottom: 12px; }
+.goal-delete { align-self: flex-start; }

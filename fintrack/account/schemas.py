@@ -175,6 +175,23 @@ class ExportAccountBalance(_Entry):
     amount: float
 
 
+class ExportGoalEntry(_Entry):
+    date: date
+    amount: float
+    kind: Literal['manual', 'rate'] = 'manual'
+    note: Optional[str] = Field(default=None, max_length=200)
+
+
+class ExportGoal(_Entry):
+    name: str = Field(min_length=1, max_length=100)
+    target_amount: float = Field(gt=0)
+    target_date: Optional[date] = None
+    monthly_amount: Optional[float] = Field(default=None, ge=0)
+    rate_since: Optional[date] = None
+    reached_at: Optional[date] = None
+    entries: List[ExportGoalEntry] = []
+
+
 class ExportFile(_Entry):
     format: Literal['fintrack-export']
     version: Literal[1]
@@ -199,6 +216,8 @@ class ExportFile(_Entry):
     account_balances: List[ExportAccountBalance] = []
     # Seit dem Analysten; ältere Dateien haben den Abschnitt nicht
     analyst_signals: List[ExportAnalystSignal] = []
+    # Seit den Sparzielen; ältere Dateien haben den Abschnitt nicht
+    savings_goals: List[ExportGoal] = []
     # Ausgeblendete Vertragsvorschläge (Empfängernamen); ältere Dateien haben den Abschnitt nicht
     dismissed_suggestions: List[Annotated[str, StringConstraints(min_length=1, max_length=200)]] = []
 

@@ -486,6 +486,42 @@ class PushLog(db.Model):
     __table_args__ = (db.UniqueConstraint('user_id', 'key'),)
 
 
+# ─── SPARZIELE ────────────────────────────────────────────────────────────────
+
+class SavingsGoal(db.Model):
+    """
+    SavingsGoal Tabelle - ein Sparziel als Topf vom Kontostand: das Geld bleibt auf dem Konto
+    und wird nur gedanklich zurückgelegt. Stand = Summe der Einträge plus die monatliche Rate
+    seit rate_since (je angefangenem Monat einmal, höchstens bis zum Zielbetrag).
+    target_date ist optional; mit Datum rechnet goals/service.py den nötigen Betrag pro Monat.
+    reached_at merkt sich, wann das Ziel erreicht wurde (für die einmalige Push-Meldung).
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    target_amount = db.Column(db.Float, nullable=False)
+    target_date = db.Column(db.Date)
+    monthly_amount = db.Column(db.Float)
+    rate_since = db.Column(db.Date)
+    reached_at = db.Column(db.Date)
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+
+class SavingsGoalEntry(db.Model):
+    """
+    SavingsGoalEntry Tabelle - eine Einzahlung (positiv) oder Entnahme (negativ) in einen Topf.
+    kind 'manual' von Hand, 'rate' wenn beim Ändern der Rate das bisher Angesparte festgeschrieben wird.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    goal_id = db.Column(db.Integer, db.ForeignKey('savings_goal.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    kind = db.Column(db.String(10), nullable=False, default='manual')
+    note = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=db.func.now())
+
+
 # ─── BANKABRUF (ENABLE BANKING) ───────────────────────────────────────────────
 
 class BankConnection(db.Model):

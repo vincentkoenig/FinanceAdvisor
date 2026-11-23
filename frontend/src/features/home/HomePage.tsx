@@ -24,6 +24,7 @@ import {
 
 // Beides braucht nicht jeder Besuch, darum nicht im Start der App
 const WealthPanel = lazy(() => import('./WealthPanel').then((m) => ({ default: m.WealthPanel })));
+const GoalsPanel = lazy(() => import('./GoalsPanel').then((m) => ({ default: m.GoalsPanel })));
 const BalancesDialog = lazy(() => import('../budget/BalancesDialog').then((m) => ({ default: m.BalancesDialog })));
 
 export function HomePage() {
@@ -182,6 +183,8 @@ export function HomePage() {
       </div>
 
       <Suspense fallback={null}><WealthPanel /></Suspense>
+
+      <Suspense fallback={null}><GoalsPanel /></Suspense>
 
       <div className="grid grid-3">
         <Fold id="h-flow" className="span-2" title={`${month[0].toUpperCase()}${month.slice(1)} im Haushaltsbuch`}
