@@ -6,7 +6,6 @@
 import { Suspense, lazy, useState } from 'react';
 import { Link } from 'react-router';
 import { useContracts } from '../../api/contracts';
-import { useGoals } from '../../api/goals';
 import {
   type Booking, type DepotNews, useBookings, useBudgetSummary, useExecutePlan, useInsight, usePortfolioHistory, usePositions, useSavingsPlans, useTrades,
 } from '../../api/overview';
@@ -18,7 +17,6 @@ import { MonthFlow } from '../../components/MonthFlow';
 import { useToast } from '../../components/Toast';
 import { dayShort, monthName, parseDay, pct, pctTone, tone } from '../../lib/format';
 import { useMoney } from '../../lib/privacy';
-import { GoalBars } from '../budget/Goals';
 import { dateLong, inDays, soonCancellable } from '../contracts/model';
 import {
   dayChange, largestPositions, monthFlow, planDates, portfolioTotals, recentBookings, signedAmount, token, topMovers,
@@ -26,6 +24,7 @@ import {
 
 // Beides braucht nicht jeder Besuch, darum nicht im Start der App
 const WealthPanel = lazy(() => import('./WealthPanel').then((m) => ({ default: m.WealthPanel })));
+const GoalsPanel = lazy(() => import('./GoalsPanel').then((m) => ({ default: m.GoalsPanel })));
 const BalancesDialog = lazy(() => import('../budget/BalancesDialog').then((m) => ({ default: m.BalancesDialog })));
 
 export function HomePage() {
@@ -36,7 +35,6 @@ export function HomePage() {
   const plans = useSavingsPlans();
   const bookings = useBookings();
   const insight = useInsight();
-  const goals = useGoals();
   const contracts = useContracts();
   const [balancesOpen, setBalancesOpen] = useState(false);
   const execute = useExecutePlan();
@@ -186,12 +184,7 @@ export function HomePage() {
 
       <Suspense fallback={null}><WealthPanel /></Suspense>
 
-      {goals.data && goals.data.goals.length > 0 && (
-        <Fold id="h-goals" title="Sparziele" peek={eur(goals.data.total)}
-          action={<Link to="/budget#goals" className="btn btn-text btn-sm">Verwalten</Link>}>
-          <GoalBars goals={goals.data.goals} />
-        </Fold>
-      )}
+      <Suspense fallback={null}><GoalsPanel /></Suspense>
 
       <div className="grid grid-3">
         <Fold id="h-flow" className="span-2" title={`${month[0].toUpperCase()}${month.slice(1)} im Haushaltsbuch`}
