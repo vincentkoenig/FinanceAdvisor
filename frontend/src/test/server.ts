@@ -3,6 +3,7 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import type { BankConnection } from '../api/bank';
+import type { Goal } from '../api/goals';
 
 export const testUser = {
   id: 1, username: null, email: 'test@fintrack.test',
@@ -73,6 +74,7 @@ const initialData = () => ({
     configured: true, redirect_url: 'http://localhost/api/v1/bank/callback', review_count: 0,
     connections: [] as BankConnection[], configuration_error: null as string | null,
   },
+  goals: { goals: [] as Goal[], total: 0, cash_balance: 2500 as number | null, over_by: 0 },
   priceChanges: [
     { key: 'price:contract:5:13.99', kind: 'contract' as const, id: 5, name: 'Netflix', interval: 'monthly' as const,
       old_amount: 12.99, new_amount: 13.99, since: '2026-09-15', charges: 2, yearly_difference: 12 },
@@ -167,7 +169,7 @@ export let data = initialData();
 export const resetData = () => { data = initialData(); };
 
 // Letzte Anfragen mit Inhalt, damit Tests prüfen können, was gesendet wurde
-export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown; balance?: unknown; dismissed?: unknown; target?: unknown; bankConnect?: unknown; bankReview?: unknown; priceAccept?: unknown; priceDismiss?: unknown } = {};
+export const sent: { settings?: unknown; import?: unknown; buy?: unknown; sell?: unknown; plan?: unknown; asset?: unknown; booking?: unknown; chat?: unknown; contract?: unknown; cancel?: unknown; link?: unknown; bankImport?: unknown; mapping?: unknown; depotImport?: unknown; cryptoMapping?: unknown; payees?: unknown; category?: unknown; bookingChange?: unknown; categoryChange?: unknown; rule?: unknown; balance?: unknown; dismissed?: unknown; target?: unknown; bankConnect?: unknown; bankReview?: unknown; priceAccept?: unknown; priceDismiss?: unknown; goal?: unknown; goalEntry?: unknown } = {};
 
 // Suchtreffer: ein bekanntes Asset und eines, das erst angelegt werden muss
 export const searchResults = [
@@ -285,6 +287,24 @@ export const handlers = [
   http.get('/api/v1/me/asset-transactions', () => HttpResponse.json(data.trades)),
   http.get('/api/v1/me/dividends', () => HttpResponse.json(data.dividends)),
   http.get('/api/v1/me/positions/:id/lots', () => HttpResponse.json({ current_price: 100, lots: data.lots })),
+  http.get('/api/v1/me/goals', () => HttpResponse.json(data.goals)),
+  http.post('/api/v1/me/goals', async ({ request }) => {
+    sent.goal = await request.json();
+    const body = sent.goal as { name: string; target_amount: number; target_date: string | null; monthly_amount: number | null; start_amount: number | null };
+    const balance = (body.start_amount ?? 0) + (body.monthly_amount ?? 0);
+    data.goals.goals.push({ id: 90 + data.goals.goals.length, name: body.name, target_amount: body.target_amount,
+      target_date: body.target_date, monthly_amount: body.monthly_amount, balance, missing: body.target_amount - balance,
+      progress: balance / body.target_amount, reached: false, plan: null });
+    return HttpResponse.json({ message: `Sparziel ${body.name} angelegt` }, { status: 201 });
+  }),
+  http.post('/api/v1/me/goals/:id/entries', async ({ params, request }) => {
+    const body = await request.json() as { amount: number };
+    sent.goalEntry = { id: Number(params.id), ...body };
+    const goal = data.goals.goals.find((g) => g.id === Number(params.id))!;
+    goal.balance += body.amount;
+    goal.progress = goal.balance / goal.target_amount;
+    return HttpResponse.json({ message: `${goal.name}: eingezahlt` }, { status: 201 });
+  }),
   http.get('/api/v1/me/price-changes', () => HttpResponse.json(data.priceChanges)),
   http.post('/api/v1/me/price-changes/:action', async ({ params, request }) => {
     const { key } = await request.json() as { key: string };

@@ -33,6 +33,10 @@ describe('Formatierung', () => {
     expect(parseAmount('250,50 €')).toBe(250.5);
     expect(parseAmount('1.250,5')).toBe(1250.5);
     expect(parseAmount('12.5')).toBe(12.5);
+    expect(parseAmount('10.000')).toBe(10000);
+    expect(parseAmount('1.250.000')).toBe(1250000);
+    expect(parseAmount('0.001')).toBe(0.001);
+    expect(parseAmount('1.25')).toBe(1.25);
     expect(parseAmount('zwölf')).toBeNaN();
   });
 });

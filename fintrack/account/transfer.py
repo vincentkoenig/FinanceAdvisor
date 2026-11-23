@@ -17,7 +17,7 @@ from fintrack.api import ApiError
 from fintrack.budget.service import ensure_transfer_categories
 from fintrack.extensions import db
 from fintrack.models import (AccountBalance, AnalystSignal, Asset, AssetTransaction, Category, CategoryRule, ChatHistory, Contract, ContractSuggestionDismissal, DailyInsight, Dividend,
-                             PortfolioAnalysis, SavingsPlan, Transaction, UserAsset, Watchlist)
+                             PortfolioAnalysis, SavingsGoal, SavingsGoalEntry, SavingsPlan, Transaction, UserAsset, Watchlist)
 from fintrack.portfolio.analysis import parse_stored_list
 from fintrack.account.schemas import EXPORT_FORMAT, EXPORT_VERSION
 
@@ -25,7 +25,7 @@ from fintrack.account.schemas import EXPORT_FORMAT, EXPORT_VERSION
 # zählen nicht - die legt jede Registrierung automatisch an)
 USER_DATA_MODELS = (Transaction, UserAsset, AssetTransaction, SavingsPlan, Watchlist,
                     Dividend, ChatHistory, PortfolioAnalysis, DailyInsight, Contract, AccountBalance,
-                    AnalystSignal)
+                    AnalystSignal, SavingsGoal)
 
 
 def _iso(value):
@@ -169,6 +169,13 @@ def export_user_data(user):
             {"date": _iso(b.date), "amount": b.amount}
             for b in _by_id(AccountBalance, user_id)
         ],
+        "savings_goals": [
+            {"name": g.name, "target_amount": g.target_amount, "target_date": _iso(g.target_date),
+             "monthly_amount": g.monthly_amount, "rate_since": _iso(g.rate_since), "reached_at": _iso(g.reached_at),
+             "entries": [{"date": _iso(e.date), "amount": e.amount, "kind": e.kind, "note": e.note}
+                         for e in SavingsGoalEntry.query.filter_by(goal_id=g.id).order_by(SavingsGoalEntry.id).all()]}
+            for g in _by_id(SavingsGoal, user_id)
+        ],
         "dismissed_suggestions": [d.key for d in _by_id(ContractSuggestionDismissal, user_id)],
     }
 
@@ -291,6 +298,11 @@ def import_user_data(user, data):
         _create(AccountBalance, user_id=user_id, date=entry.date, amount=entry.amount)
     for key in dict.fromkeys(data.dismissed_suggestions):
         _create(ContractSuggestionDismissal, user_id=user_id, key=key)
+    for entry in data.savings_goals:
+        goal = _create(SavingsGoal, user_id=user_id, **entry.model_dump(exclude={'entries'}))
+        db.session.flush()  # goal.id für die Einträge
+        for item in entry.entries:
+            _create(SavingsGoalEntry, user_id=user_id, goal_id=goal.id, **item.model_dump())
 
     db.session.commit()
 
@@ -304,5 +316,6 @@ def import_user_data(user, data):
         "contracts": len(data.contracts), "category_rules": len(data.category_rules),
         "account_balances": len(data.account_balances),
         "dismissed_suggestions": len(set(data.dismissed_suggestions)),
+        "savings_goals": len(data.savings_goals),
     }
     return counts, new_assets

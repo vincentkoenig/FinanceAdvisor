@@ -4,6 +4,7 @@ push/notify.py - Welche Meldungen der Morgen-Lauf (jobs.py, 8:00 Uhr) verschickt
 - Kündigungsfristen: 14 Tage und 3 Tage vor dem letzten Kündigungstag eines Vertrags
 - Sparplan fällig: am Ausführungstag, solange er noch nicht bestätigt ist
 - Tages-Update: ein Hinweis, dass der KI-Text vom Vorabend bereitliegt
+- Sparziel erreicht: einmal je Ziel (auch wenn es durch die monatliche Rate voll wurde)
 - Bankabruf: Umsätze warten auf Prüfung (wie das Tages-Update), Freigabe der Bank läuft
   in 7 bzw. 1 Tag ab oder ist abgelaufen (wie die Kündigungsfristen)
 
@@ -142,6 +143,20 @@ def notify_bank(user_id, today):
     return sent
 
 
+def notify_goals(user_id, today):
+    """Sparziele, die voll sind: einmal je Ziel und Erreichen (wird es wieder leer und voll, erneut)."""
+    from fintrack.goals.service import reached_goals
+    sent = 0
+    for goal in reached_goals(user_id, today):
+        key = f'goal:{goal.id}:{goal.reached_at.isoformat()}'
+        if _already_sent(user_id, key):
+            continue
+        sent += send_to_user(user_id, 'savings_plan', f'Sparziel erreicht: {goal.name}',
+                             'Der Topf ist voll. Glückwunsch!', url='/app/budget', tag=f'goal-{goal.id}')
+        _remember(user_id, key)
+    return sent
+
+
 def notify_all_users(today=None, now=None):
     """Morgen-Lauf für alle Nutzer mit mindestens einem angemeldeten Gerät."""
     if not vapid_keys():
@@ -149,10 +164,11 @@ def notify_all_users(today=None, now=None):
     today = today or today_berlin()
     now = now or datetime.now()
     user_ids = [row[0] for row in db.session.query(PushSubscription.user_id).distinct()]
-    summary = {'users': len(user_ids), 'deadlines': 0, 'savings_plan': 0, 'daily_update': 0, 'bank': 0}
+    summary = {'users': len(user_ids), 'deadlines': 0, 'savings_plan': 0, 'daily_update': 0, 'bank': 0, 'goals': 0}
     for user_id in user_ids:
         summary['deadlines'] += notify_deadlines(user_id, today)
         summary['savings_plan'] += notify_savings_plans(user_id, now)
         summary['daily_update'] += notify_daily_update(user_id, now)
         summary['bank'] += notify_bank(user_id, today)
+        summary['goals'] += notify_goals(user_id, today)
     return summary

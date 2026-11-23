@@ -74,10 +74,14 @@ export function isoDay(day: Date) {
   return `${monthKey(day)}-${String(day.getDate()).padStart(2, '0')}`;
 }
 
-/** "1.234,5" oder "1234.5" → 1234.5; leer → null; sonst NaN */
+/**
+ * "1.234,5" oder "1234.5" → 1234.5; "10.000" → 10000 (Punkt als deutscher Tausenderpunkt, wenn er so steht:
+ * Gruppen zu drei Ziffern, vorne keine 0 - "0.001" und "12.5" bleiben Dezimalzahlen); leer → null; sonst NaN
+ */
 export function parseAmount(text: string): number | null {
   const cleaned = text.replace(/[€\s]/g, '');
   if (cleaned === '') return null;
-  const normalized = cleaned.includes(',') ? cleaned.replace(/\./g, '').replace(',', '.') : cleaned;
+  const thousands = /^-?[1-9]\d{0,2}(\.\d{3})+$/.test(cleaned);
+  const normalized = cleaned.includes(',') || thousands ? cleaned.replace(/\./g, '').replace(',', '.') : cleaned;
   return /^-?\d+(\.\d+)?$/.test(normalized) ? Number(normalized) : NaN;
 }

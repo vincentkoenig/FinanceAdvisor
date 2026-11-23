@@ -16,6 +16,7 @@ import { useMoney } from '../../lib/privacy';
 import { monthFlow, signedAmount } from '../home/model';
 import { PriceChanges } from '../contracts/PriceChanges';
 import { BalancesDialog } from './BalancesDialog';
+import { GoalsSection } from './Goals';
 import { AddBookingDialog, DeleteBookingDialog, EditBookingDialog } from './dialogs';
 import {
   asSummary, counts, dayInMonth, daysForAverage, expensesByCategory, largestVariable, mainCategory, monthStart, monthTotals, sortBookings,
@@ -134,6 +135,8 @@ export function BudgetPage() {
           </Loaded>
         </section>
       </div>
+
+      <GoalsSection />
 
       <section className="panel" aria-labelledby="h-bookings">
         <div className="panel-head">
